@@ -1,0 +1,2319 @@
+---
+title: "urbansim_postprocessors"
+format: html
+editor: visual
+---
+
+Select path
+
+```{r}
+root <- 'K:/DataServices/Projects/Current_Projects/Projections/Projections_2023/Data/03_UrbanSim/UrbanSim_Outputs/'
+# root <- 'S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/Projections/Projections_2023/Data/03_UrbanSim/UrbanSim_Outputs/'
+```
+
+Set Model vintage
+
+```{r}
+MAPCM_run = 'run_179'
+SWM_run = 'state_run_97'
+# set run for script
+run = MAPCM_run
+# run = SWM_run
+```
+
+Define helper functions
+
+```{r}
+sun <- function(x){
+  sort(unique(x))}
+lun <- function(x){
+  length(unique(x))}
+sna <- function(x){
+  sort(names(x))}
+```
+
+```{r, setup, include=FALSE}
+knitr::opts_knit$set(root.dir = root)
+```
+
+```{r}
+library(tidycensus)
+library(tidyverse)
+library(data.table)
+library(reticulate)
+```
+
+## Unpack the h5 files in python
+
+# The following packages must be installed in your python environment:
+
+pandas h5py tables
+
+#\\Data-Sync\users$\cgately\Documents\.virtualenvs\r-reticulate\Scripts\python.exe -m pip install --upgrade pip #\\Data-Sync\users$\cgately\Documents.virtualenvs\r-reticulate\Scripts\python.exe -m pip install pandas #\\Data-Sync\users$\cgately\Documents\.virtualenvs\r-reticulate\Scripts\python.exe -m pip install h5py #\\Data-Sync\users$\cgately\Documents.virtualenvs\r-reticulate\Scripts\python.exe -m pip install tables
+
+```{python}
+#| eval: false
+reticulate::repl_python()
+import os
+#import numpy as np
+import pandas as pd
+import h5py
+
+# Set Name of UrbanSim Model Run
+
+run = 'run_179'
+#run = 'state_run_99'
+
+
+# In-Office path
+os.chdir('K:\\DataServices\\Projects\\Current_Projects\\Projections\\Projections_2023\\Data\\03_UrbanSim\\UrbanSim_Outputs\\' + run)
+#os.chdir('/mnt/k/DataServices/Projects/Current_Projects/Projections/Data/03_UrbanSim/UrbanSim_Outputs/' + run)
+
+# Remote path
+#os.chdir('S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/Projections/Data/03_UrbanSim/UrbanSim_Outputs/' + run)
+# os.chdir('/mnt/s/Network Shares/K Drive/DataServices/Projects/Current_Projects/Projections/Projections_2023/Data/03_UrbanSim/UrbanSim_Outputs/' + run)
+
+
+# Years in the H5 file
+
+years = ['2010','2019','2029','2039','2049']
+for yr in years:
+  if not os.path.exists(yr):
+    os.makedirs(yr)
+
+h5=pd.HDFStore('results_mapc_' + run + '_run_results.h5')
+
+keys = h5.keys()
+
+for key in keys:
+  out = h5[key]
+  out.to_csv('.' + key + ".csv", header = True, index = False)
+  print("export of " + key + " complete")
+
+exit
+```
+
+# Post-processor 01 - process raw microsimulated outputs
+
+```{r}
+#| eval: false
+
+#
+# # Load PUMS data
+# per13 <- fread('pums13_5yr/ss13pma.csv')
+# hh13 <- fread('pums13_5yr/ss13hma.csv')
+#
+# # Format variables and column names
+# setnames(per13, tolower(colnames(per13)))
+# setnames(hh13, tolower(colnames(hh13)))
+# per13[, serialno := as.character(serialno)]
+# hh13[, serialno := as.character(serialno)]
+# setkey(per13, serialno)
+# setkey(hh13, serialno)
+#
+# # Join households and persons PUMS files
+# pums13 <- merge(hh13, per13, all = T, allow.cartesian = T)
+# setnames(pums13, tolower(colnames(pums13)))
+# setkey(pums13, serialno)
+# saveRDS(pums13,'pums13_5yr/pums2013_microsim_households.rds')
+
+# pums13 <- readRDS('pums13_5yr/pums2013_microsim_households.rds')
+#
+# # Subset and rename columns
+# pcols <-
+#   c(
+#     'serialno',
+#     'adjhsg',
+#     'adjinc.y',
+#     'type',
+#     'bld',
+#     'vacs',
+#     'valp',
+#     'hincp',
+#     'wif',
+#     'sporder',
+#     'agep',
+#     'wagp',
+#     'oip',
+#     'esr',
+#     'naicsp',
+#     'pincp',
+#     'relp'
+#   )
+# cn <-
+#   c(
+#     'serialno',
+#     'hh_adj',
+#     'inc_adj',
+#     'hh_type',
+#     'bld_type',
+#     'vacancy',
+#     'prop_value',
+#     'hh_inc',
+#     'workers_in_fam',
+#     'person_num',
+#     'age',
+#     'wage_inc',
+#     'other_inc',
+#     'emp_status',
+#     'naics',
+#     'tot_inc_person',
+#     'relationship_to_sp1'
+#   )
+# pums13 <- pums13[, ..pcols]
+# setnames(pums13, cn)
+# pums13 <- pums13[is.na(vacancy)]
+# setkey(pums13, serialno)
+# gc()
+#
+# # Add dummy variable for group quarters
+# pums13[, gq := 0]
+# pums13[hh_type %in% c(2, 3), gq := 1]
+
+# Recode UrbanSim/PUMS age groups to match VisionEval age groups
+# pums13[, age_grp := 1]
+# pums13[age >= 15 & age <= 19, age_grp := 2]
+# pums13[age >= 20 & age <= 29, age_grp := 3]
+# pums13[age >= 30 & age <= 54, age_grp := 4]
+# pums13[age >= 55 & age <= 64, age_grp := 5]
+# pums13[age >= 65 , age_grp := 6]
+
+# saveRDS(pums13,'pums13_5yr/pums2013_microsim_households_short.rds')
+
+munis <-
+  mapcdatakeys::all_muni_data_keys %>% select(muni_id, rpa_acr, mpo)
+blks <-
+  mapcdatakeys::geog_xw_2010 %>% left_join(munis, by = 'muni_id') %>% select(bl10_id, muni_id, muni_name, rpa_acr, mpo) %>% setDT()
+
+pums13 <-
+  readRDS('pums13_5yr/pums2013_microsim_households_short.rds')
+
+years <- c(2019, 2029, 2039, 2049)
+
+  for (yr in years) {
+    hh <- fread(paste0(run, '/', yr, '/households.csv'))
+    hh[, serialno := as.character(serialno)]
+    setorder(hh, serialno, block_id)
+    hh[, row := .I]
+    hh[, hid := paste(serialno, row, sep = '_')]
+    hh <-
+      hh[, .(serialno,
+             block_id,
+             hid,
+             income,
+             workers,
+             persons,
+             tenure,
+             cars)]
+    setkey(hh, serialno)
+    
+    # Join person-level PUMS data for each household in UrbanSim output
+    hh <- merge(hh, pums13, all.x = T, allow.cartesian = T)
+    hh[, is_worker := 0]
+    hh[emp_status %in% c(1, 2, 3, 4, 5), is_worker := 1]
+    hh[, blockgroup_id := substr(block_id, 1, 12)]
+    hh[, year := yr]
+    hh[is.na(tot_inc_person), tot_inc_person := 0]
+    #Removed the inc_adj arithmetic, income is already in 2013USD.
+    #Still reassigned the names for each variable to maintain the workflow. 
+    hh[, pinc2013 := as.numeric(tot_inc_person)]
+    hh[, hhinc2013 := as.numeric(hh_inc)]
+    
+    # Create 2010USD income variables
+    # Removed the inc_adj arithmetic, income is already in 2013USD.
+    hh[, inc2010 := as.integer(round(as.numeric(tot_inc_person) * (237.446 / 251.139)))]
+    hh[, hhinc2010 := as.integer(round(as.numeric(hh_inc) * (237.446 / 251.139)))]
+    
+    swm <- hh %>%
+      select(
+        hid,
+        serialno,
+        person_num,
+        block_id,
+        year,
+        age,
+        is_worker,
+        relationship_to_sp1,
+        pinc2013,
+        hhinc2013,
+        inc_adj,
+        inc2010,
+        hhinc2010,
+        persons,
+        workers,
+        tenure,
+        person_num
+      ) %>%
+      mutate(
+        #Create child variable
+        #A child is anyone under the age of 18
+        child = case_when(age < 18 ~ 1,
+                          age >= 18 ~ 0),
+        
+        income_grp = cut(
+          hhinc2013,
+          breaks = c(-Inf, 35000, 75000, 125000, 225000, Inf),
+          labels = c(
+            "<=35000",
+            "35000-75000",
+            "75000-125000",
+            "125000-225000",
+            ">225000"
+          )
+        )
+      ) %>% setDT()
+    
+    # Join to muni and mpo names
+    swm[, bl10_id := as.numeric(block_id)]
+    setkey(swm, bl10_id)
+    setkey(blks, bl10_id)
+    swm <- blks[swm]
+    
+    # Count children and adults in each household
+    swm[, children := sum(child, na.rm = T), hid]
+    swm[child == 0, adult := 1][is.na(adult), adult := 0]
+    swm[, adults := sum(adult, na.rm = T), hid]
+    
+    # HHtype
+    swm[children > 0, HHtype := 1]
+    swm[children == 0 & adults > 1, HHtype := 3]
+    swm[children == 0 & adults == 1, HHtype := 5]
+    
+    # Persons by 5-yr age categories
+    swm[age < 5 , ageCAT6 := 1]
+    swm[age %in% 5:9 , ageCAT6 := 2]
+    swm[age %in% 10:14 , ageCAT6 := 3]
+    swm[age %in% 15:19 , ageCAT6 := 4]
+    swm[age %in% 20:24 , ageCAT6 := 5]
+    swm[age %in% 25:29 , ageCAT6 := 6]
+    swm[age %in% 30:34 , ageCAT6 := 7]
+    swm[age %in% 35:39 , ageCAT6 := 8]
+    swm[age %in% 40:44 , ageCAT6 := 9]
+    swm[age %in% 45:49 , ageCAT6 := 10]
+    swm[age %in% 50:54 , ageCAT6 := 11]
+    swm[age %in% 55:59 , ageCAT6 := 12]
+    swm[age %in% 60:64 , ageCAT6 := 13]
+    swm[age %in% 65:69 , ageCAT6 := 14]
+    swm[age %in% 70:74 , ageCAT6 := 15]
+    swm[age %in% 75:79 , ageCAT6 := 16]
+    swm[age %in% 80:84 , ageCAT6 := 17]
+    swm[age >= 85 , ageCAT6 := 18]
+    
+    # Age of HHder
+    swm[person_num == 1, ageHH := age]
+    swm[, ageHHder := max(ageHH, na.rm = T), hid]
+    swm[, pid := paste0(hid, '_', person_num)]
+    swm[, ageHH := NULL]
+    
+    # Count of persons by ageCAT6 in each HHd
+    swm[ageCAT6 == 1, age1 := .N, hid]
+    swm[ageCAT6 == 2, age2 := .N, hid]
+    swm[ageCAT6 == 3, age3 := .N, hid]
+    swm[ageCAT6 == 4, age4 := .N, hid]
+    swm[ageCAT6 == 5, age5 := .N, hid]
+    swm[ageCAT6 == 6, age6 := .N, hid]
+    swm[ageCAT6 == 7, age7 := .N, hid]
+    swm[ageCAT6 == 8, age8 := .N, hid]
+    swm[ageCAT6 == 9, age9 := .N, hid]
+    swm[ageCAT6 == 10, age10 := .N, hid]
+    swm[ageCAT6 == 11, age11 := .N, hid]
+    swm[ageCAT6 == 12, age12 := .N, hid]
+    swm[ageCAT6 == 13, age13 := .N, hid]
+    swm[ageCAT6 == 14, age14 := .N, hid]
+    swm[ageCAT6 == 15, age15 := .N, hid]
+    swm[ageCAT6 == 16, age16 := .N, hid]
+    swm[ageCAT6 == 17, age17 := .N, hid]
+    swm[ageCAT6 == 18, age18 := .N, hid]
+    
+    saveRDS(swm,
+            paste0(
+              run,
+              '/urbansim_',
+              run,
+              '_microhouseholds_',
+              yr,
+              '_unrevised_v2.rds'
+            ))
+    message(paste0(run,' ',yr,' saved'))
+  }
+
+```
+
+# Post-processor 02 - population difference calculation
+
+```{r}
+#| eval: false
+
+# Crosswalks
+munis <-
+  mapcdatakeys::all_muni_data_keys %>% select(muni_id, rpa_acr, mpo) %>% setDT()
+blks <-
+  mapcdatakeys::geog_xw_2010 %>% left_join(munis, by = 'muni_id') %>% select(bl10_id, muni_id, muni_name, rpa_acr, mpo) %>% setDT()
+
+# 2010 SF-1 comparison data
+mc <- fread('pop_by_age_muni_reweighter_validate_v2.csv')
+setkey(mc,muni_id)
+setkey(munis,muni_id)
+mc <- munis[mc]
+rmc <- mc[,lapply(.SD,sum,na.rm=T),.(mpo,ageCAT6),.SDcols=c('rw_pop','sf1_pop')]
+mmc <- mc[,lapply(.SD,sum,na.rm=T),.(rpa_acr,ageCAT6),.SDcols=c('rw_pop','sf1_pop')]
+setnames(mmc,'rpa_acr','mpo')
+
+# Load UMDI HHpop comparison data
+
+# Rebel town's split into their own RPA
+
+umdi <- fread('UMDI_v2022_Population_HHPopulation_10yr_MAPC97_RT_v1.csv')
+setnames(
+  umdi,
+  c('year',
+    'mpo',
+    'sex',
+    'ageCAT6',
+    'umdi_pop',
+    'hh_formation_rate',
+    'umdi_hh_pop'
+  )
+)
+umdi <-
+  umdi[, lapply(.SD, sum, na.rm = T), .(year, mpo, ageCAT6), .SDcols = c('umdi_hh_pop')]
+umdi[, umdi_hh_pop := round(umdi_hh_pop)]
+umdi[year > 2010, year := year - 1]
+umdi <- umdi[year>2000]
+setkey(umdi, mpo, year, ageCAT6)
+
+# 
+# # MAPC101
+# umdi.mapc <- fread('UMDI_v2022_Population_HHPopulation_10yr_MAPC101_v3.csv')
+# setnames(
+#   umdi.mapc,
+#   c('year',
+#     'mpo',
+#     'sex',
+#     'ageCAT6',
+#     'umdi_pop',
+#     'hh_formation_rate',
+#     'umdi_hh_pop'
+#   )
+# )
+# umdi.mapc <-
+#   umdi.mapc[, lapply(.SD, sum, na.rm = T), .(year, mpo, ageCAT6), .SDcols = c('umdi_hh_pop')]
+# umdi.mapc <- umdi.mapc[year>2000 & mpo=='MAPC']
+# umdi.mapc[year > 2010, year := year - 1]
+# setkey(umdi.mapc, mpo, year, ageCAT6)
+# 
+# #SWM with MAPC97
+# umdi.swm <- fread('UMDI_v2022_Population_HHPopulation_10yr_MAPC97_v1.csv')
+# setnames(
+#   umdi.swm,
+#   c('year',
+#     'mpo',
+#     'sex',
+#     'ageCAT6',
+#     'umdi_pop',
+#     'hh_formation_rate',
+#     'umdi_hh_pop'
+#   )
+# )
+# umdi.swm <-
+#   umdi.swm[, lapply(.SD, sum, na.rm = T), .(year, mpo, ageCAT6), .SDcols = c('umdi_hh_pop')]
+# umdi.swm[, umdi_hh_pop := round(umdi_hh_pop)]
+# umdi.swm[year > 2010, year := year - 1]
+# umdi.swm <- umdi.swm[year>2000]
+# setkey(umdi.swm, mpo, year, ageCAT6)
+
+###
+##  CALCULATE differences in HHpop by age between UMDI/Control Totals and UrbanSim h5 Outputs
+###
+# for (run in c(MAPCM_run, SWM_run)) {
+  fs <- list.files(path = run,
+                   pattern = 'unrevised_v2.rds', full.names = TRUE)
+  if (run == SWM_run) {
+    readComp <- function(x) {
+      dt <- readRDS(x)
+      dt[, pop := 1]
+      dt[muni_id %in% c(82,122,231,285),mpo:='RT']
+      dt <-
+        dt[, lapply(.SD, sum), .(mpo, year, ageCAT6), .SDcols = 'pop']
+    }
+    urbsim <- lapply(fs, readComp)
+    uspop <- rbindlist(urbsim)
+    uspop <- uspop[!is.na(mpo)]
+    setkey(uspop, mpo, year, ageCAT6)
+    adiff <- umdi[uspop]
+    # adiff <- umdi.swm[uspop]
+    adiff[, diff := pop - umdi_hh_pop]
+    setnames(adiff,'pop','urbansim_hh_pop')
+    fwrite(adiff,
+           paste0('/', run, '/urbansim_', run, '_umdi_pop_age_difference_v3.csv'))
+    
+  #   ad97 <- adiff[year==2010 & mpo!='MAPC']
+  #   setkey(ad97,mpo,ageCAT6)
+  #   setkey(rmc,mpo,ageCAT6)
+  #   ad97 <- rmc[ad97]
+  #   fwrite(ad97,paste0(root,run,'/',run,'_rpa_2010_pop_comparison_v3.csv'))
+  # }
+  if (run == MAPCM_run) {
+    readComp <- function(x) {
+      dt <- readRDS(x)
+      dt[, pop := 1]
+      dt[muni_id %in% c(82,122,231,285),rpa_acr:='RT']
+      dt <-
+        dt[, lapply(.SD, sum), .(rpa_acr, year, ageCAT6), .SDcols = 'pop']
+      setnames(dt, 'rpa_acr', 'mpo')
+    }
+    urbsim <- lapply(fs, readComp)
+    uspop <- rbindlist(urbsim)
+    uspop <- uspop[!is.na(mpo)]
+    setkey(uspop, mpo, year, ageCAT6)
+    # adiff <- umdi.mapc[uspop]
+    adiff <- umdi[uspop]
+    adiff[, diff := pop - umdi_hh_pop]
+    setnames(adiff,'pop','urbansim_hh_pop')
+    fwrite(adiff,
+           paste0(run, '/urbansim_', run, '_umdi_pop_age_difference_v3.csv'))
+
+    ad101 <- adiff[year==2010 & mpo %in% c('MAPC','RT')]
+    setkey(ad101,mpo,ageCAT6)
+    setkey(mmc,mpo,ageCAT6)
+    ad101 <- mmc[ad101]
+    fwrite(ad101,paste0(run,'/',run,'_mapc101_2010_pop_comparison_v3.csv'))
+
+  }
+}
+```
+
+#Post-processor 03 - person shifts
+
+```{r}
+#| eval: false
+
+# Crosswalks
+munis <-
+  mapcdatakeys::all_muni_data_keys %>% select(muni_id, rpa_acr, mpo) %>% setDT()
+blks <-
+  mapcdatakeys::geog_xw_2010 %>% left_join(munis, by = 'muni_id') %>% select(bl10_id, muni_id, muni_name, rpa_acr, mpo) %>% setDT()
+
+# Load UMDI HHpop comparison data
+
+umdi <- fread('UMDI_v2022_Population_HHPopulation_10yr_MAPC97_RT_v1.csv')
+setnames(
+  umdi,
+  c('year',
+    'mpo',
+    'sex',
+    'ageCAT6',
+    'umdi_pop',
+    'hh_formation_rate',
+    'umdi_hh_pop'
+  )
+)
+umdi <-
+  umdi[, lapply(.SD, sum, na.rm = T), .(year, mpo, ageCAT6), .SDcols = c('umdi_hh_pop')]
+umdi[, umdi_hh_pop := round(umdi_hh_pop)]
+umdi[year > 2010, year := year - 1]
+umdi <- umdi[year>2000]
+setkey(umdi, mpo, year, ageCAT6)
+# 
+# # MAPC101
+# umdi.mapc <- fread('UMDI_v2022_Population_HHPopulation_10yr_MAPC101_v3.csv')
+# setnames(
+#   umdi.mapc,
+#   c('year',
+#     'mpo',
+#     'sex',
+#     'ageCAT6',
+#     'umdi_pop',
+#     'hh_formation_rate',
+#     'umdi_hh_pop'
+#   )
+# )
+# umdi.mapc <-
+#   umdi.mapc[, lapply(.SD, sum, na.rm = T), .(year, mpo, ageCAT6), .SDcols = c('umdi_hh_pop')]
+# umdi.mapc <- umdi.mapc[year>2000 & mpo=='MAPC']
+# umdi.mapc[year > 2010, year := year - 1]
+# setkey(umdi.mapc, mpo, year, ageCAT6)
+# 
+# #SWM with MAPC97
+# umdi.swm <- fread('UMDI_v2022_Population_HHPopulation_10yr_MAPC97_v1.csv')
+# setnames(
+#   umdi.swm,
+#   c('year',
+#     'mpo',
+#     'sex',
+#     'ageCAT6',
+#     'umdi_pop',
+#     'hh_formation_rate',
+#     'umdi_hh_pop'
+#   )
+# )
+# umdi.swm <-
+#   umdi.swm[, lapply(.SD, sum, na.rm = T), .(year, mpo, ageCAT6), .SDcols = c('umdi_hh_pop')]
+# umdi.swm[, umdi_hh_pop := round(umdi_hh_pop)]
+# umdi.swm[year > 2010, year := year - 1]
+# umdi.swm <- umdi.swm[year>2000]
+# setkey(umdi.swm, mpo, year, ageCAT6)
+# Implement person-shifts between age categories
+
+adiff <- fread(paste0(run,'/urbansim_',run,'_umdi_pop_age_difference_v3.csv'))
+
+years <- c(2019,2029,2039,2049)
+# years <- c(2039,2049)
+for (yr in years) {
+  dt <- readRDS(
+    paste0(
+      run,
+      '/urbansim_',
+      run,
+      '_microhouseholds_',
+      yr,
+      '_unrevised_v2.rds'
+    )
+  )
+  dt[muni_id %in% c(82,122,231,285),rpa_acr:='RT']
+  dt[muni_id %in% c(82,122,231,285),mpo:='RT']
+  dt_shift <- data.table()
+  
+  
+  for (m in unique(adiff$mpo)) {
+    diff <- adiff[mpo == m & year == yr]
+    
+    if(run==MAPCM_run){
+      swm <- dt[rpa_acr == m]
+    }
+    if(run==SWM_run){ 
+      swm <- dt[mpo == m]
+    }
+    
+    # ageCAT 2 and 3
+    for (i in 2:3) {
+      dlag <- diff[ageCAT6 == i - 1, diff]
+      da <- diff[ageCAT6 == i, diff]
+      dlead <- diff[ageCAT6 == i + 1, diff]
+      
+      if (da > 0 & dlag < 0 & dlead < 0) {
+        if ((abs(dlag) + abs(dlead)) > da) {
+          subN <- abs(round(da * (dlag / (dlag + dlead))))
+          addN <- abs(round(da * (dlead / (dlag + dlead))))
+        }
+        else if ((abs(dlag) + abs(dlead)) <= da) {
+          subN <- abs(dlag)
+          addN <- abs(dlead)
+        }
+        tosub <-
+          swm[ageCAT6 == i &
+                person_num > 1, sample(unique(pid), subN)]
+        toadd <-
+          swm[ageCAT6 == i &
+                person_num > 1, sample(unique(pid), addN)]
+        swm[pid %in% tosub, `:=` (age = age - 5, ageCAT6 = ageCAT6 - 1)]
+        swm[pid %in% toadd, `:=` (age = age + 5, ageCAT6 = ageCAT6 + 1)]
+      }
+      if (da > 0 & dlag < 0 & dlead > 0) {
+        if (abs(dlag) > da) {
+          subN <- abs(da)
+        }
+        else if (abs(dlag) <= da) {
+          subN <- abs(dlag)
+        }
+        tosub <-
+          swm[ageCAT6 == i &
+                person_num > 1, sample(unique(pid), subN)]
+        swm[pid %in% tosub, `:=` (age = age - 5, ageCAT6 = ageCAT6 - 1)]
+      }
+      if (da > 0 & dlag > 0 & dlead < 0) {
+        if (abs(dlead) > da) {
+          addN <- abs(da)
+        }
+        else if (abs(dlead) <= da) {
+          addN <- abs(dlead)
+        }
+        toadd <-
+          swm[ageCAT6 == i &
+                person_num > 1, sample(unique(pid), addN)]
+        swm[pid %in% toadd, `:=` (age = age + 5, ageCAT6 = ageCAT6 + 1)]
+      }
+      # Update age difference table
+      newlag <- swm[ageCAT6 == i - 1, .N]
+      newpop <- swm[ageCAT6 == i, .N]
+      newlead <- swm[ageCAT6 == i + 1, .N]
+      diff[ageCAT6 == i - 1, `:=`(urbansim_hh_pop = newlag, diff = newlag - umdi_hh_pop)]
+      diff[ageCAT6 == i, `:=`(urbansim_hh_pop = newpop, diff = newpop - umdi_hh_pop)]
+      diff[ageCAT6 == i + 1, `:=`(urbansim_hh_pop = newlead, diff = newlead - umdi_hh_pop)]
+      suppressWarnings(rm(newlag,newpop,newlead,addN,subN,da,dlag,dlead,tosub,toadd))
+      gc()
+    }
+    
+    # ageCAT = 1
+    da <- diff[ageCAT6 == 1, diff]
+    dlead <- diff[ageCAT6 == 2, diff]
+    if (da > 0 & dlead < 0) {
+      if (abs(dlead) > da) {
+        addN <- abs(da)
+      }
+      else if (abs(dlead) <= da) {
+        addN <- abs(dlead)
+      }
+      toadd <-
+        swm[ageCAT6 == 1 &
+              person_num > 1, sample(unique(pid), addN)]
+      swm[pid %in% toadd, `:=` (age = age + 5, ageCAT6 = ageCAT6 + 1)]
+    }
+    # Update age difference table
+    newpop <- swm[ageCAT6 == 1, .N]
+    newlead <- swm[ageCAT6 == 2, .N]
+    diff[ageCAT6 == 1, `:=`(urbansim_hh_pop = newpop, diff = newpop - umdi_hh_pop)]
+    diff[ageCAT6 == 2, `:=`(urbansim_hh_pop = newlead, diff = newlead - umdi_hh_pop)]
+    suppressWarnings(rm(newlag,newpop,newlead,addN,subN,da,dlag,dlead,tosub,toadd))
+    gc()
+    
+    # ageCAT = 4
+    dlag <- diff[ageCAT6 == 3, diff]
+    da <- diff[ageCAT6 == 4, diff]
+    dlead <- diff[ageCAT6 == 5, diff]
+    if (da > 0 & dlag < 0) {
+      if (abs(dlag) > da) {
+        subN <- abs(da)
+      }
+      else if (abs(dlag) <= da) {
+        subN <- abs(dlag)
+      }
+      tosub <-
+        swm[age %in% 15:18 &
+              person_num > 1, sample(unique(pid), subN)]
+      swm[pid %in% tosub, `:=` (age = age - 5, ageCAT6 = ageCAT6 - 1)]
+    }
+    # Update age difference table
+    newpop <- swm[ageCAT6 == 4, .N]
+    newlag <- swm[ageCAT6 == 3, .N]
+    diff[ageCAT6 == 4, `:=`(urbansim_hh_pop = newpop, diff = newpop - umdi_hh_pop)]
+    diff[ageCAT6 == 3, `:=`(urbansim_hh_pop = newlag, diff = newlag - umdi_hh_pop)]
+    suppressWarnings(rm(newlag,newpop,newlead,addN,subN,da,dlag,dlead,tosub,toadd))
+    gc()
+    
+    for (i in 6:17) {
+      dlag <- diff[ageCAT6 == i - 1, diff]
+      da <- diff[ageCAT6 == i, diff]
+      dlead <- diff[ageCAT6 == i + 1, diff]
+      
+      if (da > 0 & dlag < 0 & dlead < 0) {
+        if ((abs(dlag) + abs(dlead)) > da) {
+          subN <- abs(round(da * (dlag / (dlag + dlead))))
+          addN <- abs(round(da * (dlead / (dlag + dlead))))
+        }
+        else if ((abs(dlag) + abs(dlead)) <= da) {
+          subN <- abs(dlag)
+          addN <- abs(dlead)
+        }
+        tosub <-
+          swm[ageCAT6 == i &
+                person_num > 1, sample(unique(pid), subN)]
+        toadd <-
+          swm[ageCAT6 == i &
+                person_num > 1, sample(unique(pid), addN)]
+        swm[pid %in% tosub, `:=` (age = age - 5, ageCAT6 = ageCAT6 - 1)]
+        swm[pid %in% toadd, `:=` (age = age + 5, ageCAT6 = ageCAT6 + 1)]
+      }
+      if (da > 0 & dlag < 0 & dlead > 0) {
+        if (abs(dlag) > da) {
+          subN <- abs(da)
+        }
+        else if (abs(dlag) <= da) {
+          subN <- abs(dlag)
+        }
+        tosub <-
+          swm[ageCAT6 == i &
+                person_num > 1, sample(unique(pid), subN)]
+        swm[pid %in% tosub, `:=` (age = age - 5, ageCAT6 = ageCAT6 - 1)]
+      }
+      # Update age difference table
+      newpop <- swm[ageCAT6 == i, .N]
+      newlag <- swm[ageCAT6 == i - 1, .N]
+      newlead <- swm[ageCAT6 == i + 1, .N]
+      diff[ageCAT6 == i - 1, `:=`(urbansim_hh_pop = newlag, diff = newlag - umdi_hh_pop)]
+      diff[ageCAT6 == i, `:=`(urbansim_hh_pop = newpop, diff = newpop - umdi_hh_pop)]
+      diff[ageCAT6 == i + 1, `:=`(urbansim_hh_pop = newlead, diff = newlead - umdi_hh_pop)]
+      suppressWarnings(rm(newlag,newpop,newlead,addN,subN,da,dlag,dlead,tosub,toadd))
+      gc()
+      
+    }
+    
+    # ageCAT = 5
+    da <- diff[ageCAT6 == 5, diff]
+    dlead <- diff[ageCAT6 == 6, diff]
+    if (da > 0 & dlead < 0) {
+      if (abs(dlead) > da) {
+        addN <- abs(da)
+      }
+      else if (abs(dlead) <= da) {
+        addN <- abs(dlead)
+      }
+      toadd <-
+        swm[ageCAT6 == 5 &
+              person_num > 1, sample(unique(pid), addN)]
+      swm[pid %in% toadd, `:=` (age = age + 5, ageCAT6 = ageCAT6 + 1)]
+    }
+    # Update age difference table
+    newpop <- swm[ageCAT6 == 5, .N]
+    newlead <- swm[ageCAT6 == 6, .N]
+    diff[ageCAT6 == 5, `:=`(urbansim_hh_pop = newpop, diff = newpop - umdi_hh_pop)]
+    diff[ageCAT6 == 6, `:=`(urbansim_hh_pop = newlead, diff = newlead - umdi_hh_pop)]
+    
+    suppressWarnings(rm(newlag,newpop,newlead,addN,subN,da,dlag,dlead,tosub,toadd))
+    gc()
+    
+    # ageCAT = 18
+    da <- diff[ageCAT6 == 18, diff]
+    dlag <- diff[ageCAT6 == 17, diff]
+    if (da > 0 & dlag < 0) {
+      if (abs(dlag) > da) {
+        subN <- abs(da)
+      }
+      else if (abs(dlag) <= da) {
+        subN <- abs(dlag)
+      }
+      avail <-  swm[ageCAT6 == 18 &
+                      person_num > 1, .N]
+      tosub <-
+        swm[ageCAT6 == 18 &
+              person_num > 1, sample(unique(pid), min(avail, subN))]
+      swm[pid %in% tosub, `:=` (age = age - 5, ageCAT6 = ageCAT6 - 1)]
+    }
+    if (da < 0 & dlag > 0) {
+      if (abs(da) > dlag) {
+        addN <- abs(dlag)
+      }
+      else if (abs(da) <= dlag) {
+        addN <- abs(da)
+      }
+      toadd <-
+        swm[ageCAT6 == 17 &
+              person_num > 1, sample(unique(pid), addN)]
+      swm[pid %in% toadd, `:=` (age = age + 5, ageCAT6 = ageCAT6 + 1)]
+    }
+    # Update age difference table
+    newpop <- swm[ageCAT6 == 18, .N]
+    newlag <- swm[ageCAT6 == 17, .N]
+    diff[ageCAT6 == 18, `:=`(urbansim_hh_pop = newpop, diff = newpop - umdi_hh_pop)]
+    diff[ageCAT6 == 17, `:=`(urbansim_hh_pop = newlag, diff = newlag - umdi_hh_pop)]
+    
+    suppressWarnings(rm(newlag,newpop,newlead,addN,subN,da,dlag,dlead,tosub,toadd))
+    gc()
+    
+    # Recalculate household characteristics
+    # Persons by 5-yr age categories
+    swm[age < 5 , ageCAT6 := 1]
+    swm[age %in% 5:9 , ageCAT6 := 2]
+    swm[age %in% 10:14 , ageCAT6 := 3]
+    swm[age %in% 15:19 , ageCAT6 := 4]
+    swm[age %in% 20:24 , ageCAT6 := 5]
+    swm[age %in% 25:29 , ageCAT6 := 6]
+    swm[age %in% 30:34 , ageCAT6 := 7]
+    swm[age %in% 35:39 , ageCAT6 := 8]
+    swm[age %in% 40:44 , ageCAT6 := 9]
+    swm[age %in% 45:49 , ageCAT6 := 10]
+    swm[age %in% 50:54 , ageCAT6 := 11]
+    swm[age %in% 55:59 , ageCAT6 := 12]
+    swm[age %in% 60:64 , ageCAT6 := 13]
+    swm[age %in% 65:69 , ageCAT6 := 14]
+    swm[age %in% 70:74 , ageCAT6 := 15]
+    swm[age %in% 75:79 , ageCAT6 := 16]
+    swm[age %in% 80:84 , ageCAT6 := 17]
+    swm[age >= 85 , ageCAT6 := 18]
+    # Count of persons by ageCAT6 in each HHd
+    swm[ageCAT6 == 1, age1 := .N, hid]
+    swm[ageCAT6 == 2, age2 := .N, hid]
+    swm[ageCAT6 == 3, age3 := .N, hid]
+    swm[ageCAT6 == 4, age4 := .N, hid]
+    swm[ageCAT6 == 5, age5 := .N, hid]
+    swm[ageCAT6 == 6, age6 := .N, hid]
+    swm[ageCAT6 == 7, age7 := .N, hid]
+    swm[ageCAT6 == 8, age8 := .N, hid]
+    swm[ageCAT6 == 9, age9 := .N, hid]
+    swm[ageCAT6 == 10, age10 := .N, hid]
+    swm[ageCAT6 == 11, age11 := .N, hid]
+    swm[ageCAT6 == 12, age12 := .N, hid]
+    swm[ageCAT6 == 13, age13 := .N, hid]
+    swm[ageCAT6 == 14, age14 := .N, hid]
+    swm[ageCAT6 == 15, age15 := .N, hid]
+    swm[ageCAT6 == 16, age16 := .N, hid]
+    swm[ageCAT6 == 17, age17 := .N, hid]
+    swm[ageCAT6 == 18, age18 := .N, hid]
+    dt_shift <- rbind(dt_shift, swm)
+    message(paste0(m, ' complete ', yr))
+  }
+  saveRDS(dt_shift,paste0(run,'/urbansim_pop_shifted_',run,'_',yr,'_v3.rds'))
+}
+
+# Recalculate age differences to UMDI
+fs <-
+  list.files(path = run,
+             pattern = glob2rx("urbansim_pop_shifted*v3*"),
+             full.names = TRUE)
+
+if (run == SWM_run) {
+  readComp <- function(x) {
+    dt <- readRDS(x)
+    dt[, pop := 1]
+    dt <-
+      dt[, lapply(.SD, sum), .(mpo, year, ageCAT6), .SDcols = 'pop']
+  }
+  urbsim <- lapply(fs, readComp)
+  uspop <- rbindlist(urbsim)
+  uspop <- uspop[!is.na(mpo)]
+  setkey(uspop, mpo, year, ageCAT6)
+  # adiff <- umdi.swm[uspop]
+  adiff <- umdi[uspop]
+  adiff[, diff := pop - umdi_hh_pop]
+  setnames(adiff, 'pop', 'urbansim_hh_pop')
+  fwrite(adiff,
+         paste0(
+           run,
+           '/urbansim_',
+           run,
+           '_post_shift_umdi_pop_age_difference_v3.csv'
+         ))
+}
+if (run == MAPCM_run) {
+  readComp <- function(x) {
+    dt <- readRDS(x)
+    dt[, pop := 1]
+    dt <-
+      dt[, lapply(.SD, sum), .(rpa_acr, year, ageCAT6), .SDcols = 'pop']
+    setnames(dt, 'rpa_acr', 'mpo')
+  }
+  urbsim <- lapply(fs, readComp)
+  uspop <- rbindlist(urbsim)
+  uspop <- uspop[!is.na(mpo)]
+  setkey(uspop, mpo, year, ageCAT6)
+  # adiff <- umdi.mapc[uspop]
+  adiff <- umdi[uspop]
+  adiff[, diff := pop - umdi_hh_pop]
+  setnames(adiff, 'pop', 'urbansim_hh_pop')
+  fwrite(adiff,
+         paste0(
+           run,
+           '/urbansim_',
+           run,
+           '_post_shift_umdi_pop_age_difference_v3.csv'
+         ))
+}
+
+```
+
+#Post-processor 04 - person duplication
+
+```{r}
+#| eval: false
+
+years <- c(2019, 2029, 2039, 2049)
+# years <- c(2010,2019)
+
+# Crosswalks
+munis <-
+  mapcdatakeys::all_muni_data_keys %>% select(muni_id, rpa_acr, mpo) %>% setDT()
+blks <-
+  mapcdatakeys::geog_xw_2010 %>% left_join(munis, by = 'muni_id') %>% select(bl10_id, muni_id, muni_name, rpa_acr, mpo) %>% setDT()
+
+
+# Load shift-corrected population differences
+adiff <-
+  fread(paste0(
+    run,
+    '/urbansim_',
+    run,
+    '_post_shift_umdi_pop_age_difference_v3.csv'
+  ))
+
+# Load UMDI HHpop comparison data
+
+umdi <- fread('UMDI_v2022_Population_HHPopulation_10yr_MAPC97_RT_v1.csv')
+setnames(
+  umdi,
+  c('year',
+    'mpo',
+    'sex',
+    'ageCAT6',
+    'umdi_pop',
+    'hh_formation_rate',
+    'umdi_hh_pop'
+  )
+)
+umdi <-
+  umdi[, lapply(.SD, sum, na.rm = T), .(year, mpo, ageCAT6), .SDcols = c('umdi_hh_pop')]
+umdi[, umdi_hh_pop := round(umdi_hh_pop)]
+umdi[year > 2010, year := year - 1]
+umdi <- umdi[year>2000]
+setkey(umdi, mpo, year, ageCAT6)
+
+# Function that creates subsets of households to sample from for replicate/delete adjustments
+create.sample <- function(x) {
+  sub1 <- x[ageCAT6 == 1  & children > 1]
+  add1 <- x[ageCAT6 == 1  & children < 4 &
+              adults > 1 & ageHHder %in% 20:60]
+  sub2 <- x[ageCAT6 == 2  & children > 1]
+  add2 <- x[ageCAT6 == 2  & children < 4 &
+              adults > 1 & ageHHder %in% 20:60]
+  sub3 <- x[ageCAT6 == 3  & children > 1]
+  add3 <- x[ageCAT6 == 3  & children < 4 &
+              adults > 1 & ageHHder %in% 20:60]
+  sub4 <-
+    x[(ageCAT6 == 4  &
+         HHtype == 3 &
+         persons >= 3 & person_num > 1) | (ageCAT6 == 4 &
+                            HHtype == 1 & children > 1 & person_num > 1)]
+  add4 <-
+    x[(ageCAT6 == 4  &
+         HHtype == 1 &
+         children < 4 &
+         adults > 1 &
+         ageHHder %in% 25:50 &
+         person_num > 1) |
+        (ageCAT6 == 4  & ageHHder < 24 & HHtype == 3 & persons < 4 &
+           person_num > 1)]
+  
+  sub5 <-
+    x[(ageCAT6 == 5  &
+         HHtype == 3 &
+         persons > 2 &
+         person_num > 1) | (ageCAT6 == 5 &
+                              HHtype == 1 & adults >= 2 &
+                              person_num > 1)]
+  add5 <- x[ageCAT6 == 5  & HHtype == 3 &
+              persons >= 2 & ageHHder %in% 20:44]
+  
+  sub6 <-
+    x[(ageCAT6 == 6  &
+         HHtype == 3 &
+         persons > 2 &
+         person_num > 1) |
+        (ageCAT6 == 6  & HHtype == 1 & adults >= 2 &
+           person_num > 1)]
+  add6 <- x[ageCAT6 == 6  & HHtype == 3 &
+              persons >= 2 & ageHHder %in% 20:44]
+  
+  sub7 <-
+    x[(ageCAT6 == 7  &
+         HHtype == 3 &
+         persons > 2 &
+         person_num > 1) |
+        (ageCAT6 == 7  & HHtype == 1 & adults >= 2 &
+           person_num > 1)]
+  add7 <- x[ageCAT6 == 7  & HHtype == 3 &
+              persons >= 2 & ageHHder %in% 20:44]
+  
+  sub8 <-
+    x[(ageCAT6 == 8  &
+         HHtype == 3 &
+         persons > 2 &
+         person_num > 1) |
+        (ageCAT6 == 8  & HHtype == 1 & adults >= 2 &
+           person_num > 1)]
+  add8 <- x[ageCAT6 == 8  & HHtype == 3 &
+              persons >= 2 & ageHHder %in% 24:49]
+  
+  sub9 <-
+    x[(ageCAT6 == 9  &
+         HHtype == 3 &
+         persons > 2 &
+         person_num > 1) | (ageCAT6 == 9 &
+                              HHtype == 1 & adults >= 2 &
+                              person_num > 1)]
+  add9 <- x[ageCAT6 == 9  & HHtype == 3 &
+              persons >= 2 & ageHHder %in% 30:54]
+  
+  sub10 <-
+    x[(ageCAT6 == 10 &
+         HHtype == 3 &
+         persons > 2 &
+         person_num > 1) |
+        (ageCAT6 == 10 & HHtype == 1 & adults >= 2 &
+           person_num > 1)]
+  add10 <- x[ageCAT6 == 10 &
+               HHtype == 3 & persons >= 2 & ageHHder %in% 40:59]
+  
+  sub11 <-
+    x[(ageCAT6 == 11 &
+         HHtype == 3 &
+         persons > 2 &
+         person_num > 1) |
+        (ageCAT6 == 11 &
+           HHtype == 1 & adults >= 2 & person_num > 1)]
+  add11 <- x[ageCAT6 == 11 &
+               HHtype == 3 & persons >= 2 & ageHHder %in% 40:64]
+  sub12 <-
+    x[(ageCAT6 == 12 &
+         HHtype == 3 &
+         persons > 2 &
+         person_num > 1) |
+        (ageCAT6 == 12 &
+           HHtype == 1 & adults >= 2 & person_num > 1)]
+  add12 <- x[ageCAT6 == 12  &
+               HHtype == 3 & persons >= 2 & ageHHder %in% 45:69]
+  sub13 <-
+    x[(ageCAT6 == 13  &
+         HHtype == 3 &
+         persons >= 2 &
+         person_num > 1) |
+        (ageCAT6 == 13  &
+           HHtype == 1 & adults >= 2 & person_num > 1)]
+  add13 <- x[ageCAT6 == 13  &
+               HHtype == 3 & persons >= 2 & ageHHder %in% 50:74]
+  
+  sub14 <-
+    x[(ageCAT6 == 14  &
+         HHtype == 3 &
+         persons >= 2 &
+         person_num > 1) |
+        (ageCAT6 == 14  &
+           HHtype == 1 & adults >= 2 & person_num > 1)]
+  add14 <- x[ageCAT6 == 14 &
+               HHtype > 1 & persons >= 2]
+  sub15 <-
+    x[(ageCAT6 == 15 &
+         HHtype == 3 &
+         persons > 2 &
+         person_num > 1) |
+        (ageCAT6 == 15  &
+           HHtype == 1 & adults >= 2 & person_num > 1)]
+  add15 <- x[ageCAT6 == 15 &
+               HHtype > 1 & persons >= 2]
+  sub16 <-
+    x[(ageCAT6 == 16 &
+         HHtype == 3 &
+         persons > 2 &
+         person_num > 1) |
+        (ageCAT6 == 16 &
+           HHtype == 1 & adults >= 2 & person_num > 1)]
+  add16 <- x[ageCAT6 == 16 &
+               HHtype > 1 & persons >= 2]
+  sub17 <-
+    x[(ageCAT6 == 17 &
+         HHtype == 3 &
+         persons > 2 &
+         person_num > 1) |
+        (ageCAT6 == 17 &
+           HHtype == 1 & adults >= 2 & person_num > 1)]
+  add17 <- x[ageCAT6 == 17 &
+               HHtype > 1 & persons >= 2]
+  sub18 <-
+    x[(ageCAT6 == 18 &
+         HHtype == 3 &
+         persons >= 2 &
+         person_num > 1) |
+        (ageCAT6 == 18 &
+           HHtype == 1 & adults >= 2 & person_num > 1)]
+  add18 <- x[ageCAT6 == 18 &
+               HHtype > 1 & persons >= 2]
+  
+  add.sample <<-
+    list(
+      add1,
+      add2,
+      add3,
+      add4,
+      add5,
+      add6,
+      add7,
+      add8,
+      add9,
+      add10,
+      add11,
+      add12,
+      add13,
+      add14,
+      add15,
+      add16,
+      add17,
+      add18
+    )
+  sub.sample <<-
+    list(
+      sub1,
+      sub2,
+      sub3,
+      sub4,
+      sub5,
+      sub6,
+      sub7,
+      sub8,
+      sub9,
+      sub10,
+      sub11,
+      sub12,
+      sub13,
+      sub14,
+      sub15,
+      sub16,
+      sub17,
+      sub18
+    )
+  
+}
+
+
+flaglist <- data.table()
+
+### Apply duplication/deletion to reconcile remaining population differences
+for (yr in years) {
+  dt <-
+    readRDS(paste0(run, '/urbansim_pop_shifted_', run, '_', yr, '_v3.rds'))
+  dt[, sporder := person_num]
+  addon <- data.table()
+  delflag <- data.table()
+  
+  for (m in sun(adiff$mpo)) {
+    swm <- dt[mpo == m]
+    create.sample(swm)
+    
+    for (i in 1:3) {
+      diff <- adiff[mpo == m & ageCAT6 == i & year == yr, diff]
+      if (diff < 0) {
+        sN <- abs(diff)
+        m1 <- add.sample[[i]]
+        if (lun(m1$pid) < sN) {
+          m1 <- swm[ageCAT6 == i  & children < 4 &
+                       adults >= 1 & ageHHder %in% 20:60]
+        }
+        if (lun(m1$pid) < sN) {
+          m1 <- swm[ageCAT6 == i  & children <= 4]
+        }
+        if (lun(m1$pid) < sN) {
+          m1 <- swm[ageCAT6 == i]
+        }
+        hhs <- sample(unique(m1$hid), min(lun(m1$hid), sN))
+        if (lun(m1$hid) < sN) {
+          flaglist <-
+            c(flaglist, data.table(
+              flag = paste0(
+                'WARNING - Insufficient sample size for duplication ',
+                m,
+                ' ',
+                yr,
+                ' - ',
+                'ageCAT == ',
+                i
+              )
+            ))
+          message(
+            paste0(
+              'WARNING - Insufficient sample size for duplication ',
+              m,
+              ' ',
+              yr,
+              ' - ',
+              'ageCAT == ',
+              i
+            )
+          )
+        }
+        samp <- m1[hid %in% hhs & ageCAT6 == i]
+        samp1 <- samp[get(paste0('age', i)) == 1]
+        samp2 <-
+          samp[get(paste0('age', i)) > 1, .SD[sample(.N, 1)], hid]
+        addon <- rbind(addon, samp1, samp2)
+      }
+      if (diff > 0) {
+        sN <- abs(diff)
+        m1 <- sub.sample[[i]]
+        hhs <- sample(unique(m1$pid),  min(lun(m1$pid), sN))
+        if (lun(m1$pid) < sN) {
+          flaglist <-
+            c(flaglist, data.table(
+              flag = paste0(
+                'WARNING - Insufficient sample size for duplication ',
+                m,
+                ' ',
+                yr,
+                ' - ',
+                'ageCAT == ',
+                i,
+                ' --- diff = ',
+                diff,
+                ' --- sample = ',
+                dim(m1)[1]
+              )
+            ))
+          message(
+            paste0(
+              'WARNING - Insufficient sample size for duplication ',
+              m,
+              ' ',
+              yr,
+              ' - ',
+              'ageCAT == ',
+              i,
+              ' --- diff = ',
+              diff,
+              ' --- sample = ',
+              dim(m1)[1]
+            )
+          )
+        }
+        samp <- m1[pid %in% hhs]
+        samp[, delete := 1]
+        delflag <- rbind(delflag, samp[, .(pid, delete)])
+      }
+    }
+    
+    for (i in 4) {
+      diff <- adiff[mpo == m & ageCAT6 == i & year == yr, diff]
+      if (diff < 0) {
+        sN <- abs(diff)
+        m1 <- add.sample[[i]]
+        hhs <- sample(unique(m1$hid), min(lun(m1$hid), sN))
+        if (lun(m1$hid) < sN) {
+          flaglist <-
+            c(flaglist, data.table(
+              flag = paste0(
+                'WARNING - Insufficient sample size for duplication ',
+                m,
+                ' ',
+                yr,
+                ' - ',
+                'ageCAT == ',
+                i
+              )
+            ))
+          message(
+            paste0(
+              'WARNING - Insufficient sample size for duplication ',
+              m,
+              ' ',
+              yr,
+              ' - ',
+              'ageCAT == ',
+              i
+            )
+          )
+        }
+        samp1 <-
+          m1[hid %in% hhs &
+               HHtype == 1 & ageCAT6 == i, .SD[sample(.N, 1)], hid]
+        samp1[, age := sample(15:18, 1)]
+        samp2 <-
+          m1[hid %in% hhs &
+               HHtype == 3 &
+               ageCAT6 == i, .SD[sample(.N, 1)], hid]
+        samp2[, age := 19][, ageCAT6 := 4]
+        addon <- rbind(addon, samp1, samp2)
+      }
+      if (diff > 0) {
+        sN <- abs(diff)
+        m1 <- sub.sample[[i]]
+        hhs <- sample(unique(m1$pid),  min(lun(m1$pid), sN))
+        if (lun(m1$pid) < sN) {
+          flaglist <-
+            c(flaglist, data.table(
+              flag = paste0(
+                'WARNING - Insufficient sample size for duplication ',
+                m,
+                ' ',
+                yr,
+                ' - ',
+                'ageCAT == ',
+                i,
+                ' --- diff = ',
+                diff,
+                ' --- sample = ',
+                dim(m1)[1]
+              )
+            ))
+          message(
+            paste0(
+              'WARNING - Insufficient sample size for duplication ',
+              m,
+              ' ',
+              yr,
+              ' - ',
+              'ageCAT == ',
+              i,
+              ' --- diff = ',
+              diff,
+              ' --- sample = ',
+              dim(m1)[1]
+            )
+          )
+        }
+        samp <- m1[pid %in% hhs]
+        samp[, delete := 1]
+        delflag <- rbind(delflag, samp[, .(pid, delete)])
+      }
+    }
+    for (i in 5:10) {
+      diff <- adiff[mpo == m & ageCAT6 == i & year == yr, diff]
+      if (diff < 0) {
+        sN <- abs(diff)
+        if (m %in% c('CCC',
+                     'FRCOG',
+                     'MRPC',
+                     'MVC',
+                     'NPEDC',
+                     'NMCOG',
+                     'OCPC',
+                     'PVPC')) {
+          m1 <- swm[ageCAT6 == i & HHtype == 3]
+          if (lun(m1$pid) < sN) {
+              m1 <- swm[ageCAT6 == i & HHtype < 5]
+            }
+          hhs <- sample(unique(m1$pid), min(lun(m1$pid), sN))
+          samp <- m1[pid %in% hhs]
+          if (lun(m1$pid) < sN) {
+            flaglist <-
+              c(flaglist, data.table(
+                flag = paste0(
+                  'WARNING - Insufficient sample size for duplication ',
+                  m,
+                  ' ',
+                  yr,
+                  ' - ',
+                  'ageCAT == ',
+                  i,
+                  ' --- diff = ',
+                  diff,
+                  ' --- sample = ',
+                  dim(m1)[1]
+                )
+              ))
+            message(
+              paste0(
+                'WARNING - Insufficient sample size for duplication ',
+                m,
+                ' ',
+                yr,
+                ' - ',
+                'ageCAT == ',
+                i,
+                ' --- diff = ',
+                diff,
+                ' --- sample = ',
+                dim(m1)[1]
+              )
+            )
+          }
+        }
+        if (!m %in% c('CCC',
+                      'FRCOG',
+                      'MRPC',
+                      'MVC',
+                      'NPEDC',
+                      'NMCOG',
+                      'OCPC',
+                      'PVPC')) {
+          m1 <- add.sample[[i]]
+          hhs <- sample(unique(m1$pid), min(lun(m1$pid), sN))
+          if (lun(m1$pid) < sN) {
+            flaglist <-
+              c(flaglist, data.table(
+                flag = paste0(
+                  'WARNING - Insufficient sample size for duplication ',
+                  m,
+                  ' ',
+                  yr,
+                  ' - ',
+                  'ageCAT == ',
+                  i,
+                  ' --- diff = ',
+                  diff,
+                  ' --- sample = ',
+                  dim(m1)[1]
+                )
+              ))
+            message(
+              paste0(
+                'WARNING - Insufficient sample size for duplication ',
+                m,
+                ' ',
+                yr,
+                ' - ',
+                'ageCAT == ',
+                i,
+                ' --- diff = ',
+                diff,
+                ' --- sample = ',
+                dim(m1)[1]
+              )
+            )
+          }
+          samp <- m1[pid %in% hhs]
+        }
+        addon <- rbind(addon, samp)
+      }
+        if (diff > 0) {
+          sN <- abs(diff)
+          m1 <- sub.sample[[i]]
+          hhs <- sample(unique(m1$pid),  min(lun(m1$pid), sN))
+          if (lun(m1$pid) < sN) {
+            flaglist <-
+              c(flaglist, data.table(
+                flag = paste0(
+                  'WARNING - Insufficient sample size for duplication ',
+                  m,
+                  ' ',
+                  yr,
+                  ' - ',
+                  'ageCAT == ',
+                  i,
+                  ' --- diff = ',
+                  diff,
+                  ' --- sample = ',
+                  dim(m1)[1]
+                )
+              ))
+            message(
+              paste0(
+                'WARNING - Insufficient sample size for duplication ',
+                m,
+                ' ',
+                yr,
+                ' - ',
+                'ageCAT == ',
+                i,
+                ' --- diff = ',
+                diff,
+                ' --- sample = ',
+                dim(m1)[1]
+              )
+            )
+          }
+          samp <- m1[pid %in% hhs]
+          samp[, delete := 1]
+          delflag <- rbind(delflag, samp[, .(pid, delete)])
+        }
+      }
+      
+      
+      for (i in 11:18) {
+        diff <- adiff[mpo == m & ageCAT6 == i & year == yr, diff]
+        if (diff < 0) {
+          sN <- abs(diff)
+          m1 <- add.sample[[i]]
+          hhs <- sample(unique(m1$pid), min(lun(m1$pid), sN))
+          if (lun(m1$pid) < sN) {
+            m1 <- swm[ageCAT6 == i & HHtype == 3]
+          }
+          if (lun(m1$pid) < sN) {
+            m1 <- swm[ageCAT6 == i & HHtype < 5]
+          }
+          if (lun(m1$pid) < sN) {
+            m1 <- swm[ageCAT6 == i]
+          }
+          if (lun(m1$pid) < sN) {
+            flaglist <-
+              c(flaglist, data.table(
+                flag = paste0(
+                  'WARNING - Insufficient sample size for duplication ',
+                  m,
+                  ' ',
+                  yr,
+                  ' - ',
+                  'ageCAT == ',
+                  i,
+                  ' --- diff = ',
+                  diff,
+                  ' --- sample = ',
+                  dim(m1)[1]
+                )
+              ))
+            message(
+              paste0(
+                'WARNING - Insufficient sample size for duplication ',
+                m,
+                ' ',
+                yr,
+                ' - ',
+                'ageCAT == ',
+                i,
+                ' --- diff = ',
+                diff,
+                ' --- sample = ',
+                dim(m1)[1]
+              )
+            )
+          }
+          samp <- m1[pid %in% hhs]
+          addon <- rbind(addon, samp)
+        }
+        if (diff > 0) {
+          sN <- abs(diff)
+          m1 <- sub.sample[[i]]
+          if (lun(m1$pid) < sN){
+            m1 <- swm[ageCAT6 == i & person_num > 1]
+          }
+          hhs <- sample(unique(m1$pid),  min(lun(m1$pid), sN))
+          if (lun(m1$pid) < sN) {
+            flaglist <-
+              c(flaglist, data.table(
+                flag = paste0(
+                  'WARNING - Insufficient sample size for duplication ',
+                  m,
+                  ' ',
+                  yr,
+                  ' - ',
+                  'ageCAT == ',
+                  i,
+                  ' --- diff = ',
+                  diff,
+                  ' --- sample = ',
+                  dim(m1)[1]
+                )
+              ))
+            message(
+              paste0(
+                'WARNING - Insufficient sample size for duplication ',
+                m,
+                ' ',
+                yr,
+                ' - ',
+                'ageCAT == ',
+                i,
+                ' --- diff = ',
+                diff,
+                ' --- sample = ',
+                dim(m1)[1]
+              )
+            )
+          }
+          samp <- m1[pid %in% hhs]
+          samp[, delete := 1]
+          delflag <- rbind(delflag, samp[, .(pid, delete)])
+        }
+      }
+        message(paste0(m, ' complete ', yr))
+    }
+  
+    # Join IDs of persons to delete back to main data.table and then delete those rows
+    setkey(delflag, pid)
+    setkey(dt, pid)
+    dt <- delflag[dt]
+    dt <- dt[is.na(delete)]
+    
+    # Join person records to append to data.table
+    addon[, addflag := 1]
+    dt <- rbind(dt, addon, fill = T)
+    
+    # Recalculate person and household characteristics
+    setorder(dt, hid, person_num)
+    dt[, person_num := 1:.N, hid]
+    dt[, sporder := person_num]
+    dt[, pid := paste0(hid, person_num)]
+    dt[, persons := .N, hid]
+    dt[, workers := sum(is_worker), hid]
+    dt[, hhinc2013 := sum(pinc2013), hid]
+    dt[, hhinc2010 := sum(inc2010), hid]
+    
+    
+    dt <- dt %>% mutate(
+      child = case_when(age < 18 ~ 1,
+                        age >= 18 ~ 0),
+      income_grp = cut(
+        hhinc2013,
+        breaks = c(-Inf, 35000, 75000, 125000, 225000, Inf),
+        labels = c(
+          "<=35000",
+          "35000-75000",
+          "75000-125000",
+          "125000-225000",
+          ">225000"
+        )
+      )
+    ) %>% setDT()
+    # Count children and adults in each household
+    dt[, children := sum(child, na.rm = T), hid]
+    dt[child == 0, adult := 1][is.na(adult), adult := 0]
+    dt[, adults := sum(adult, na.rm = T), hid]
+    # HHtype
+    dt[children > 0, HHtype := 1]
+    dt[children == 0 & adults > 1, HHtype := 3]
+    dt[children == 0 & adults == 1, HHtype := 5]
+    # Persons by 5-yr age categories
+    dt[age < 5 , ageCAT6 := 1]
+    dt[age %in% 5:9 , ageCAT6 := 2]
+    dt[age %in% 10:14 , ageCAT6 := 3]
+    dt[age %in% 15:19 , ageCAT6 := 4]
+    dt[age %in% 20:24 , ageCAT6 := 5]
+    dt[age %in% 25:29 , ageCAT6 := 6]
+    dt[age %in% 30:34 , ageCAT6 := 7]
+    dt[age %in% 35:39 , ageCAT6 := 8]
+    dt[age %in% 40:44 , ageCAT6 := 9]
+    dt[age %in% 45:49 , ageCAT6 := 10]
+    dt[age %in% 50:54 , ageCAT6 := 11]
+    dt[age %in% 55:59 , ageCAT6 := 12]
+    dt[age %in% 60:64 , ageCAT6 := 13]
+    dt[age %in% 65:69 , ageCAT6 := 14]
+    dt[age %in% 70:74 , ageCAT6 := 15]
+    dt[age %in% 75:79 , ageCAT6 := 16]
+    dt[age %in% 80:84 , ageCAT6 := 17]
+    dt[age >= 85 , ageCAT6 := 18]
+    
+    if (run==SWM_run){
+      dt[mpo=='RT',`:=`(rpa_acr='OCPC',mpo='OCPC')]
+    }
+    if (run==MAPCM_run){
+      dt[mpo=='RT',`:=`(rpa_acr='MAPC',mpo='MAPC')]
+    }
+    
+    saveRDS(
+      dt,
+      paste0(
+        run,
+        '/urbansim_',
+        run,
+        '_microhouseholds_',
+        yr,
+        '_pop_corrected_v3.rds'
+      )
+    )
+    
+    message(paste0('Population correction complete ', run, ' ', yr))
+  }
+  
+  fm <- data.table(unlist(flaglist))
+  fm <- melt.data.table(fm)
+  if (dim(fm)[1] > 0) {
+    fwrite(
+      fm,
+      paste0(
+        run,
+        '/',
+        run,
+        '_ageCAT_with_insufficient_sample_sizes_for_adjustment.csv'
+      )
+    )
+  }
+  # Recalculate age differences to UMDI
+  fs <-
+    list.files(path = run,
+               pattern = "pop_corrected_v3.rds",
+               full.names = TRUE)
+  
+  if (run == SWM_run) {
+    readComp <- function(x) {
+      dt <- readRDS(x)
+      dt[, pop := 1]
+      dt <-
+        dt[, lapply(.SD, sum), .(mpo, year, ageCAT6), .SDcols = 'pop']
+    }
+    urbsim <- lapply(fs, readComp)
+    uspop <- rbindlist(urbsim)
+    uspop <- uspop[!is.na(mpo)]
+    setkey(uspop, mpo, year, ageCAT6)
+    # adiff <- umdi.swm[uspop]
+    adiff <- umdi[uspop]
+    adiff[, diff := pop - umdi_hh_pop]
+    setnames(adiff, 'pop', 'urbansim_hh_pop')
+    adiff <- adiff[year %in% years]
+    fwrite(
+      adiff,
+      paste0(
+        run,
+        '/urbansim_',
+        run,
+        '_pop_corrected_umdi_pop_age_difference_v5.csv'
+      )
+    )
+  }
+  if (run == MAPCM_run) {
+    readComp <- function(x) {
+      dt <- readRDS(x)
+      dt[, pop := 1]
+      dt <-
+        dt[, lapply(.SD, sum), .(rpa_acr, year, ageCAT6), .SDcols = 'pop']
+      setnames(dt, 'rpa_acr', 'mpo')
+    }
+    urbsim <- lapply(fs, readComp)
+    uspop <- rbindlist(urbsim)
+    uspop <- uspop[!is.na(mpo)]
+    setkey(uspop, mpo, year, ageCAT6)
+    # adiff <- umdi.mapc[uspop]
+    adiff <- umdi[uspop]
+    adiff[, diff := pop - umdi_hh_pop]
+    setnames(adiff, 'pop', 'urbansim_hh_pop')
+    adiff <- adiff[year %in% years]
+    fwrite(
+      adiff,
+      paste0(
+        run,
+        '/urbansim_',
+        run,
+        '_pop_corrected_umdi_pop_age_difference_v5.csv'
+      )
+    )
+  }
+  
+```
+
+# Post-processor 05 - CTPS microsim household export
+
+```{r}
+#| eval: false
+
+dir <- 'Microsim_outputs'
+
+for (yr in c(2019,2049)){
+# for (yr in c(2019,2029,2039,2049)){
+  myear=yr
+  syear=yr
+
+hh <- readRDS(paste0(SWM_run,'/urbansim_',SWM_run,'_microhouseholds_',syear,'_pop_corrected_v3.rds'))
+mp <- readRDS(paste0(MAPCM_run,'/urbansim_',MAPCM_run,'_microhouseholds_',myear,'_pop_corrected_v3.rds'))
+
+munis <- mapcdatakeys::all_muni_data_keys %>% select(muni_id,muni_name,mpo)
+blks <- fread(paste0(MAPCM_run,'/results_mapc_',MAPCM_run,'_block_indicators_',myear,'.csv')) %>% select(block_id,muni_id) %>% unique() %>% left_join(munis, by ='muni_id')
+
+# Keeps rebel towns in MAPC region
+#hp <- hh[!block_id %in% mp$block_id]
+
+#Full list of 2010 Blocks
+keys_blocks <- mapcdatakeys::geog_xw_2010 %>% 
+  select(
+    bl10_id,
+    muni_name
+  ) %>% 
+  mutate(
+    across(
+      where(is.double), as.character
+    )
+  ) |> left_join(
+    mapcdatakeys::all_muni_data_keys,
+    by = c("muni_name")
+  ) |> 
+  select(
+    c(
+      bl10_id,
+      muni_name,
+      mpo
+    )
+  )
+#Rebel towns block list
+rt_bl10 <- keys_blocks |> 
+  filter(
+    muni_name %in% c("Duxbury","Hanover","Pembroke","Stoughton")
+  ) |> 
+  pull(
+    bl10_id
+  )
+
+#MAPC Block List
+mapc97_bl10 <- keys_blocks |> 
+  filter(
+    mpo == "MAPC"
+  ) |> 
+  pull(
+    bl10_id
+  )
+
+#Removes RT from mp
+mp <- mp |> 
+  mutate(
+    bl10_id = as.character(bl10_id)
+  ) |> 
+  dplyr::filter(
+    !muni_name %in% c("Duxbury","Hanover","Pembroke","Stoughton") 
+  )
+
+#Removes MAPC from hh
+hp <- hh |> 
+  filter(
+    !mpo %in% c("MAPC") 
+  )
+
+new <- rbind(mp,hp)
+new <- new[block_id!=-1]
+fwrite(new,paste0(dir,'/urbansim_',SWM_run,'_',syear,'_mapc_',MAPCM_run,'_',myear,'_combined_microsim_households_v2.csv'))
+
+blk.pop <- new[,.N,block_id]
+setnames(blk.pop,'N',paste0('pop_',syear+1))
+setkey(blk.pop,block_id)
+blk.hh <- new[sporder==1,.N,block_id]
+setnames(blk.hh,'N',paste0('households_',syear+1))
+setkey(blk.hh,block_id)
+blk.sum <- blk.hh[blk.pop]
+rm(hh,mp,hp);gc()
+
+semp <- fread(paste0(SWM_run,'/',syear,'/jobs.csv'))
+sew <- dcast.data.table(semp, block_id ~ aggr_sector_id, value.var='aggr_sector_id', fun.aggregate = length)
+setnames(sew,c('block_id',paste0('emp_naics_',1:10)))
+sew[,total_emp:=emp_naics_1+emp_naics_2+emp_naics_3+emp_naics_4+emp_naics_5+emp_naics_6+emp_naics_7+emp_naics_8+emp_naics_9+emp_naics_10]
+
+memp <- fread(paste0(MAPCM_run,'/',myear,'/jobs.csv'))
+mew <- dcast.data.table(memp, block_id ~ aggr_sector_id, value.var='aggr_sector_id', fun.aggregate = length)
+setnames(mew,c('block_id',paste0('emp_naics_',1:10)))
+mew[,total_emp:=emp_naics_1+emp_naics_2+emp_naics_3+emp_naics_4+emp_naics_5+emp_naics_6+emp_naics_7+emp_naics_8+emp_naics_9+emp_naics_10]
+
+sew <- sew |> 
+  mutate(
+    bl10_id = as.character(block_id)
+  ) |> 
+  left_join(keys_blocks, by = "bl10_id")
+
+mew <- mew |> 
+  mutate(
+    bl10_id = as.character(block_id)
+  ) |> 
+  left_join(
+    keys_blocks,
+    by = "bl10_id")
+
+sew <- sew[!bl10_id %in% mapc97_bl10]
+mew <- mew[!bl10_id %in% rt_bl10]
+sew <- rbind(sew,mew)
+
+fwrite(sew,paste0(dir,'/urbansim_',SWM_run,'_',MAPCM_run,'_emp_by_supernaics_',syear,'_wide_v2.csv'))
+
+semp[,jobs:=.N,.(block_id,aggr_sector_id)]
+semp <- unique(semp)
+memp[,jobs:=.N,.(block_id,aggr_sector_id)]
+memp <- unique(memp)
+semp <- semp[!block_id %in% mapc97_bl10]
+memp <- memp[!block_id %in% rt_bl10]
+lemp <- rbind(semp,memp)
+
+
+setorder(lemp,block_id,aggr_sector_id)
+fwrite(lemp,paste0(dir,'/urbansim_',SWM_run,'_',MAPCM_run,'_emp_by_supernaics_',syear,'_long_v2.csv'))
+}
+
+
+```
+
+# Compare results with new TDM23 skims to old skims
+
+```{r}
+#| echo: false
+
+# Load packages
+pacman::p_load(tidyverse,
+               tidycensus,
+               sf,
+               leaflet,
+               leaflet.extras,
+               tigris,
+               htmlwidgets,
+               viridis,
+               data.table)
+# Enable tigris caching
+options(tigris_use_cache = TRUE)
+# Disabling Scientific Notation
+options(scipen = 999)
+
+library(mapcdatakeys)
+munis <- mapcdatakeys::all_muni_data_keys
+setDT(munis)
+
+munis <- munis[, .(muni_id, muni_name, cosub_cn10, cosub_cn20, mapc, mpo, rpa_acr)]
+setnames(munis, 'cosub_cn20', 'GEOID')
+munis[, GEOID := as.character(GEOID)]
+munis[,muni_id:=as.numeric(muni_id)]
+setkey(munis, GEOID)
+```
+
+Load Municipal Indicators
+
+```{r}
+
+year <- 2049
+
+new.run <- 'run_179'
+old.run <- 'run_176'
+
+new.urb <- fread(paste0(new.run,'/results_mapc_',new.run,'_muni_indicators_',year,'.csv')) %>% 
+  select(muni_id,
+         total_households,
+         total_jobs)
+setnames(new.urb,'total_households',paste0('hh_',new.run))
+setnames(new.urb,'total_jobs',paste0('emp_',new.run))
+
+old.urb <- fread(paste0(old.run,'/results_mapc_',old.run,'_muni_indicators_',year,'.csv'))%>% 
+  select(muni_id,
+         total_households,
+         total_jobs)
+setnames(old.urb,'total_households',paste0('hh_',old.run))
+setnames(old.urb,'total_jobs',paste0('emp_',old.run))
+
+comp.muni <- left_join(old.urb,new.urb, by='muni_id') %>% 
+  mutate(hh_diff = get(paste0('hh_',new.run)) - get(paste0('hh_',old.run)),
+         emp_diff = get(paste0('emp_',new.run)) - get(paste0('emp_',old.run)))
+```
+
+Load Census Block Indicators
+
+```{r}
+new.b <- fread(paste0(new.run,'/results_mapc_',new.run,'_block_indicators_',year,'.csv')) %>% 
+  select(block_id,
+         total_households,
+         total_jobs)
+setnames(new.b,'total_households',paste0('hh_',new.run))
+setnames(new.b,'total_jobs',paste0('emp_',new.run))
+
+old.b <- fread(paste0(old.run,'/results_mapc_',old.run,'_block_indicators_',year,'.csv'))%>% 
+  select(block_id,
+         total_households,
+         total_jobs)
+setnames(old.b,'total_households',paste0('hh_',old.run))
+setnames(old.b,'total_jobs',paste0('emp_',old.run))
+
+comp.blk <- left_join(old.b,new.b, by='block_id') %>% 
+  mutate(hh_diff = get(paste0('hh_',new.run)) - get(paste0('hh_',old.run)),
+         emp_diff = get(paste0('emp_',new.run)) - get(paste0('emp_',old.run)),
+         block_id = as.character(block_id))
+```
+
+Spatial data for mapping
+
+```{r}
+
+#| echo: false
+########## Spatial data for mapping ###### 
+######################################### 
+
+# Need to use 2020 census for munis because mapc datakeys has GEOIDs for 2020 munis
+sfm <-
+  get_decennial(
+    year = 2020,
+    state = 'MA',
+    geography = 'county subdivision',
+    variables = 'H1_001N',
+    geometry = T
+  ) %>% 
+  mutate(GEOID=as.numeric(GEOID)) %>% 
+  select(GEOID,geometry)
+
+ms <- mapcdatakeys::all_muni_data_keys %>%
+  select(muni_id,muni_name,cosub_cn20) %>% 
+  rename(GEOID = cosub_cn20) %>% 
+  left_join(comp.muni, by='muni_id')
+
+sf.muni <- left_join(sfm,ms,by='GEOID') %>% 
+  filter(!is.na(hh_diff))
+
+sfb <-
+  get_decennial(
+    year = 2010,
+    state = 'MA',
+    geography = 'block',
+    variables = 'H003001',
+    geometry = T
+  ) %>% 
+  select(GEOID,geometry)
+
+sf.blk <- left_join(sfb, comp.blk, by=c('GEOID' = 'block_id')) %>% filter(!is.na(hh_diff))
+
+```
+
+Visualize differences
+```{r}
+#| echo: false
+# Palette for household difference
+bins_hh_diff<-
+  c(-Inf, -2000, -1000, -500, -250, -1, 1, 250, 500, 1000, 2000, Inf)
+pal_hh_diff <-
+  colorBin(c("blue", "white", "red"),
+           bins = bins_hh_diff,
+           na.color = "#808080")
+
+# Palette for employment difference
+bins_emp_diff<-
+  c(-Inf, -2000, -1000, -500, -250, -1, 1, 250, 500, 1000, 2000, Inf)
+pal_emp_diff <-
+  colorBin(c("blue", "white", "red"),
+           bins = bins_emp_diff,
+           na.color = "#808080")
+
+muni_diff <- sf.muni %>%
+  st_transform(st_crs(4326)) %>%
+  leaflet() %>%
+  addProviderTiles(provider = "CartoDB.Positron") %>%
+  addPolygons(
+    popup = ~ paste(
+      "Muni: ",
+      sf.muni$muni_name,
+      "<br>",
+      paste0('Households ',new.run, ' = '),
+      sf.muni[[paste0('hh_',new.run)]],
+      "<br>",
+      paste0('Households ',old.run, ' = '),
+      sf.muni[[paste0('hh_',old.run)]],
+      "<br>",
+      'Household Difference = ',
+      sf.muni$hh_diff
+    ),
+    label=~muni_name,
+    fillOpacity = 0.6,
+    fillColor = ~ pal_hh_diff(sf.muni$hh_diff),
+    weight = 1,
+    stroke=T,
+    col='black',
+    group = "Households"
+  ) %>%
+  addLegend(
+    position = "bottomleft",
+    pal = pal_hh_diff,
+    values = ~ bins_hh_diff,
+    title = paste(
+      "Households difference between <br> ",new.run,'and',old.run),
+    opacity = 1,
+    group = "Households",
+    className = "info legend Households"
+  ) %>%
+  addPolygons(
+    popup = ~ paste(
+      "Muni: ",
+      sf.muni$muni_name,
+      "<br>",
+      paste0('Employment ',new.run, ' = '),
+      sf.muni[[paste0('emp_',new.run)]],
+      "<br>",
+      paste0('Employment ',old.run, ' = '),
+      sf.muni[[paste0('emp_',old.run)]],
+      "<br>",
+      "Employment Difference = ",
+      sf.muni$emp_diff
+    ),
+    label=~muni_name,
+    fillOpacity = 0.6,
+    fillColor = ~ pal_emp_diff(sf.muni$emp_diff),
+    weight = 1,
+    stroke=T,
+    col='black',
+    group = "Employment"
+  ) %>%
+  addLegend(
+    position = "bottomleft",
+    pal = pal_emp_diff,
+    values = ~ bins_emp_diff,
+    title = paste(
+      "Employment difference between <br> ",new.run,'and',old.run),
+    opacity = 1,
+    group = "Employment",
+    className = "info legend Employment"
+  ) %>%
+  addSearchFeatures(
+    targetGroups = "Households",
+    options = searchFeaturesOptions(
+      zoom = 10,
+      position = 'topright',
+      textPlaceholder = "Search by Town Name..."
+    )
+  ) %>% 
+  # Layer controls
+  addLayersControl(
+    baseGroups = c(
+      "Households",
+      "Employment"
+    )
+  ) %>% 
+  htmlwidgets::onRender(
+    "
+      function(el, x) {
+         var updateLegend = function () {
+            var selectedGroup = document.querySelectorAll('input:checked')[0].nextSibling.innerText.substr(1);
+            var selectedClass = selectedGroup.replace(' ', '');
+            document.querySelectorAll('.legend').forEach(a => a.hidden=true);
+            document.querySelectorAll('.legend').forEach(l => {
+               if (l.classList.contains(selectedClass)) l.hidden=false;
+            });
+         };
+         updateLegend();
+         this.on('baselayerchange', el => updateLegend());
+      }"
+  )
+
+block_diff <- sf.blk %>%
+  st_transform(st_crs(4326)) %>%
+  leaflet() %>%
+  addProviderTiles(provider = "CartoDB.Positron") %>%
+  addPolygons(
+    popup = ~ paste(
+      "Muni: ",
+      sf.blk$GEOID,
+      "<br>",
+      paste0('Households ',new.run, ' = '),
+      sf.blk[[paste0('hh_',new.run)]],
+      "<br>",
+      paste0('Households ',old.run, ' = '),
+      sf.blk[[paste0('hh_',old.run)]],
+      "<br>",
+      'Household Difference = ',
+      sf.blk$hh_diff
+    ),
+    label=~GEOID,
+    fillOpacity = 0.4,
+    fillColor = ~ pal_hh_diff(sf.blk$hh_diff),
+    weight = 0.4,
+    stroke=T,
+    col='grey80',
+    group = "Households"
+  ) %>%
+  addLegend(
+    position = "bottomleft",
+    pal = pal_hh_diff,
+    values = ~ bins_hh_diff,
+    title = paste(
+      "Households difference between <br> ",new.run,'and',old.run),
+    opacity = 1,
+    group = "Households",
+    className = "info legend Households"
+  ) %>%
+  addPolygons(
+    popup = ~ paste(
+      "Block: ",
+      sf.blk$GEOID,
+      "<br>",
+      paste0('Employment ',new.run, ' = '),
+      sf.blk[[paste0('emp_',new.run)]],
+      "<br>",
+      paste0('Employment ',old.run, ' = '),
+      sf.blk[[paste0('emp_',old.run)]],
+      "<br>",
+      "Employment Difference = ",
+      sf.blk$emp_diff
+    ),
+    label=~GEOID,
+    fillOpacity = 0.4,
+    fillColor = ~ pal_emp_diff(sf.blk$emp_diff),
+    weight = 0.4,
+    stroke=T,
+    col='grey80',
+    group = "Employment"
+  ) %>%
+  addLegend(
+    position = "bottomleft",
+    pal = pal_emp_diff,
+    values = ~ bins_emp_diff,
+    title = paste(
+      "Employment difference between <br> ",new.run,'and',old.run),
+    opacity = 1,
+    group = "Employment",
+    className = "info legend Employment"
+  ) %>%
+  addSearchFeatures(
+    targetGroups = "Households",
+    options = searchFeaturesOptions(
+      zoom = 10,
+      position = 'topright',
+      textPlaceholder = "Search by Census Block ID..."
+    )
+  ) %>% 
+  # Layer controls
+  addLayersControl(
+    baseGroups = c(
+      "Households",
+      "Employment"
+    )
+  ) %>% 
+  htmlwidgets::onRender(
+    "
+      function(el, x) {
+         var updateLegend = function () {
+            var selectedGroup = document.querySelectorAll('input:checked')[0].nextSibling.innerText.substr(1);
+            var selectedClass = selectedGroup.replace(' ', '');
+            document.querySelectorAll('.legend').forEach(a => a.hidden=true);
+            document.querySelectorAll('.legend').forEach(l => {
+               if (l.classList.contains(selectedClass)) l.hidden=false;
+            });
+         };
+         updateLegend();
+         this.on('baselayerchange', el => updateLegend());
+      }"
+  )
+
+```
+
+# Difference at municipal level:
+```{r}
+muni_diff
+```
+
+# Difference at Census Block level:
+```{r}
+block_diff
+```
+
+# Compare TAZ destination SOV average costs
+```{r}
+taz <- st_read('../Skims/ctps_taz_statewide.shp')
+park <- fread('../Skims/TDM23/tdm23.1.0/parking_v20221007.csv')
+
+nskim <- fread('../Skims/TDM23/tdm23.1.0/mapc_2050plan_skims_tdm23.1.0.csv') %>%
+  select(to_zone_id,sov_am_totcost) %>% 
+  rename(new_sov_cost=sov_am_totcost) %>% 
+  summarize(new_sov_cost = mean(new_sov_cost),.by='to_zone_id')
+
+oskim <- fread('../Skims/travel_model_skims_2040_id50.csv') %>%
+  select(to_zone_id,sov_am_totcost) %>% 
+  rename(old_sov_cost=sov_am_totcost) %>% 
+  summarize(old_sov_cost = mean(old_sov_cost),.by='to_zone_id') %>% 
+  left_join(nskim, by='to_zone_id') %>% 
+  left_join(park, by=c('to_zone_id' = 'taz_id'))
+
+sov <- inner_join(taz,oskim,by=c('tazID'='to_zone_id')) %>% 
+  mutate(cost_diff = new_sov_cost - old_cost_sov)
+
+bins_cost_diff<-
+  c(-Inf, -20, -10, -5, -1, 1, 5, 10, 20, Inf)
+pal_cost_diff <-
+  colorBin(c("blue", "white", "red"),
+           bins = bins_cost_diff,
+           na.color = "#808080")
+
+cost_diff <- sov %>%
+  st_transform(st_crs(4326)) %>%
+  leaflet() %>%
+  addProviderTiles(provider = "CartoDB.Positron") %>%
+  addPolygons(
+    popup = ~ paste(
+      "TAZ: ",
+      sov$to_zone_id,
+      "<br>",
+      paste0('New Skim - SOV cost = '),
+      sov$new.sov,
+      "<br>",
+      paste0('Old Skim - SOV cost = '),
+      sov$old.sov,
+      "<br>",
+      'SOV cost difference = ',
+      sov$cost_diff
+    ),
+    label=~ID,
+    fillOpacity = 0.4,
+    fillColor = ~ pal_cost_diff(sov$cost_diff),
+    weight = 0.4,
+    stroke=T,
+    col='grey80',
+    group = "New Skims"
+  ) %>%
+  addLegend(
+    position = "bottomleft",
+    pal = pal_cost_diff,
+    values = ~ bins_cost_diff,
+    title = paste(
+      "SOV total cost difference"),
+    opacity = 1,
+    group = "New Skims",
+    className = "info legend New Skims"
+  ) %>%
+  # # Layer controls
+  # addLayersControl(
+  #   baseGroups = c(
+  #     "Old Skims",
+  #     "New Skims"
+  #   )
+  # ) %>% 
+  htmlwidgets::onRender(
+    "
+      function(el, x) {
+         var updateLegend = function () {
+            var selectedGroup = document.querySelectorAll('input:checked')[0].nextSibling.innerText.substr(1);
+            var selectedClass = selectedGroup.replace(' ', '');
+            document.querySelectorAll('.legend').forEach(a => a.hidden=true);
+            document.querySelectorAll('.legend').forEach(l => {
+               if (l.classList.contains(selectedClass)) l.hidden=false;
+            });
+         };
+         updateLegend();
+         this.on('baselayerchange', el => updateLegend());
+      }"
+  )
+
+```

@@ -6,7 +6,7 @@ library(ggplot2)
 
 # lberman 2024-06-18
 # pull data from DataCommon, modify for specific SHoP use case 
-# Vacancy Status b25004_hu_vacancy_status_acs_m
+# Housing Tenure by Year Built b25127_hu_tenure_year_built_units_acs_m
 # Housing Units in a Structure b25024_hu_units_in_structure_acs_m
 
 

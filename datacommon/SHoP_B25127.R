@@ -25,10 +25,9 @@ exp_path = "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPl
 ###
 ## 1. Retrieve table directly from DataCommon
 
-get_b25004 <- read.csv(paste0("https://datacommon.mapc.org/csv?table=tabular.b25004_hu_vacancy_status_acs_m&database=ds&years=",input_year,"&year_col=acs_year"))
+get_b25127 <- read.csv(paste0("https://datacommon.mapc.org/csv?table=tabular.b25127_hu_tenure_year_built_units_acs_m&database=ds&years=",input_year,"&year_col=acs_year"))
 
 get_b25024 <- read.csv(paste0("https://datacommon.mapc.org/csv?table=tabular.b25024_hu_units_in_structure_acs_m&database=ds&years=",input_year,"&year_col=acs_year"))
-
 
 # 1.1 select columns
 #select_data <- get_data %>% 
@@ -36,24 +35,25 @@ get_b25024 <- read.csv(paste0("https://datacommon.mapc.org/csv?table=tabular.b25
 
 
 
-## 2. merge tabular data on muni_id
-calc <- get_b25004 %>%
+# 2. merge tabular data on muni_id (if more than one table is needed)
+calc <- get_b25127 %>%
   left_join(.,
             get_b25024 %>% select(c(muni_id,hu,hu_me)),
-            by = c('muni_id' = 'muni_id')) %>% 
-  arrange(muni_id) 
+            by = c('muni_id' = 'muni_id')) %>%
+  arrange(muni_id)
 
 
 ## 3.  run calculations (as needed)
-calc <- calc %>%  #percent of vacant units
-  mutate(vac_pct = (vac_tot/hu)*100) %>% 
-  mutate(vac_pct_m = round(moe_prop(vac_tot, hu, vac_tot_m, hu_me)*100, 2))
+calc <- calc %>%  #count of units built
+  rowwise() %>%
+  mutate(from_2000 = sum(c(c(h10,h0009)))) %>% 
+  mutate(from_2000m = moe_sum(moe = c(c(h10m,h0009m)), estimate = c(from_2000)))
 
-calc <- calc %>%  #percent of units for sale or for rent
-  mutate(avail_pct = ((av_rent+av_sale)/hu)*100) %>% 
-  mutate(avail_pct_m = round(moe_prop((av_rent+av_sale), hu, ((av_rent_m + av_sale_m)), hu_me)*100, 2))
+calc <- calc %>%  #percent of units built
+  mutate(f2000_pct = (from_2000/hu)*100) %>% 
+  mutate(f2000_pctm = round(moe_prop(from_2000, hu, from_2000m, hu_me)*100, 2))
 
-# ? how to get moe_prop for sum of columns in previous line?
+
 
 ## 3.1  replace NaN values
 is.nan.data.frame <- function(x)
@@ -92,10 +92,10 @@ shp_join <- geo_shp %>%
 
 # 6.2 with chloropleth on vac_pct column Vacancy Percentage
 
-map_title = paste0(input_year," Vacancy Status")
+map_title = paste0(input_year," Housing units built since 2000")
 
-vac_plot <- ggplot(shp_join) +
-  geom_sf(aes(fill = vac_pct), linewidth = 0, alpha = 0.9) +
+f2000_plot <- ggplot(shp_join) +
+  geom_sf(aes(fill = from_2000), linewidth = 0, alpha = 0.9) +
   theme_void() +
   scale_fill_viridis_c(
     trans = "log", breaks = c(1, 5, 10, 20, 50, 100),
@@ -110,7 +110,7 @@ vac_plot <- ggplot(shp_join) +
   ) +
   labs(
     title = map_title,
-    subtitle = "percentage of total",
+    subtitle = "log scale of total units built",
     caption = "Data: ACS | B25004, B25024"
   ) +
   theme(
@@ -144,14 +144,14 @@ vac_plot <- ggplot(shp_join) +
     legend.position = c(0.7, 0.09)
   )
 
-vac_plot
+f2000_plot
 
 # 6.3 with chloropleth on avail_pct column Units For Rent or For Sale Percentage
 
-map_title = paste0(input_year," % Units Available for Sale or Rent")
+map_title = paste0(input_year," % of Total Units Built Since 2000")
 
-avail_plot <- ggplot(shp_join) +
-  geom_sf(aes(fill = avail_pct), linewidth = 0, alpha = 0.9) +
+f2000_plot <- ggplot(shp_join) +
+  geom_sf(aes(fill = f2000_pct), linewidth = 0, alpha = 0.9) +
   theme_void() +
   scale_fill_viridis_c(
     trans = "log", breaks = c(1, 5, 10, 20, 50, 100),
@@ -200,11 +200,11 @@ avail_plot <- ggplot(shp_join) +
     legend.position = c(0.7, 0.09)
   )
 
-avail_plot
+f2000_plot
 
 
 ## 7. EXPORT THE DATA to file for input year
-write.csv(calc, paste0(exp_path, "SHoP_b25004_b25024_vacancy_",input_year,".csv"))
+write.csv(calc, paste0(exp_path, "SHoP_b25127_b25024_units_built_",input_year,".csv"))
 
 
 

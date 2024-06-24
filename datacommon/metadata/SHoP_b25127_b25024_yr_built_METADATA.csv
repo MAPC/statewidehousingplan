@@ -1,0 +1,326 @@
+name,alias,details
+join_key,Geographic Identifier,muni_id
+title,Title,Housing Tenure by Year Built
+alt_title,Alternate Title,
+tbl_table,Table Name,b25127_hu_tenure_year_built_units_acs_m
+tbl_num,Table number from source data,b25127
+geography,Spatial Geography,Municipalities
+descriptn,Description,Tenure by year structure built by units in structure for occupied housing units. In 2011-15 there was a new grouping added for 2010 or later. Prior releases had 2000 or later.
+datesavail,Dates Available,5yr Avg 2006-10 through 2012-16
+coverage,Coverage,Statewide
+universe,Universe,Occupied Housing Units
+creator,Creator/Source,US Census: American Community Survey
+publisher,Publisher,MAPC
+contributr,Contributors,
+createdate,CreationDate,
+moddate,ModificationDate,2017-12
+seq_id,Unique Sequence ID,null
+muni_id,Municipal ID,null
+municipal,Municipality,null
+geoid,Census Geographic Level ID,null
+logrecno,Census Logical Record Number,null
+acs_year,ACS Years,null
+occ_hu,Occupied Housing Units,null
+occ_hum,Occupied Housing Units; Margin of Error,null
+h10,Households Built 2010 or later,First appeared in 2011-15 data
+h10_me,Households Built 2010 or later; Margin of Error,First appeared in 2011-15 data
+h10su,Single Unit Households Built 2010 or later,First appeared in 2011-15 data
+h10sum,Single Unit Households Built 2010 or later; Margin of Error,First appeared in 2011-15 data
+h10mu,Multi-Unit Households Built 2010 or later,First appeared in 2011-15 data
+h10mum,Multi-Unit Households Built 2010 or later; Margin of Error,First appeared in 2011-15 data
+h10oth,Other Housing Types Built 2010 or later,First appeared in 2011-15 data. Other Housing Types include: Mobile home; boat; RV; van; etc.
+h10othm,Other Housing Types Built 2010 or later; Margin of Error,First appeared in 2011-15 data
+h0009,Households Built 2000-2009,Listed as 2000 or later prior to 2011-15
+h0009m,Households Built 2000-2009; Margin of Error,Listed as 2000 or later prior to 2011-15
+h0009su,Single Unit Households Built 2000-2009,Listed as 2000 or later prior to 2011-15
+h0009sum,Single Unit Households Built 2000-2009; Margin of Error,Listed as 2000 or later prior to 2011-15
+h0009mu,Multi-Unit Households Built 2000-2009,Listed as 2000 or later prior to 2011-15
+h0009mum,Multi-Unit Households Built 2000-2009; Margin of Error,Listed as 2000 or later prior to 2011-15
+h0009oth,Other Housing Types Built 2000-2009,Listed as 2000 or later prior to 2011-15. Other Housing Types include: Mobile home; boat; RV; van; etc.
+h0009othm,Other Housing Types Built 2000-2009; Margin of Error,Listed as 2000 or later prior to 2011-15
+h8099,Households Built 1980-1999,null
+h8099m,Households Built 1980-1999; Margin of Error,null
+h8099su,Single Unit Households Built 1980-1999,null
+h8099sum,Single Unit Households Built 1980-1999; Margin of Error,null
+h8099mu,Multi-Unit Households Built 1980-1999,null
+h8099mum,Multi-Unit Households Built 1980-1999; Margin of Error,null
+h8099oth,Other Housing Types Built 1980-1999. Other Housing Types include: Mobile home; boat; RV; van; etc.,null
+h8099othm,Other Housing Types Built 1980-1999; Margin of Error,null
+h6079,Households Built 1960-1979,null
+h6079m,Households Built 1960-1979; Margin of Error,null
+h6079su,Single Unit Households Built 1960-1979,null
+h6079sum,Single Unit Households Built 1960-1979; Margin of Error,null
+h6079mu,Multi-Unit Households Built 1960-1979,null
+h6079mum,Multi-Unit Households Built 1960-1979; Margin of Error,null
+h6079oth,Other Housing Types Built 1960-1979. Other Housing Types include: Mobile home; boat; RV; van; etc.,null
+h6079othm,Other Housing Types Built 1960-1979; Margin of Error,null
+h4059,Households Built 1940-1959,null
+h4059m,Households Built 1940-1959; Margin of Error,null
+h4059su,Single Unit Households Built 1940-1959,null
+h4059sum,Single Unit Households Built 1940-1959; Margin of Error,null
+h4059mu,Multi-Unit Households Built 1940-1959,null
+h4059mum,Multi-Unit Households Built 1940-1959; Margin of Error,null
+h4059oth,Other Housing Types Built 1940-1959. Other Housing Types include: Mobile home; boat; RV; van; etc.,null
+h4059othm,Other Housing Types Built 1940-1959; Margin of Error,null
+h39,Households Built Before 1940,null
+h39m,Households Built Before 1940; Margin of Error,null
+h39su,Single Unit Households Built Before 1940,null
+h39sum,Single Unit Households Built Before 1940; Margin of Error,null
+h39mu,Multi-Unit Households Built Before 1940,null
+h39mum,Multi-Unit Households Built Before 1940; Margin of Error,null
+h39oth,Other Housing Types Built Before 1940. Other Housing Types include: Mobile home; boat; RV; van; etc.,null
+h39othm,Other Housing Types Built Before 1940; Margin of Error,null
+ohu,Owner-Occupied Housing Units,null
+ohum,Owner-Occupied Housing Units; Margin of Error,null
+o10,Owner Households Built 2010 or later,null
+o10m,Owner Households Built 2010 or later; Margin of Error,null
+o10su,Single Unit Owner Households Built 2010 or later,null
+o10sum,Single Unit Owner Households Built 2010 or later; Margin of Error,null
+o10mu,Multi-Unit Owner Households Built 2010 or later,null
+o10mum,Multi-Unit Owner Households Built 2010 or later; Margin of Error,null
+o10oth,Other Owner Household Types Built 2010 or later. Other Housing Types include: Mobile home; boat; RV; van; etc.,null
+o10othm,Other Owner Household Types Built 2010 or later; Margin of Error,null
+o0009,Owner Households Built 2000-2009,null
+o0009m,Owner Households Built 2000-2009; Margin of Error,null
+o0009su,Single Unit Owner Households Built 2000-2009,null
+o0009sum,Single Unit Owner Households Built 2000-2009; Margin of Error,null
+o0009mu,Multi-Unit Owner Households Built 2000-2009,null
+o0009mum,Multi-Unit Owner Households Built 2000-2009; Margin of Error,null
+o0009oth,Other Owner Household Types Built 2000-2009. Other Housing Types include: Mobile home; boat; RV; van; etc.,null
+o0009othm,Other Owner Household Types Built 2000-2009; Margin of Error,null
+o8099,Owner Households Built 1980-1999,null
+o8099m,Owner Households Built 1980-1999; Margin of Error,null
+o8099su,Single Unit Owner Households Built 1980-1999,null
+o8099sum,Single Unit Owner Households Built 1980-1999; Margin of Error,null
+o8099mu,Multi-Unit Owner Households Built 1980-1999,null
+o8099mum,Multi-Unit Owner Households Built 1980-1999; Margin of Error,null
+o8099oth,Other Owner Household Types Built 1980-1999. Other Housing Types include: Mobile home; boat; RV; van; etc.,null
+o8099othm,Other Owner Household Types Built 1980-1999; Margin of Error,null
+o6079,Owner Households Built 1960-1979,null
+o6079m,Owner Households Built 1960-1979; Margin of Error,null
+o6079su,Single Unit Owner Households Built 1960-1979,null
+o6079sum,Single Unit Owner Households Built 1960-1979; Margin of Error,null
+o6079mu,Multi-Unit Owner Households Built 1960-1979,null
+o6079mum,Multi-Unit Owner Households Built 1960-1979; Margin of Error,null
+o6079oth,Other Owner Household Types Built 1960-1979. Other Housing Types include: Mobile home; boat; RV; van; etc.,null
+o6079othm,Other Owner Household Types Built 1960-1979; Margin of Error,null
+o4059,Owner Households Built 1940-1959,null
+o4059m,Owner Households Built 1940-1959; Margin of Error,null
+o4059su,Single Unit Owner Households Built 1940-1959,null
+o4059sum,Single Unit Owner Households Built 1940-1959; Margin of Error,null
+o4059mu,Multi-Unit Owner Households Built 1940-1959,null
+o4059mum,Multi-Unit Owner Households Built 1940-1959; Margin of Error,null
+o4059oth,Other Owner Household Types Built 1940-1959. Other Housing Types include: Mobile home; boat; RV; van; etc.,null
+o4059othm,Other Owner Household Types Built 1940-1959; Margin of Error,null
+o39,Owner Households Built Before 1940,null
+o39m,Owner Households Built Before 1940; Margin of Error,null
+o39su,Single Unit Owner Households Built Before 1940,null
+o39sum,Single Unit Owner Households Built Before 1940; Margin of Error,null
+o39mu,Multi-Unit Owner Households Built Before 1940,null
+o39mum,Multi-Unit Owner Households Built Before 1940; Margin of Error,null
+o39oth,Other Owner Household Types Built Before 1940. Other Housing Types include: Mobile home; boat; RV; van; etc.,null
+o39othm,Other Owner Household Types Built Before 1940; Margin of Error,null
+rhu,Renter-Occupied Housing Units,null
+rhum,Renter-Occupied Housing Units; Margin of Error,null
+r10,Renter Households Built 2010 or later,null
+r10m,Renter Households Built 2010 or later; Margin of Error,null
+r10su,Single Unit Renter Households Built 2010 or later,null
+r10sum,Single Unit Renter Households Built 2010 or later; Margin of Error,null
+r10mu,Multi-Unit Renter Households Built 2010 or later,null
+r10mum,Multi-Unit Renter Households Built 2010 or later; Margin of Error,null
+r10oth,Other Renter Household Types Built 2010 or later. Other Housing Types include: Mobile home; boat; RV; van; etc.,null
+r10othm,Other Renter Household Types Built 2010 or later; Margin of Error,null
+r0009,Renter Households Built 2000-2009,null
+r0009m,Renter Households Built 2000-2009; Margin of Error,null
+r0009su,Single Unit Renter Households Built 2000-2009,null
+r0009sum,Single Unit Renter Households Built 2000-2009; Margin of Error,null
+r0009mu,Multi-Unit Renter Households Built 2000-2009,null
+r0009mum,Multi-Unit Renter Households Built 2000-2009; Margin of Error,null
+r0009oth,Other Renter Household Types Built 2000-2009. Other Housing Types include: Mobile home; boat; RV; van; etc.,null
+r0009othm,Other Renter Household Types Built 2000-2009; Margin of Error,null
+r8099,Renter Households Built 1980-1999,null
+r8099m,Renter Households Built 1980-1999; Margin of Error,null
+r8099su,Single Unit Renter Households Built 1980-1999,null
+r8099sum,Single Unit Renter Households Built 1980-1999; Margin of Error,null
+r8099mu,Multi-Unit Renter Households Built 1980-1999,null
+r8099mum,Multi-Unit Renter Households Built 1980-1999; Margin of Error,null
+r8099oth,Other Renter Household Types Built 1980-1999. Other Housing Types include: Mobile home; boat; RV; van; etc.,null
+r8099othm,Other Renter Household Types Built 1980-1999; Margin of Error,null
+r6079,Renter Households Built 1960-1979,null
+r6079m,Renter Households Built 1960-1979; Margin of Error,null
+r6079su,Single Unit Renter Households Built 1960-1979,null
+r6079sum,Single Unit Renter Households Built 1960-1979; Margin of Error,null
+r6079mu,Multi-Unit Renter Households Built 1960-1979,null
+r6079mum,Multi-Unit Renter Households Built 1960-1979; Margin of Error,null
+r6079oth,Other Renter Household Types Built 1960-1979. Other Housing Types include: Mobile home; boat; RV; van; etc.,null
+r6079othm,Other Renter Household Types Built 1960-1979; Margin of Error,null
+r4059,Renter Households Built 1940-1959,null
+r4059m,Renter Households Built 1940-1959; Margin of Error,null
+r4059su,Single Unit Renter Households Built 1940-1959,null
+r4059sum,Single Unit Renter Households Built 1940-1959; Margin of Error,null
+r4059mu,Multi-Unit Renter Households Built 1940-1959,null
+r4059mum,Multi-Unit Renter Households Built 1940-1959; Margin of Error,null
+r4059oth,Other Renter Household Types Built 1940-1959. Other Housing Types include: Mobile home; boat; RV; van; etc.,null
+r4059othm,Other Renter Household Types Built 1940-1959; Margin of Error,null
+r39,Renter Households Built Before 1940,null
+r39m,Renter Households Built Before 1940; Margin of Error,null
+r39su,Single Unit Renter Households Built Before 1940,null
+r39sum,Single Unit Renter Households Built Before 1940; Margin of Error,null
+r39mu,Multi-Unit Renter Households Built Before 1940,null
+r39mum,Multi-Unit Renter Households Built Before 1940; Margin of Error,null
+r39oth,Other Renter Household Types Built Before 1940. Other Housing Types include: Mobile home; boat; RV; van; etc.,null
+r39othm,Other Renter Household Types Built Before 1940; Margin of Error,null
+h10p,% Households Built 2010 or later,Denominator: All Occupied housing units. First appeared in 2011-15 data
+h10mp,% Households Built 2010 or later; Margin of Error,First appeared in 2011-15 data
+h10sup,% Single Unit Households Built 2010 or later,Denominator: Occupied housing units built 2010 or later. First appeared in 2011-15 data
+h10sump,% Single Unit Households Built 2010 or later; Margin of Error,First appeared in 2011-15 data
+h10mup,% Multi-Unit Households Built 2010 or later,Denominator: Occupied housing units built 2010 or later. First appeared in 2011-15 data
+h10mump,% Multi-Unit Households Built 2010 or later; Margin of Error,First appeared in 2011-15 data
+h10othp,% Other Housing Types Built 2010 or later,Denominator: Occupied housing units built 2010 or later. First appeared in 2011-15 data. Other Housing Types include: Mobile home; boat; RV; van; etc.
+h10othmp,% Other Housing Types Built 2010 or later; Margin of Error,First appeared in 2011-15 data
+h0009p,% Households Built 2000-2009,Listed as 2000 or later prior to 2011-15. Denominator: All Occupied housing units built
+h0009mp,% Households Built 2000-2009; Margin of Error,Listed as 2000 or later prior to 2011-15
+h0009sup,% Single Unit Households Built 2000-2009,Listed as 2000 or later prior to 2011-15. Denominator: Occupied housing units built 2000 or later.
+h0009sump,% Single Unit Households Built 2000-2009; Margin of Error,Listed as 2000 or later prior to 2011-15
+h0009mup,% Multi-Unit Households Built 2000-2009,Listed as 2000 or later prior to 2011-15. Denominator: Occupied housing units built 2000 or later.
+h0009mump,% Multi-Unit Households Built 2000-2009; Margin of Error,Listed as 2000 or later prior to 2011-15
+h0009othp,% Other Housing Types Built 2000-2009,Listed as 2000 or later prior to 2011-15.  Denominator: Occupied housing units built 2000 or later. Other Housing Types include: Mobile home; boat; RV; van; etc.
+h0009othmp,% Other Housing Types Built 2000-2009; Margin of Error,Listed as 2000 or later prior to 2011-15
+h8099p,% Households Built 1980-1999, Denominator: All Occupied housing units.
+h8099mp,% Households Built 1980-1999; Margin of Error,
+h8099sup,% Single Unit Households Built 1980-1999,Denominator: Occupied housing units built 1980 to 1999.
+h8099sump,% Single Unit Households Built 1980-1999; Margin of Error,
+h8099mup,% Multi-Unit Households Built 1980-1999,Denominator: Occupied housing units built 1980 to 1999.
+h8099mump,% Multi-Unit Households Built 1980-1999; Margin of Error,
+h8099othp,% Other Housing Types Built 1980-1999,Denominator: Occupied housing units built 1980 to 1999. Other Housing Types include: Mobile home; boat; RV; van; etc.
+h8099othmp,% Other Housing Types Built 1980-1999; Margin of Error,
+h6079p,% Households Built 1960-1979,Denominator: Occupied housing units.
+h6079mp,% Households Built 1960-1979; Margin of Error,
+h6079sup,% Single Unit Households Built 1960-1979,Denominator: Occupied housing units built 1960 to 1979.
+h6079sump,% Single Unit Households Built 1960-1979; Margin of Error,
+h6079mup,% Multi-Unit Households Built 1960-1979,Denominator: Occupied housing units built 1960 to 1979.
+h6079mump,% Multi-Unit Households Built 1960-1979; Margin of Error,
+h6079othp,% Other Housing Types Built 1960-1979.,Denominator: Occupied housing units built 1960 to 1979. Other Housing Types include: Mobile home; boat; RV; van; etc.
+h6079othmp,% Other Housing Types Built 1960-1979; Margin of Error,
+h4059p,% Households Built 1940-1959,Denominator: Occupied housing units
+h4059mp,% Households Built 1940-1959; Margin of Error,
+h4059sup,% Single Unit Households Built 1940-1959,Denominator: Occupied housing units built 1940 to 1959.
+h4059sump,% Single Unit Households Built 1940-1959; Margin of Error,
+h4059mup,% Multi-Unit Households Built 1940-1959,Denominator: Occupied housing units built 1940 to 1959.
+h4059mump,% Multi-Unit Households Built 1940-1959; Margin of Error,
+h4059othp,% Other Housing Types Built 1940-1959.,Denominator: Occupied housing units built 1940 to 1959. Other Housing Types include: Mobile home; boat; RV; van; etc.
+h4059othmp,% Other Housing Types Built 1940-1959; Margin of Error,
+h39p,% Households Built Before 1940,Denominator: Occupied housing units.
+h39mp,% Households Built Before 1940; Margin of Error,
+h39sup,% Single Unit Households Built Before 1940,Denominator: Occupied housing units built before 1940.
+h39sump,% Single Unit Households Built Before 1940; Margin of Error,
+h39mup,% Multi-Unit Households Built Before 1940,Denominator: Occupied housing units built before 1940.
+h39mump,% Multi-Unit Households Built Before 1940; Margin of Error,
+h39othp,% Other Housing Types Built Before 1940,Denominator: Occupied housing units built before 1940. Other Housing Types include: Mobile home; boat; RV; van; etc.
+h39othmp,% Other Housing Types Built Before 1940; Margin of Error,
+ohup,% Owner-Occupied Housing Units,Denominator: Occupied housing units.
+ohump,% Owner-Occupied Housing Units; Margin of Error,
+o10p,% Owner Households Built 2010 or later,Denominator: Owner Occupied housing units.
+o10mp,% Owner Households Built 2010 or later; Margin of Error,
+o10sup,% Single Unit Owner Households Built 2010 or later,Denominator: Owner Occupied housing units built 2010 or later.
+o10sump,% Single Unit Owner Households Built 2010 or later; Margin of Error,
+o10mup,% Multi-Unit Owner Households Built 2010 or later,Denominator: Owner Occupied housing units built 2010 or later.
+o10mump,% Multi-Unit Owner Households Built 2010 or later; Margin of Error,
+o10othp,% Other Owner Household Types Built 2010 or later,Denominator: Owner Occupied housing units built 2010 or later. Other Housing Types include: Mobile home; boat; RV; van; etc.
+o10othmp,% Other Owner Household Types Built 2010 or later; Margin of Error,
+o0009p,% Owner Households Built 2000-2009,Denominator: Owner Occupied housing units.
+o0009mp,% Owner Households Built 2000-2009; Margin of Error,
+o0009sup,% Single Unit Owner Households Built 2000-2009,Denominator: Owner Occupied housing units built 2000 to 2009.
+o0009sump,% Single Unit Owner Households Built 2000-2009; Margin of Error,
+o0009mup,% Multi-Unit Owner Households Built 2000-2009,Denominator: Owner Occupied housing units built 2000 to 2009.
+o0009mump,% Multi-Unit Owner Households Built 2000-2009; Margin of Error,
+o0009othp,% Other Owner Household Types Built 2000-2009,Denominator: Owner Occupied housing units built 2000 to 2009. Other Housing Types include: Mobile home; boat; RV; van; etc.
+o0009othmp,% Other Owner Household Types Built 2000-2009; Margin of Error,
+o8099p,% Owner Households Built 1980-1999,Denominator: Owner Occupied housing units.
+o8099mp,% Owner Households Built 1980-1999; Margin of Error,
+o8099sup,% Single Unit Owner Households Built 1980-1999,Denominator: Owner Occupied housing units built 1980 to 1999.
+o8099sump,% Single Unit Owner Households Built 1980-1999; Margin of Error,
+o8099mup,% Multi-Unit Owner Households Built 1980-1999,Denominator: Owner Occupied housing units built 1980 to 1999.
+o8099mump,% Multi-Unit Owner Households Built 1980-1999; Margin of Error,
+o8099othp,% Other Owner Household Types Built 1980-1999,Denominator: Owner Occupied housing units built 1980 to 1999. Other Housing Types include: Mobile home; boat; RV; van; etc.
+o8099othmp,% Other Owner Household Types Built 1980-1999; Margin of Error,
+o6079p,% Owner Households Built 1960-1979,Denominator: Owner Occupied housing units built.
+o6079mp,% Owner Households Built 1960-1979; Margin of Error,
+o6079sup,% Single Unit Owner Households Built 1960-1979,Denominator: Owner Occupied housing units built 1960 to 1979.
+o6079sump,% Single Unit Owner Households Built 1960-1979; Margin of Error,
+o6079mup,% Multi-Unit Owner Households Built 1960-1979,Denominator: Owner Occupied housing units built 1960 to 1979.
+o6079mump,% Multi-Unit Owner Households Built 1960-1979; Margin of Error,
+o6079othp,% Other Owner Household Types Built 1960-1979.,Denominator: Owner Occupied housing units built 1960 to 1979. Other Housing Types include: Mobile home; boat; RV; van; etc.
+o6079othmp,% Other Owner Household Types Built 1960-1979; Margin of Error,
+o4059p,% Owner Households Built 1940-1959,Denominator: Owner Occupied housing units.
+o4059mp,% Owner Households Built 1940-1959; Margin of Error,
+o4059sup,% Single Unit Owner Households Built 1940-1959,Denominator: Owner Occupied housing units built 1940 to 1959.
+o4059sump,% Single Unit Owner Households Built 1940-1959; Margin of Error,
+o4059mup,% Multi-Unit Owner Households Built 1940-1959,Denominator: Owner Occupied housing units built 1940 to 1959.
+o4059mump,% Multi-Unit Owner Households Built 1940-1959; Margin of Error,
+o4059othp,% Other Owner Household Types Built 1940-1959,Denominator: Owner Occupied housing units built 1940 to 1959. Other Housing Types include: Mobile home; boat; RV; van; etc.
+o4059othmp,% Other Owner Household Types Built 1940-1959; Margin of Error,
+o39p,% Owner Households Built Before 1940,Denominator: Owner Occupied housing units
+o39mp,% Owner Households Built Before 1940; Margin of Error,
+o39sup,% Single Unit Owner Households Built Before 1940,Denominator: Owner Occupied housing units built before 1940
+o39sump,% Single Unit Owner Households Built Before 1940; Margin of Error,
+o39mup,% Multi-Unit Owner Households Built Before 1940,Denominator: Owner Occupied housing units built before 1940
+o39mump,% Multi-Unit Owner Households Built Before 1940; Margin of Error,
+o39othp,% Other Owner Household Types Built Before 1940,Denominator: Owner Occupied housing units built before 1940. Other Housing Types include: Mobile home; boat; RV; van; etc.
+o39othmp,% Other Owner Household Types Built Before 1940; Margin of Error,
+rhup,% Renter-Occupied Housing Units,Denominator: Occupied housing units.
+rhump,% Renter-Occupied Housing Units; Margin of Error,
+r10p,% Renter Households Built 2010 or later,Denominator: Renter Occupied housing units
+r10mp,% Renter Households Built 2010 or later; Margin of Error,
+r10sup,% Single Unit Renter Households Built 2010 or later,Denominator: Renter Occupied housing units built 2010 or later.
+r10sump,% Single Unit Renter Households Built 2010 or later; Margin of Error,
+r10mup,% Multi-Unit Renter Households Built 2010 or later,Denominator: Renter Occupied housing units built 2010 or later.
+r10mump,% Multi-Unit Renter Households Built 2010 or later; Margin of Error,
+r10othp,% Other Renter Household Types Built 2010 or later,Denominator: Renter Occupied housing units built 2010 or later. Other Housing Types include: Mobile home; boat; RV; van; etc.
+r10othmp,% Other Renter Household Types Built 2010 or later; Margin of Error,
+r0009p,% Renter Households Built 2000-2009,Denominator: Renter Occupied housing units
+r0009mp,% Renter Households Built 2000-2009; Margin of Error,
+r0009sup,% Single Unit Renter Households Built 2000-2009,Denominator: Renter Occupied housing units built 2000 to 2009.
+r0009sump,% Single Unit Renter Households Built 2000-2009; Margin of Error,
+r0009mup,% Multi-Unit Renter Households Built 2000-2009,Denominator: Renter Occupied housing units built 2000 to 2009.
+r0009mump,% Multi-Unit Renter Households Built 2000-2009; Margin of Error,
+r0009othp,% Other Renter Household Types Built 2000-2009,Denominator: Renter Occupied housing units built 2000 to 2009. Other Housing Types include: Mobile home; boat; RV; van; etc.
+r0009othmp,% Other Renter Household Types Built 2000-2009; Margin of Error,
+r8099p,% Renter Households Built 1980-1999,Denominator: Renter Occupied housing units
+r8099mp,% Renter Households Built 1980-1999; Margin of Error,
+r8099sup,% Single Unit Renter Households Built 1980-1999,Denominator: Renter Occupied housing units built 1980 to 1999.
+r8099sump,% Single Unit Renter Households Built 1980-1999; Margin of Error,
+r8099mup,% Multi-Unit Renter Households Built 1980-1999,Denominator: Renter Occupied housing units built 1980 to 1999.
+r8099mump,% Multi-Unit Renter Households Built 1980-1999; Margin of Error,
+r8099othp,% Other Renter Household Types Built 1980-1999,Denominator: Renter Occupied housing units built 1980 to 1999. Other Housing Types include: Mobile home; boat; RV; van; etc.
+r8099othmp,% Other Renter Household Types Built 1980-1999; Margin of Error,
+r6079p,% Renter Households Built 1960-1979,Denominator: Renter Occupied housing units
+r6079mp,% Renter Households Built 1960-1979; Margin of Error,
+r6079sup,% Single Unit Renter Households Built 1960-1979,Denominator: Renter Occupied housing units built 1960 to 1979.
+r6079sump,% Single Unit Renter Households Built 1960-1979; Margin of Error,
+r6079mup,% Multi-Unit Renter Households Built 1960-1979,Denominator: Renter Occupied housing units built 1960 to 1979.
+r6079mump,% Multi-Unit Renter Households Built 1960-1979; Margin of Error,
+r6079othp,% Other Renter Household Types Built 1960-1979,Denominator: Renter Occupied housing units built 1960 to 1979. Other Housing Types include: Mobile home; boat; RV; van; etc.
+r6079othmp,% Other Renter Household Types Built 1960-1979; Margin of Error,
+r4059p,% Renter Households Built 1940-1959,Denominator: Renter Occupied housing units.
+r4059mp,% Renter Households Built 1940-1959; Margin of Error,
+r4059sup,% Single Unit Renter Households Built 1940-1959,Denominator: Renter Occupied housing units built 1940 to 1959.
+r4059sump,% Single Unit Renter Households Built 1940-1959; Margin of Error,
+r4059mup,% Multi-Unit Renter Households Built 1940-1959,Denominator: Renter Occupied housing units built 1940 to 1959.
+r4059mump,% Multi-Unit Renter Households Built 1940-1959; Margin of Error,
+r4059othp,% Other Renter Household Types Built 1940-1959,Denominator: Renter Occupied housing units built 1940 to 1959. Other Housing Types include: Mobile home; boat; RV; van; etc.
+r4059othmp,% Other Renter Household Types Built 1940-1959; Margin of Error,
+r39p,% Renter Households Built Before 1940,Denominator: Renter occupied housing units.
+r39mp,% Renter Households Built Before 1940; Margin of Error,
+r39sup,% Single Unit Renter Households Built Before 1940,Denominator: Renter Occupied housing units built before 1940.
+r39sump,% Single Unit Renter Households Built Before 1940; Margin of Error,
+r39mup,% Multi-Unit Renter Households Built Before 1940,Denominator: Renter Occupied housing units built before 1940.
+r39mump,% Multi-Unit Renter Households Built Before 1940; Margin of Error,
+r39othp,% Other Renter Household Types Built Before 1940,Denominator: Renter Occupied housing units built before 1940. Other Housing Types include: Mobile home; boat; RV; van; etc.
+r39othmp,% Other Renter Household Types Built Before 1940; Margin of Error,
+hu,Housing units,Includes Occupied and Vacant
+hu_me,Housing units; Margin of Error,[hu] & [hu_me] from b25024_hu_units_in_structure_acs_m
+from_2000,Units built since 2000,"sum(c(c(h10,h0009))"
+from_2000m,Units built since 2000; Margin of Error,"moe_sum(moe = c(c(h10m,h0009m)), estimate = c(from_2000))"
+f2000_pct,Units built since 2000 as % of total units ,(from_2000/hu)*100
+f2000_pctm,Units built since 2000 as % of total units; Margin of Error,"round(moe_prop(from_2000, hu, from_2000m, hu_me)*100, 2)"

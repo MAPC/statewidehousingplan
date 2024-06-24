@@ -1,0 +1,57 @@
+name,alias,details
+seq_id,id,null
+alt_title,Alternative,Vacancy Status (Municipal) ACS
+title,Title,Vacancy Status (Municipal) ACS
+descriptn,Description,Vacancy Status (Municipal) ACS
+subject,Subject,Digital Access
+creator,Creator,MAPC
+createdate,CreationDate,2022-04
+moddate,ModificationDate,null
+publisher,Publisher,MAPC
+contributr,Contributors,Aseem Deodhar
+coverage,Coverage,Statewide
+universe,Universe,vacant housing units
+schema,Schema,mapc
+tablename,Table Name,b25004_hu_vacancy_status_acs_m
+tablenum,Table Number,n/a
+acs_year,ACS year of publication,ACS year of publication
+logrecno,logical record number,US Census uniq id for geographic unit
+muni_id,Municipal ID,join key for 2020 municipalities
+municipal,Municipality name,Municipality name
+geoid,geographic id,extended FIPS geographic id
+vac_tot,Total Vacant Units,Total Vacant Units
+vac_tot_m,Total Vacant Units - margin of error,Total Vacant Units - margin of error
+av_rent,Available For Rent,Available For Rent
+av_rent_m,Available For Rent - margin of error,Available For Rent - margin of error
+av_rent_mp,Available For Rent - margin of error percent,Available For Rent - margin of error percent
+av_rent_p,Percent Available For Rent,Percent Available For Rent
+av_sale,Available For Sale,Available For Sale
+av_sale_m,Available For Sale - margin of error,Available For Sale - margin of error
+av_sale_mp,Available For Sale - margin of error percent,Available For Sale - margin of error percent
+av_sale_p,Percent Available For Sale,Percent Available For Sale
+migrwrk,For Migrant Workers,For Migrant Workers
+migrwrk_m,For Migrant Workers - margin of error,For Migrant Workers - margin of error
+migrwrk_mp,For Migrant Workers - margin of error percent,For Migrant Workers - margin of error percent
+migrwrk_p,Percent For Migrant Workers,Percent For Migrant Workers
+oth_vac,Other Vacant,Other Vacant
+oth_vac_m,Other Vacant - margin of error,Other Vacant - margin of error
+oth_vac_mp,Other Vacant - margin of error percent,Other Vacant - margin of error percent
+oth_vac_p,Percent Other Vacant,Percent Other Vacant
+r_noccu,Rented - Not Occupied,Rented - Not Occupied
+r_noccu_m,Rented - Not Occupied - margin of error,Rented - Not Occupied - margin of error
+r_noccu_mp,Rented - Not Occupied - margin of error percent,Rented - Not Occupied - margin of error percent
+r_noccu_p,Percent Rented - Not Occupied,Percent Rented - Not Occupied
+s_noccu,Sold - Not Occupied,Sold - Not Occupied
+s_noccu_m,Sold - Not Occupied - margin of error,Sold - Not Occupied - margin of error
+s_noccu_mp,Sold - Not Occupied - margin of error percent,Sold - Not Occupied - margin of error percent
+s_noccu_p,Percent Sold - Not Occupied,Percent Sold - Not Occupied
+ssnlrcr,For seasonal - recreational - or occasional use,For seasonal - recreational - or occasional use
+ssnlrcr_m,For seasonal - recreational - or occasional use - margin of error,For seasonal - recreational - or occasional use - margin of error
+ssnlrcr_mp,For seasonal - recreational - or occasional use - margin of error percent,For seasonal - recreational - or occasional use - margin of error percent
+ssnlrcr_p,Percent For seasonal - recreational - or occasional use,Percent For seasonal - recreational - or occasional use
+hu,Housing units,Includes Occupied and Vacant
+hu_me,Housing units; Margin of Error,[hu] & [hu_me] from b25024_hu_units_in_structure_acs_m
+vac_pct,Units vacant as a percent of total units,(vac_tot/hu)*100
+vac_pct_m,Units vacant as a percent of total units; Margin of Error,"vac_pct_m = round(moe_prop(vac_tot, hu, vac_tot_m, hu_me)*100, 2)"
+avail_pct,Units for sale or rent as % of total units ,(av_rent+av_sale)/hu)*100
+avail_pct_m,Units for sale or rent as % of total units; Margin of Error,"round(moe_prop((av_rent+av_sale), hu, ((av_rent_m + av_sale_m)), hu_me)*100, 2)"

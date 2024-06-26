@@ -39,9 +39,12 @@ options(scipen = 999)
 ```{r}
 
 # Load in Household Population Projections
-umdi_hh_population_proj <- fread(paste0(root, "UMDI/UMDI_V2024_RPA_Age_Sex_detail_2010-2050_a.csv")) %>%
+umdi_pop<- fread(paste0(root, "UMDI/UMDI_V2024_RPA_Age_Sex_detail_2010-2050_a.csv")) %>%
   select(RPA,ageCAT6,Sex,`2010`,`2020`,`2030`,`2040`,`2050`) %>% 
-
+  pivot_longer(4:8) %>% 
+  rename(year=as.numeric(name),
+         pop=value) %>% 
+  mutate(pop=as.numeric(gsub(',','',pop)))
 
 ```
 
@@ -51,6 +54,18 @@ umdi_hh_population_proj <- fread(paste0(root, "UMDI/UMDI_V2024_RPA_Age_Sex_detai
 # PUMS vintage final year
 yr <- 2021
 
+mkeys <- mapcdatakeys::all_muni_data_keys %>% select(muni_id,rpa_acr,mpo)
+
+psf <- fread(paste0(root,'ma_muni_puma10_join.csv')) %>% 
+  rename(muni_id=TOWN_ID,
+         PUMA = PUMACE10) %>% 
+  left_join(mkeys, by='muni_id') %>% 
+  setDT()
+  
+lsf <- psf[,lapply(.SD,sum,na.rm=T),.(rpa_acr,PUMA),.SDcols='Shape_Area']
+lsf[,mx:=max(Shape_Area),PUMA]
+xw <- lsf[Shape_Area==mx, .(rpa_acr,PUMA)]
+xw[,PUMA:=sprintf("%05d",PUMA)]
 #List of PUMS variables
 allvars <- pums_variables %>% filter(year==yr) %>% select(var_code) %>% unique()
 variable_list <- c(
@@ -75,11 +90,9 @@ pums_data <- get_pums(
     survey = "acs5",
     year = yr,
     variables = variable_list
-  ) 
-
-%>%
+  ) %>%
+  left_join(xw, by='PUMA') %>% 
   mutate(
-     #Change datatype of 
     ageCAT6 =
       cut(AGEP,
           breaks = c(-Inf, seq(4, 84, 5), Inf),
@@ -93,8 +106,7 @@ pums_data <- get_pums(
         breaks = c(-Inf, 14, 19, 24, 34, 44, 54, 64, 74, 79, 84, Inf),
         labels = c(0, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13)
       ),
-    
-    
+
     # Categorizing employment status
     empstat = case_when(
       ESR == "b" ~ "Under 16 not eligible for work",
@@ -145,7 +157,7 @@ pums_data <- get_pums(
   ) %>%
   
   #Generating Household Variables
-  group_by(year, SERIALNO) %>%
+  group_by(SERIALNO) %>%
   mutate(
     Worker_Total = sum(worker),
     Person_Total = sum(person),
@@ -182,32 +194,10 @@ pums_data <- get_pums(
       Child_Total == 0 & Person_Total > 1 & HHder != 99 ~ 3,
       Child_Total == 0 & Person_Total > 1 & HHder == 99 ~ 4,
       Person_Total == 1 & HHder != 99 ~ 5
-    ),
-    #Change the datatype of SPORDER to character.
-    SPORDER = as.character(SPORDER)
+    )
   )
 
 ################################################################################
-
-# 2.2 Cleaning PUMA files
-#Creates a list of all RPAs
-RPA <- c("MAPC", "OCPC", "SRPEDD", "MVC", "NPEDC", "NMCOG", "MVPC", "MRPC", 
-         "CMRPC", "FRCOG", "PVPC", "BRPC", "CCC")
-
-puma_10 <- puma_10 %>%
-           select(name_t, all_of(RPA)) %>% #Selects names of relevant variables
-           rename(PUMA = name_t) %>% #Renames variable representing distinct PUMAs
-           mutate(PUMA = as.character(PUMA), #Changes the datatype to character
-                  PUMA = str_pad(PUMA, 5, side = "left", pad = "0")) %>% #Adds leading 0s to match strings with xwalk data
-           pivot_longer(cols = all_of(RPA), names_to = "RPA", values_to = "in_RPA") %>%
-           filter(in_RPA == 1) %>%
-           select(-in_RPA) #Assigns a RPA to each PUMA
-################################################################################
-# 3. Joining PUMs Vintages + PUMA Crosswalks
-PUMS_data_2019 <- left_join(PUMS_data_2019, puma_10, by = c("PUMA"))
-
-#Binds all dataframes together into a single dataframe
-PUMS_data <- PUMS_data_2019
 
 ################################################################################
 # 4. Generate BASELINE data for the reweighter targeting files

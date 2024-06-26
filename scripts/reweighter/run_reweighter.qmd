@@ -1,0 +1,73 @@
+---
+title: "Running the Reweighter for RPAs"
+format: html
+editor: visual
+---
+
+# Setup - Define helper functions, set knitr path, load necessary packages
+
+```{r}
+sun <- function(x){
+  sort(unique(x))}
+lun <- function(x){
+  length(unique(x))}
+sna <- function(x){
+  sort(names(x))}
+```
+
+```{r, setup, include=FALSE}
+root <- '../../Data/Working/Reweighter'
+
+knitr::opts_knit$set(root.dir = root)
+```
+
+```{r}
+library(tidycensus)
+library(tidyverse)
+library(data.table)
+library(reticulate)
+library(mapcdatakeys)
+
+##get rid of scientific notation
+options(scipen = 999)
+```
+
+# Step 1 - Subset PUMS dta by RPA
+```{r}
+
+# List of RPA names
+mpos <-
+  unlist(c(mapcdatakeys::all_muni_data_keys %>% select(mpo) %>% unique()))
+
+# PUMA crosswalk
+xw <- fread('ma_muni_puma10_join.csv')
+xw <- xw[, .(TOWN_ID, PUMACE10)]
+setnames(xw, c('muni_id', 'PUMA'))
+xw <- xw[, .(muni_id, PUMA)]
+mxw <-
+  mapcdatakeys::all_muni_data_keys %>% select(muni_id, rpa_acr, mpo) %>% left_join(xw, by =
+                                                                                     'muni_id') %>% select(-muni_id) %>% unique() %>% setDT()
+
+mapc.pumas <- mxw[rpa_acr == 'MAPC', unique(PUMA)]
+swm.pumas <- mxw[mpo != 'MAPC', .(mpo, PUMA)] %>% unique()
+
+
+# PUMS 2021 data
+pums <- fread('PUMS2019_formatted_20230322.csv')
+
+
+# MAPC 101 subset
+fwrite(pums[PUMA %in% mapc.pumas], paste0('MAPC/PUMS2019_MAPC.csv'))
+message(paste0('MAPC 101 PUMS export complete'))
+
+
+# SWM join PUMA and export subsets
+for (m in unique(swm.pumas$mpo)) {
+  pums %>%
+    left_join(swm.pumas, by = 'PUMA') %>%
+    filter(mpo == m) %>%
+    fwrite(paste0(m, '/PUMS2019_', m, '.csv'))
+  message(paste0(m, ' PUMS export complete'))
+}
+
+```

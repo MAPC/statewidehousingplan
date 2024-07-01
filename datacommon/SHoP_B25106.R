@@ -101,7 +101,7 @@ shp_join <- geo_shp %>%
 
 # 6.2 with chloropleth on hu3575_p Cost Burden HH 35-75K
 
-map_title = paste0(input_year," Cost Burdened Households (at income $35,000-$75,000")
+map_title = paste0(input_year," Cost Burdened Households (at income $35,000-$75,000)")
 
 # brandon plot example with round(breaks)
 hu3575_p_plot <- ggplot() +
@@ -136,7 +136,7 @@ hu3575_p_plot
 
 # 6.3 with chloropleth on hu75cb_p Cost Burden HH 75K+  
 
-map_title = paste0(input_year," Cost Burdened Households (at income over $75,000")
+map_title = paste0(input_year," Cost Burdened Households (at income over $75,000)")
 
 # brandon plot example with round(breaks)
 hu75cb_p_plot <- ggplot() +

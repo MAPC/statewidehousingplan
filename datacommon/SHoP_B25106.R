@@ -133,56 +133,22 @@ hu3575_p_plot <- ggplot() +
 
 hu3575_p_plot
 
-# 6.3 with chloropleth on vac_pct column Vacancy Percentage
 
-map_title = paste0(input_year," Cost Burdened Households (at income $35,000-$75,000")
-
-# brandon plot example with round(breaks)
-hu3575_p_plot <- ggplot() +
-  geom_sf(data = shp_join, linewidth = 0.001, aes(fill = hu3575_p), color = "grey")+
-  scale_fill_continuous(
-    high = "purple", low = "white",
-    breaks = c(
-      round(max(shp_join$hu3575_p)*(1/5),0),
-      round(max(shp_join$hu3575_p)*(2/5),0),
-      round(max(shp_join$hu3575_p)*(3/5),0),
-      round(max(shp_join$hu3575_p)*(4/5),0),
-      max(shp_join$hu3575_p)),
-    name = "pct"
-  )+
-  geom_sf(data = shp_join, fill = NA, color = "black", linewidth = 0.5)+
-  labs(
-    title = map_title,
-    subtitle = "percent of cost burden hh",
-    caption = "Data: ACS Housing Tenure by Race [b25106]"
-  ) +
-  theme_minimal()+
-  theme(
-    axis.text.x = element_blank(),
-    axis.text.y = element_blank(),
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    panel.border = element_rect(fill = NA, color = "black", linewidth = 0.5)
-  )
-
-hu3575_p_plot
-
-
-# 6.3 with chloropleth on hu75_p Cost Burden HH 75K+
+# 6.3 with chloropleth on hu75cb_p Cost Burden HH 75K+  
 
 map_title = paste0(input_year," Cost Burdened Households (at income over $75,000")
 
 # brandon plot example with round(breaks)
-hu75_p_plot <- ggplot() +
-  geom_sf(data = shp_join, linewidth = 0.001, aes(fill = hu75_p), color = "grey")+
+hu75cb_p_plot <- ggplot() +
+  geom_sf(data = shp_join, linewidth = 0.001, aes(fill = hu75cb_p), color = "grey")+
   scale_fill_continuous(
     high = "orange", low = "white",
     breaks = c(
-      round(max(shp_join$hu75_p)*(1/5),0),
-      round(max(shp_join$hu75_p)*(2/5),0),
-      round(max(shp_join$hu75_p)*(3/5),0),
-      round(max(shp_join$hu75_p)*(4/5),0),
-      max(shp_join$hu75_p)),
+      round(max(shp_join$hu75cb_p)*(1/5),0),
+      round(max(shp_join$hu75cb_p)*(2/5),0),
+      round(max(shp_join$hu75cb_p)*(3/5),0),
+      round(max(shp_join$hu75cb_p)*(4/5),0),
+      max(shp_join$hu75cb_p)),
     name = "pct"
   )+
   geom_sf(data = shp_join, fill = NA, color = "black", linewidth = 0.5)+
@@ -200,7 +166,7 @@ hu75_p_plot <- ggplot() +
     panel.border = element_rect(fill = NA, color = "black", linewidth = 0.5)
   )
 
-hu75_p_plot
+hu75cb_p_plot
 
 
 ## 7. EXPORT THE DATA to file for input year

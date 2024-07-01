@@ -24,14 +24,14 @@ the default sample R script for use with a new table is:  _SHoP_B25106.R_
 
 set parameters for requested ACS year to import them directly to an R dataframe:
 
-# 0.1 REQUIRED:  INPUT ACS 5YR VALUE
+_0.1 REQUIRED:  INPUT ACS 5YR VALUE_
 input_year = "2018-22"
 
-# 0.2 REQUIRED: SET PATH TO OUTPUT FOLDER 
-# write table to exp_path
+_0.2 REQUIRED: SET PATH TO OUTPUT FOLDER_
+#write table to exp_path
 exp_path = "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/DataCommon/"
 
-# 0.3 REQUIRED: set table name
+_0.3 REQUIRED: set table name_
 table_name = "b25106_costburden_by_income_acs_m"
 
 __request sample__

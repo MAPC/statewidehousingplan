@@ -15,3 +15,25 @@ https://airtable.com/appoiQOBDEYb6FoLF/tbl0874BAhS8q9tGx/viwEbLAGLCLTYB65z?block
 __Output folder for tabular data__
 
 K:\DataServices\Projects\Current_Projects\Housing\StatewideHousingPlan\04_Analysis\Data\Working\DataCommon
+
+
+
+__Template for query of single year csv from DataCommon__
+
+the default sample R script for use with a new table is:  _SHoP_B25106.R_
+
+set parameters for requested ACS year to import them directly to an R dataframe:
+
+# 0.1 REQUIRED:  INPUT ACS 5YR VALUE
+input_year = "2018-22"
+
+# 0.2 REQUIRED: SET PATH TO OUTPUT FOLDER 
+# write table to exp_path
+exp_path = "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/DataCommon/"
+
+# 0.3 REQUIRED: set table name
+table_name = "b25106_costburden_by_income_acs_m"
+
+__request sample__
+
+get_b25106 <- read.csv(paste0("https://datacommon.mapc.org/csv?table=tabular.",table_name,"&database=ds&years=",input_year,"&year_col=acs_year"))

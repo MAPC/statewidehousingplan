@@ -107,7 +107,7 @@ shp_join <- geo_shp %>%
 #   theme_void()
 
 
-# 6.2 with chloropleth on hu3575_p Cost Burden HH 35-75K
+# 6.2 with chloropleth on SHI percent
 
 date = "2023-06"
 
@@ -144,7 +144,7 @@ shi_p_plot <- ggplot() +
 shi_p_plot
 
 
-# 6.3 with chloropleth on hu75cb_p Cost Burden HH 75K+  
+# 6.3 with chloropleth on SHI percent  
 
 # alter date
 date = "2012-10"

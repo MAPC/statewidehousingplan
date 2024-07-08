@@ -49,8 +49,24 @@ keys.mpo <- mapcdatakeys::all_muni_data_keys |>
 #RPA Data Keys
 keys.rpa <- mapcdatakeys::all_muni_data_keys |> 
   select(
-    muni_id, muni_name, rpa
+    muni_id, muni_name, rpa_acr
   )
+
+#GEOIDs for 2010 Decennial Census
+GEOID.10 <- mapcdatakeys::all_muni_data_keys |>  
+  select(muni_id, cosub_cn10) |> 
+  mutate(
+    GEOID = as.character(cosub_cn10)
+  ) |> 
+  select(GEOID, muni_id)
+
+#GEOIDs for 2020 Decennial Census
+GEOID.20 <- mapcdatakeys::all_muni_data_keys |>  
+  select(muni_id, cosub_cn20) |> 
+  mutate(
+    GEOID = as.character(cosub_cn20)
+  ) |> 
+  select(GEOID, muni_id)
 ```
 
 # Part 1 - Processing UMDI population data
@@ -59,6 +75,7 @@ keys.rpa <- mapcdatakeys::all_muni_data_keys |>
 # Load in Household Population Projections
 umdi_pop<- fread(paste0(root, "UMDI/UMDI_V2024_RPA_Age_Sex_detail_2010-2050_a.csv")) |>
   #Select years of interest - decadal intervals
+  #ageCAT6 refers to 5 year age groups (0-4, 5-9, 10-14, etc.)
   select(RPA,ageCAT6,Sex,`2010`,`2020`,`2030`,`2040`,`2050`) |> 
   #Pivot to a long dataframe
   pivot_longer(4:8) |> 
@@ -77,6 +94,103 @@ umdi_pop<- fread(paste0(root, "UMDI/UMDI_V2024_RPA_Age_Sex_detail_2010-2050_a.cs
 #1. Use MCD population projections data to avoid proportional adjustment for
 #rebel towns
 #2. Summarize based on MPO and RPA aggregations
+#3. Population checks using Census data for QA/QC?
+```
+
+# Determine General Household Formation Rate (% of population in households)
+
+```{r}
+#Decennial 2010 Population in Households
+#Load Decnnial Census data for 2010
+vars2010 <- load_variables(2010, 'sf1')
+
+#Creates a list of sex by age population variables to use in the API query
+pa.vars <- vars2010 |>  
+  filter(concept=='SEX BY AGE FOR THE POPULATION IN HOUSEHOLDS') |> 
+  select(name) |> 
+  mutate(
+    name = as.character(name)
+  ) |>  
+  pull(name)
+
+#Assigns appropriate labels to the Decennial Census variables
+pa.labels <- vars2010 |>  
+  filter(concept=='SEX BY AGE FOR THE POPULATION IN HOUSEHOLDS') |> 
+  select(name, label) |>  
+  mutate(
+    sex1 = str_extract(label, "Female"),
+    sex2 = str_extract(label, "Male"),
+    sex = coalesce(sex1,sex2),
+    label = gsub("Total!!Male!!","", label),
+    label = gsub("Total!!Female!!","", label),
+    label = gsub(" ", "_", label),
+    label = paste0("pop_", label)
+  ) |> 
+  select(
+    -c(sex1, sex2)
+  ) |>  
+  na.omit()
+
+#Queries the Census API via {tidycensus} to retrieve data about the population
+#in households
+pa.values <-
+  get_decennial(
+    year = 2010,
+    state = 'MA',
+    sumfile = "sf1",
+    geography = 'county subdivision',
+    variables = pa.vars
+  )
+
+pop <- pa.values %>%
+  filter(GEOID %in% munis$GEOID) %>% 
+  right_join(pa.labels,by = c('variable'="name")) %>%
+  mutate(
+    ageCAT6 = case_when(
+      label == 'pop_Under_5_years' ~ '1',
+      label == "pop_5_to_9_years" ~ '2',
+      label == "pop_10_to_14_years" ~ '3',
+      label %in% c("pop_15_to_17_years","pop_18_and_19_years") ~ '4',
+      label %in% c("pop_20_years","pop_21_years","pop_22_to_24_years") ~ '5',
+      label == "pop_25_to_29_years" ~ '6',
+      label == "pop_30_to_34_years" ~ '7',
+      label == "pop_35_to_39_years" ~ '8',
+      label == "pop_40_to_44_years" ~ '9',
+      label == "pop_45_to_49_years" ~ '10',
+      label == "pop_50_to_54_years" ~ '11',
+      label == "pop_55_to_59_years" ~ '12',
+      label %in% c("pop_60_and_61_years","pop_62_to_64_years") ~ '13',
+      label %in% c("pop_65_and_66_years","pop_67_to_69_years") ~ '14',
+      label == "pop_70_to_74_years" ~ '15',
+      label == "pop_75_to_79_years" ~ '16',
+      label == "pop_80_to_84_years" ~ '17',
+      label == "pop_85_years_and_over" ~ '18'
+    )
+  ) %>% 
+  filter(!is.na(ageCAT6)) %>% 
+  right_join(munis,by = 'GEOID') %>% 
+  mutate(muni_id = as.character(muni_id)) %>% 
+  dplyr::rename(
+    HHPopulation = value,
+    Sex = sex
+  ) %>% 
+  select(
+    c(
+      muni_id,
+      Sex,
+      ageCAT6,
+      HHPopulation
+    )
+  ) %>% 
+  group_by(
+    muni_id,
+    Sex,
+    ageCAT6
+  ) %>% 
+  summarise(
+    HHPopulation = sum(HHPopulation)
+  ) %>% 
+  ungroup()
 ```
 
 # Part 2 - Load and process PUMS Data

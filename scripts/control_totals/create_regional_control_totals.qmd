@@ -6,7 +6,6 @@ editor: visual
 
 # Setup - Define helper functions, set knitr path, load necessary packages
 
-
 ```{r, setup, include=FALSE}
 root <- '../../../../Data/Working/Regional_Control_Totals/'
 
@@ -33,9 +32,12 @@ library(readxl)
 
 ##get rid of scientific notation
 options(scipen = 999)
+#Set random seed
+set.seed(351)
 ```
 
 # Part 1 - Processing UMDI population data
+
 ```{r}
 
 # Load in Household Population Projections
@@ -48,8 +50,8 @@ umdi_pop<- fread(paste0(root, "UMDI/UMDI_V2024_RPA_Age_Sex_detail_2010-2050_a.cs
 
 ```
 
-
 # Part 2 - Load and process PUMS Data
+
 ```{r}
 # PUMS vintage final year
 yr <- 2021

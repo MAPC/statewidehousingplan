@@ -142,9 +142,13 @@ pa.values <-
     variables = pa.vars
   )
 
-pop <- pa.values %>%
-  filter(GEOID %in% munis$GEOID) %>% 
-  right_join(pa.labels,by = c('variable'="name")) %>%
+#Generate the % of population in households
+pop <- pa.values |> 
+  filter(GEOID %in% GEOID.10$GEOID) |> 
+  right_join(
+    pa.labels,
+    by = c("variable"="name")
+  ) |> 
   mutate(
     ageCAT6 = case_when(
       label == 'pop_Under_5_years' ~ '1',
@@ -166,30 +170,28 @@ pop <- pa.values %>%
       label == "pop_80_to_84_years" ~ '17',
       label == "pop_85_years_and_over" ~ '18'
     )
-  ) %>% 
-  filter(!is.na(ageCAT6)) %>% 
-  right_join(munis,by = 'GEOID') %>% 
-  mutate(muni_id = as.character(muni_id)) %>% 
+  ) |> 
+  filter(!is.na(ageCAT6)) |>  
+  right_join(
+    GEOID.10,
+    by = c('GEOID')
+  ) |>  
+  mutate(
+    muni_id = as.character(muni_id)
+  ) |> 
   dplyr::rename(
     HHPopulation = value,
     Sex = sex
-  ) %>% 
-  select(
-    c(
-      muni_id,
-      Sex,
-      ageCAT6,
-      HHPopulation
-    )
-  ) %>% 
+  ) |>  
+  select(muni_id, Sex, ageCAT6, HHPopulation) |>  
   group_by(
     muni_id,
     Sex,
     ageCAT6
-  ) %>% 
+  ) |> 
   summarise(
     HHPopulation = sum(HHPopulation)
-  ) %>% 
+  ) |>  
   ungroup()
 ```
 

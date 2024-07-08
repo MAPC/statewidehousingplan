@@ -4,10 +4,14 @@ format: html
 editor: visual
 ---
 
-# Setup - Define helper functions, set knitr path, load necessary packages
+# Setup - Define helper functions, set knitr path, load necessary packages, set muni data keys
 
 ```{r, setup, include=FALSE}
-root <- '../../../../Data/Working/Regional_Control_Totals/'
+#Use when Rproject is open
+#root <- '../../../../Data/Working/Regional_Control_Totals/'
+
+#General K drive filepath
+root <-"K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/"
 
 knitr::opts_knit$set(root.dir = root)
 ```
@@ -34,20 +38,45 @@ library(readxl)
 options(scipen = 999)
 #Set random seed
 set.seed(351)
+
+#Set up muni data keys
+#MPO Data Keys
+keys.mpo <- mapcdatakeys::all_muni_data_keys |> 
+  select(
+    muni_id, muni_name, mpo
+  )
+
+#RPA Data Keys
+keys.rpa <- mapcdatakeys::all_muni_data_keys |> 
+  select(
+    muni_id, muni_name, rpa
+  )
 ```
 
 # Part 1 - Processing UMDI population data
 
 ```{r}
-
 # Load in Household Population Projections
-umdi_pop<- fread(paste0(root, "UMDI/UMDI_V2024_RPA_Age_Sex_detail_2010-2050_a.csv")) %>%
-  select(RPA,ageCAT6,Sex,`2010`,`2020`,`2030`,`2040`,`2050`) %>% 
-  pivot_longer(4:8) %>% 
-  rename(year=as.numeric(name),
-         pop=value) %>% 
-  mutate(pop=as.numeric(gsub(',','',pop)))
+umdi_pop<- fread(paste0(root, "UMDI/UMDI_V2024_RPA_Age_Sex_detail_2010-2050_a.csv")) |>
+  #Select years of interest - decadal intervals
+  select(RPA,ageCAT6,Sex,`2010`,`2020`,`2030`,`2040`,`2050`) |> 
+  #Pivot to a long dataframe
+  pivot_longer(4:8) |> 
+  #Rename variables
+  dplyr::rename(
+    year = name,
+    pop = value
+  ) |>  
+  #Change the data type of both "year" and "pop" variables
+  mutate(
+    year = as.numeric(year),
+    pop=as.numeric(gsub(',','',pop))
+  )
 
+#TODO: 
+#1. Use MCD population projections data to avoid proportional adjustment for
+#rebel towns
+#2. Summarize based on MPO and RPA aggregations
 ```
 
 # Part 2 - Load and process PUMS Data

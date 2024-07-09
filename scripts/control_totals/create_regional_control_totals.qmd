@@ -97,6 +97,7 @@ umdi_pop<- fread(paste0(root, "UMDI/UMDI_V2024_RPA_Age_Sex_detail_2010-2050_a.cs
 #3. Population checks using Census data for QA/QC?
 ```
 
+# Query Census Household Population data for 2010 and 2020
 # Determine General Household Formation Rate (% of population in households)
 
 ```{r}
@@ -294,6 +295,10 @@ hhpop.20 <- pa.values |>
   ) |>  
   ungroup()
 
+#Remove dataframes no longer needed in the process.
+rm(pa.labels, pa.values, pa.vars, vars2010, vars2020)
+gc()
+
 #TODO:
 #1. Join 2010 and 2020 Household Population data to the UMDI MCD
 #level population projections.
@@ -304,62 +309,58 @@ hhpop.20 <- pa.values |>
 # Part 2 - Load and process PUMS Data
 
 ```{r}
-# PUMS vintage final year
+#Set PUMS vintage final year for {tidycensus} API query.
 yr <- 2021
 
-mkeys <- mapcdatakeys::all_muni_data_keys %>% select(muni_id,rpa_acr,mpo)
+#Set up datakeys for future joins.
+mkeys <- mapcdatakeys::all_muni_data_keys |>  select(muni_id,rpa_acr,mpo)
 
-psf <- fread(paste0(root,'ma_muni_puma10_join.csv')) %>% 
-  rename(muni_id=TOWN_ID,
-         PUMA = PUMACE10) %>% 
-  left_join(mkeys, by='muni_id') %>% 
+#Load in the municipality to PUMA crosswalk.
+psf <- fread(paste0(root,'ma_muni_puma10_join.csv')) |>
+  dplyr::rename(
+    muni_id=TOWN_ID,
+    PUMA = PUMACE10
+  ) |>
+  left_join(
+    mkeys,
+    by = c('muni_id')
+  ) |>
   setDT()
-  
+
+#Generate RPA to PUMA crosswalk.
 lsf <- psf[,lapply(.SD,sum,na.rm=T),.(rpa_acr,PUMA),.SDcols='Shape_Area']
 lsf[,mx:=max(Shape_Area),PUMA]
 xw <- lsf[Shape_Area==mx, .(rpa_acr,PUMA)]
 xw[,PUMA:=sprintf("%05d",PUMA)]
-#List of PUMS variables
-allvars <- pums_variables %>% filter(year==yr) %>% select(var_code) %>% unique()
-variable_list <- c(
-  "PUMA",
-  "TYPEHUGQ",
-  "SEX",
-  "AGEP",
-  "RAC1P",
-  "HISP",
-  "ESR",
-  "WKHP",
-  "SCHL",
-  "WAGP",
-  "SEMP",
-  "ADJINC",
-  "SPORDER",
-  "HINCP"
-)
 
+#List of all 2017-2021 ACS PUMS Variables
+allvars <- pums_variables |>  filter(year==yr) |>  select(var_code) |>  unique()
+
+#List of PUMS variables
+variable_list <- c("PUMA", "TYPEHUGQ", "SEX", "AGEP", "RAC1P", "HISP", "ESR",
+                   "WKHP", "SCHL", "WAGP", "SEMP", "ADJINC", "SPORDER", "HINCP")
+
+#Query {tidycensus} for 2017-2021 5-Year PUMS data
 pums_data <- get_pums(
     state = "MA",
     survey = "acs5",
     year = yr,
     variables = variable_list
-  ) %>%
-  left_join(xw, by='PUMA') %>% 
+  ) |> 
+  #Join RPA to PUMA crosswalk to PUMS data
+  left_join(
+    xw,
+    by = c('PUMA')
+  ) |>  
   mutate(
+    #Generate five-year age groupings to match UMDI population projections data.
     ageCAT6 =
-      cut(AGEP,
-          breaks = c(-Inf, seq(4, 84, 5), Inf),
-          labels = 1:18),
-    
+      cut(AGEP, breaks = c(-Inf, seq(4, 84, 5), Inf), labels = 1:18),
     # Consolidated Age Category
     # NOTE: Levels are (0) 0-14; (4) 15 to 19; (5) 20 to 24; (6) 25 to 34; (7) 35 to 44; (8) 45 to 54; (9) 55 to 64 (10) 65 to 74 (11) 75+
     PAGEC2 =
-      cut(
-        AGEP,
-        breaks = c(-Inf, 14, 19, 24, 34, 44, 54, 64, 74, 79, 84, Inf),
-        labels = c(0, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13)
-      ),
-
+      cut(AGEP, breaks = c(-Inf, 14, 19, 24, 34, 44, 54, 64, 74, 79, 84, Inf),
+        labels = c(0, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13)),
     # Categorizing employment status
     empstat = case_when(
       ESR == "b" ~ "Under 16 not eligible for work",

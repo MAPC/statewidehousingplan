@@ -339,6 +339,7 @@ allvars <- pums_variables |>  filter(year==yr) |>  select(var_code) |>  unique()
 #List of PUMS variables
 variable_list <- c("PUMA", "TYPEHUGQ", "SEX", "AGEP", "RAC1P", "HISP", "ESR",
                    "WKHP", "SCHL", "WAGP", "SEMP", "ADJINC", "SPORDER", "HINCP")
+#SEMP bottom coding has changed from $1 to $4 like WAGP
 
 #Query {tidycensus} for 2017-2021 5-Year PUMS data
 pums_data <- get_pums(
@@ -392,7 +393,7 @@ pums_data <- get_pums(
     # Categorizing full or part-time work
     wrkfull = case_when(
       WKHP < 35 ~ "Part time (less than 35 hrs)",
-      WKHP > 34 ~ "Full time (35 hrs or more)",
+      WKHP >= 35 ~ "Full time (35 hrs or more)",
       is.na(WKHP) ~ "Under 16, unemployed, or not in labor force"
     ),
     
@@ -408,16 +409,16 @@ pums_data <- get_pums(
     # Determine if case counts as child
     child = case_when(AGEP < 18 ~ 1,
                       AGEP >= 18 ~ 0)
-  ) %>%
+  ) |> 
   
   #Generating Household Variables
-  group_by(SERIALNO) %>%
+  group_by(SERIALNO) |> 
   mutate(
     Worker_Total = sum(worker),
     Person_Total = sum(person),
     Child_Total = sum(child)
-  ) %>%
-  ungroup() %>%
+  ) |> 
+  ungroup() |> 
   # Categorizing household sizes by number of persons (1) one person, (2) two persons, (3) three persons, (4) four or more persons
   mutate(
     HHSize = case_when(
@@ -457,25 +458,23 @@ pums_data <- get_pums(
 # 4. Generate BASELINE data for the reweighter targeting files
 #
 #Baseline of people in Households
-hhpop_baseline <- PUMS_data %>% 
-  filter(
-    year == "2019" & TYPE == "1"
-  ) %>%  
+hhpop_baseline <- pums_data |>  
+  filter(TYPEHUGQ == "1") |>  
   mutate(
-    PAGEC = as.factor(PAGEC),
-    RPA = as.factor(RPA)
-  ) %>% 
+    ageCAT6 = as.factor(ageCAT6),
+    RPA = as.factor(rpa_acr)
+  ) |> 
   group_by(
     RPA
-  ) %>% 
+  ) |>  
   dplyr::count(
-    var = PAGEC,
+    var = ageCAT6,
     wt = PWGTP
-  ) %>% 
-  rename(
+  ) |>  
+  dplyr::rename(
     AgeCat = var,
     BASELINE = n
-  ) %>% 
+  ) |>  
   mutate(
     AgeCat = case_when(
       AgeCat == 1 ~ "x == 1",
@@ -499,30 +498,28 @@ hhpop_baseline <- PUMS_data %>%
    )
   )
 
-#Basline of Households by Household Type
-hhtype_baseline <- PUMS_data %>% 
-  filter(
-    year == "2019" & TYPE == "1" & SPORDER == "1"
-  ) %>%  
+#Baseline of Households by Household Type
+hhtype_baseline <- pums_data |>  
+  filter(TYPEHUGQ == "1" & SPORDER == "1") |>   
   mutate(
-    PAGEC = as.factor(PAGEC),
-    RPA = as.factor(RPA),
+    ageCAT6 = as.factor(ageCAT6),
+    RPA = as.factor(rpa_acr),
     HHtype = as.factor(HHtype)
-  ) %>% 
+  ) |>  
   group_by(
     RPA,
-    PAGEC
-  ) %>% 
+    ageCAT6
+  ) |>  
   dplyr::count(
     var = HHtype,
     wt = WGTP
-  ) %>%
-  ungroup() %>% 
-  rename(
+  ) |> 
+  ungroup() |>  
+  dplyr::rename(
     HHtype = var,
     BASELINE = n,
-    AgeCat = PAGEC
-  ) %>% 
+    AgeCat = ageCAT6
+  ) |> 
   mutate(
     HHtype = case_when(
       HHtype == 1 ~ "hhderchild",
@@ -551,10 +548,8 @@ hhtype_baseline <- PUMS_data %>%
       AgeCat == 17 ~ "x == 17",
       AgeCat == 18 ~ "x == 18"
     )
-  ) %>% 
-  dplyr::filter(
-    HHtype == "hhderchild" | HHtype == "hhdernochild" | HHtype == "single"
-  ) %>% 
+  ) |> 
+  dplyr::filter(HHtype == "hhderchild" | HHtype == "hhdernochild" | HHtype == "single") |>  
   mutate(
     HHtype = case_when(
       HHtype == "hhderchild" ~ "x == 1",
@@ -564,18 +559,16 @@ hhtype_baseline <- PUMS_data %>%
   )
 
 
-lf_baseline <- PUMS_data %>% 
-  filter(
-    year == "2019" & TYPE == "1" & lf == "1"
-  ) %>%  
+lf_baseline <- pums_data %>% 
+  filter(TYPE == "1" & lf == "1") %>%  
   mutate(
-    PAGEC = as.factor(PAGEC),
-    RPA = as.factor(RPA),
+    ageCAT6 = as.factor(ageCAT6),
+    RPA = as.factor(rpa_acr),
     eduattn = as.factor(eduattn)
   ) %>% 
   group_by(
     RPA,
-    PAGEC
+    ageCAT6
   ) %>% 
   dplyr::count(
     var = eduattn,
@@ -585,7 +578,7 @@ lf_baseline <- PUMS_data %>%
   rename(
     eduattn = var,
     BASELINE = n,
-    AgeCat = PAGEC
+    AgeCat = ageCAT6
   ) %>% 
   mutate(
     eduattn = case_when(

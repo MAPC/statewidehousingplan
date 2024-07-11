@@ -73,12 +73,12 @@ GEOID.20 <- mapcdatakeys::all_muni_data_keys |>
 
 ```{r}
 # Load in Household Population Projections
-umdi_pop<- fread(paste0(root, "UMDI/UMDI_V2024_RPA_Age_Sex_detail_2010-2050_a.csv")) |>
+umdi_pop<- fread(paste0(root, "UMDI/UMDI_V2024_MCD_Age_Sex_detail_2010-2050_a.csv")) |>
   #Select years of interest - decadal intervals
   #ageCAT6 refers to 5 year age groups (0-4, 5-9, 10-14, etc.)
-  select(RPA,ageCAT6,Sex,`2010`,`2020`,`2030`,`2040`,`2050`) |> 
+  select(muni_name,muni_id,ageCAT6,Sex,`2010`,`2020`,`2030`,`2040`,`2050`) |> 
   #Pivot to a long dataframe
-  pivot_longer(4:8) |> 
+  pivot_longer(5:9) |> 
   #Rename variables
   dplyr::rename(
     year = name,
@@ -90,11 +90,25 @@ umdi_pop<- fread(paste0(root, "UMDI/UMDI_V2024_RPA_Age_Sex_detail_2010-2050_a.cs
     pop=as.numeric(gsub(',','',pop))
   )
 
+#RPA Aggregations (MAPC101)
+umdi.pop.MAPC101 <- left_join(
+  umdi_pop,
+  keys.rpa,
+  by = c("muni_id", "muni_name")
+)
+
+#MPO Aggregations (MAPC97)
+umdi.pop.MAPC97 <- left_join(
+  umdi_pop,
+  keys.mpo,
+  by = c("muni_id", "muni_name")
+)
+
+#Remove topline umdi population projections
+rm(umdi_pop)
+
 #TODO: 
-#1. Use MCD population projections data to avoid proportional adjustment for
-#rebel towns
-#2. Summarize based on MPO and RPA aggregations
-#3. Population checks using Census data for QA/QC?
+#1. Population checks using Census data for QA/QC?
 ```
 
 # Query Census Household Population data for 2010 and 2020
@@ -298,7 +312,11 @@ hhpop.20 <- pa.values |>
 #Remove dataframes no longer needed in the process.
 rm(pa.labels, pa.values, pa.vars, vars2010, vars2020)
 gc()
+```
 
+# Calculate the Percentage of People in Households
+```{r}
+hr.10
 #TODO:
 #1. Join 2010 and 2020 Household Population data to the UMDI MCD
 #level population projections.

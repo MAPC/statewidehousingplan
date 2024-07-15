@@ -9,6 +9,7 @@ library(ggplot2)
 # Housing Tenure by Year Built b25127_hu_tenure_year_built_units_acs_m
 # Housing Units in a Structure b25024_hu_units_in_structure_acs_m
 
+# DATA ERROR? see section 3.2
 
 ### 0. SETUP VARIABLES SECTION
 
@@ -63,7 +64,7 @@ calc[is.nan(calc)] <- 0   #or whatever replacement value
 
 
 ## 3.2  check for discrepancies in percent columns
-#example: filter(starwars, hair_color == "none" & eye_color == "black")
+
 #select renter occ hu built before 1939 as pct of hu (over 80 pct)
 rent39 <- filter(calc, r39p > 80) %>% 
   select(c(municipal,r39p))

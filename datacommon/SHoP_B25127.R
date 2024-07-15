@@ -61,6 +61,21 @@ is.nan.data.frame <- function(x)
 
 calc[is.nan(calc)] <- 0   #or whatever replacement value
 
+
+## 3.2  check for discrepancies in percent columns
+#example: filter(starwars, hair_color == "none" & eye_color == "black")
+#select renter occ hu built before 1939 as pct of hu (over 80 pct)
+rent39 <- filter(calc, r39p > 80) %>% 
+  select(c(municipal,r39p))
+
+# result{Lawrence:116,
+        # Chelsea:113,
+        # Somerville:100,
+        # Everett:93,
+        # Fall River:86}
+# two of them over 100% ?
+rm(rent39)
+
 ### 4. get spatial data for join (if needed)
 
 # 4.1 AGOL version
@@ -75,7 +90,7 @@ calc[is.nan(calc)] <- 0   #or whatever replacement value
 geo_shp <- read_sf("K:/DataServices/Datasets/Boundaries/Municipal/ma_municipalities.shp") 
 st_crs(geo_shp)
 
-# 5.  join b25004 table df to shp
+# 5.  join b25127 table df to shp
 shp_join <- geo_shp %>%
   left_join(.,
             calc %>% select(-c(seq_id,municipal)),
@@ -85,122 +100,42 @@ shp_join <- geo_shp %>%
 
 # 6. sample chloropleth map
 
-# 6.1  plain black outline
-# ggplot(shp_join) +
-#   geom_sf(fill = "white", color = "black", linewidth = 0.3) +
-#   theme_void()
+# 6.1 with chloropleth on r39p column Units For Rent or For Sale Percentage
 
-# 6.2 with chloropleth on vac_pct column Vacancy Percentage
+map_title = paste0(input_year," Rental units built before 1939")
 
-map_title = paste0(input_year," Housing units built since 2000")
-
-f2000_plot <- ggplot(shp_join) +
-  geom_sf(aes(fill = from_2000), linewidth = 0, alpha = 0.9) +
-  theme_void() +
-  scale_fill_viridis_c(
-    trans = "log", breaks = c(1, 5, 10, 20, 50, 100),
-    name = "pct",
-    guide = guide_legend(
-      keyheight = unit(3, units = "mm"),
-      keywidth = unit(12, units = "mm"),
-      label.position = "bottom",
-      title.position = "top",
-      nrow = 1
-    )
-  ) +
+# brandon plot example with round(breaks)
+r39p_plot <- ggplot() +
+  geom_sf(data = shp_join, linewidth = 0.001, aes(fill = r39p), color = "grey")+
+  scale_fill_continuous(
+    high = "orange", low = "white",
+    breaks = c(
+      round(max(shp_join$r39p)*(1/5),0),
+      round(max(shp_join$r39p)*(2/5),0),
+      round(max(shp_join$r39p)*(3/5),0),
+      round(max(shp_join$r39p)*(4/5),0),
+      round(max(shp_join$r39p),0)),
+    name = "pct"
+  )+
+  geom_sf(data = shp_join, fill = NA, color = "black", linewidth = 0.5)+
   labs(
     title = map_title,
-    subtitle = "log scale of total units built",
-    caption = "Data: ACS | B25004, B25024"
+    subtitle = "percent of total units",
+    caption = "Data: ACS | B25127, B25024"
   ) +
+  theme_minimal()+
   theme(
-    text = element_text(color = "#22211d"),
-    plot.background = element_rect(fill = "#f5f5f2", color = NA),
-    panel.background = element_rect(fill = "#f5f5f2", color = NA),
-    legend.background = element_rect(fill = "#f5f5f2", color = NA),
-    plot.title = element_text(
-      size = 20, hjust = 0.01, color = "#4e4d47",
-      margin = margin(
-        b = -0.1, t = 0.4, l = 2,
-        unit = "cm"
-      )
-    ),
-    plot.subtitle = element_text(
-      size = 15, hjust = 0.01,
-      color = "#4e4d47",
-      margin = margin(
-        b = -0.1, t = 0.43, l = 2,
-        unit = "cm"
-      )
-    ),
-    plot.caption = element_text(
-      size = 10,
-      color = "#4e4d47",
-      margin = margin(
-        b = 0.3, r = -99, t = 0.3,
-        unit = "cm"
-      )
-    ),
-    legend.position = c(0.7, 0.09)
+    axis.text.x = element_blank(),
+    axis.text.y = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.border = element_rect(fill = NA, color = "black", linewidth = 0.5)
   )
 
-f2000_plot
 
-# 6.3 with chloropleth on avail_pct column Units For Rent or For Sale Percentage
+r39p_plot
 
-map_title = paste0(input_year," % of Total Units Built Since 2000")
 
-f2000_plot <- ggplot(shp_join) +
-  geom_sf(aes(fill = f2000_pct), linewidth = 0, alpha = 0.9) +
-  theme_void() +
-  scale_fill_viridis_c(
-    trans = "log", breaks = c(1, 5, 10, 20, 50, 100),
-    name = "pct",
-    guide = guide_legend(
-      keyheight = unit(3, units = "mm"),
-      keywidth = unit(12, units = "mm"),
-      label.position = "bottom",
-      title.position = "top",
-      nrow = 1
-    )
-  ) +
-  labs(
-    title = map_title,
-    subtitle = "percentage of total",
-    caption = "Data: ACS | B25004, B25024"
-  ) +
-  theme(
-    text = element_text(color = "#22211d"),
-    plot.background = element_rect(fill = "#f5f5f2", color = NA),
-    panel.background = element_rect(fill = "#f5f5f2", color = NA),
-    legend.background = element_rect(fill = "#f5f5f2", color = NA),
-    plot.title = element_text(
-      size = 20, hjust = 0.01, color = "#4e4d47",
-      margin = margin(
-        b = -0.1, t = 0.4, l = 2,
-        unit = "cm"
-      )
-    ),
-    plot.subtitle = element_text(
-      size = 15, hjust = 0.01,
-      color = "#4e4d47",
-      margin = margin(
-        b = -0.1, t = 0.43, l = 2,
-        unit = "cm"
-      )
-    ),
-    plot.caption = element_text(
-      size = 10,
-      color = "#4e4d47",
-      margin = margin(
-        b = 0.3, r = -99, t = 0.3,
-        unit = "cm"
-      )
-    ),
-    legend.position = c(0.7, 0.09)
-  )
-
-f2000_plot
 
 
 ## 7. EXPORT THE DATA to file for input year

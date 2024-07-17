@@ -12,7 +12,7 @@ library(ggplot2)
 ### 0. SETUP VARIABLES SECTION
 
 # 0.1 REQUIRED:  INPUT ACS 5YR VALUE
-input_year = "2018-22"
+input_year = "2008-12"
 
 # 0.2 REQUIRED: SET PATH TO OUTPUT FOLDER 
 # write table to exp_path
@@ -23,10 +23,11 @@ exp_path = "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPl
 
 ###
 ## 1. Retrieve table directly from DataCommon
-
+# https://datacommon.mapc.org/browser/datasets/132
 get_b25002_b25003 <- read.csv(paste0("https://datacommon.mapc.org/csv?table=tabular.b25002_b25003_hu_occupancy_by_tenure_race_acs_m&database=ds&years=",input_year,"&year_col=acs_year"))
 
-
+# for 2008-2012  error reading from DataCommon?  read from file:
+get_b25002_b25003 <- read.csv("H:/0_PROJECTS/2024_statewide_housing_plan/output/b25002_b25003_hu_occupancy_by_tenure_race_acs_m_2008-12.csv")
 
 # 1.1 select columns
 #select_data <- get_data %>% 
@@ -54,7 +55,14 @@ calc <- get_b25002_b25003
 # calc <- calc %>%  #percent of units built
 #   mutate(f2000_pct = (from_2000/hu)*100) %>% 
 #   mutate(f2000_pctm = round(moe_prop(from_2000, hu, from_2000m, hu_me)*100, 2))
-# 
+
+# set up map
+calc <- calc %>%  # eg whi_ohu
+  mutate(whi_ohu = as.integer(whi_ohu)) %>% 
+  mutate(aa_ohu = as.integer(aa_ohu)) %>% 
+  mutate(lat_ohu = as.integer(lat_ohu)) %>% 
+  mutate(lat_ohu = as.integer(lat_ohu))
+
 
 
 ## 3.1  replace NaN values
@@ -92,131 +100,44 @@ shp_join <- geo_shp %>%
 #   geom_sf(fill = "white", color = "black", linewidth = 0.3) +
 #   theme_void()
 
-# 6.2 with chloropleth on vac_pct column Vacancy Percentage
 
+# 6.2 with chloropleth on ohu Owner Occupied Housing Units
 
-calc <- calc %>%  # eg whi_ohu
-  mutate(whi_ohu = as.integer(whi_ohu)) %>% 
-  mutate(aa_ohu = as.integer(aa_ohu)) %>% 
-  mutate(lat_ohu = as.integer(lat_ohu))
+map_title = paste0(input_year," African American Owner Occupancy")
 
-map_title = paste0(input_year," White Owner Occupancy")
-
-whi_ohu_plot <- ggplot(shp_join) +
-  geom_sf(aes(fill = whi_ohu), linewidth = 0, alpha = 0.9) +
-  theme_void() +
-  scale_fill_viridis_c(
-    trans = "log",
-    # breaks = c(1, 5, 10, 20, 50, 100),
-    # labels = c('1', '5', '10', 20, 50, 100),
-    name = "units",
-    guide = guide_legend(
-      keyheight = unit(3, units = "mm"),
-      keywidth = unit(12, units = "mm"),
-      label.position = "bottom",
-      title.position = "top",
-      nrow = 1
-    )
-  ) +
+aa_ohu_plot <- ggplot() +
+  geom_sf(data = shp_join, linewidth = 0.001, aes(fill = aa_ohu), color = "grey")+
+  scale_fill_continuous(
+    high = "purple", low = "white",
+    breaks = c(
+      round(max(shp_join$aa_ohu)*(1/5),0),
+      round(max(shp_join$aa_ohu)*(2/5),0),
+      round(max(shp_join$aa_ohu)*(3/5),0),
+      round(max(shp_join$aa_ohu)*(4/5),0),
+      max(shp_join$aa_ohu)),
+    name = "units"
+  )+
+  geom_sf(data = shp_join, fill = NA, color = "black", linewidth = 0.5)+
   labs(
     title = map_title,
     subtitle = "count of Housing Units",
     caption = "Data: ACS Housing Tenure by Race [b25002 & b25003]"
   ) +
+  theme_minimal()+
   theme(
-    text = element_text(color = "#22211d"),
-    plot.background = element_rect(fill = "#f5f5f2", color = NA),
-    panel.background = element_rect(fill = "#f5f5f2", color = NA),
-    legend.background = element_rect(fill = "#f5f5f2", color = NA),
-    plot.title = element_text(
-      size = 20, hjust = 0.01, color = "#4e4d47",
-      margin = margin(
-        b = -0.1, t = 0.4, l = 2,
-        unit = "cm"
-      )
-    ),
-    plot.subtitle = element_text(
-      size = 15, hjust = 0.01,
-      color = "#4e4d47",
-      margin = margin(
-        b = -0.1, t = 0.43, l = 2,
-        unit = "cm"
-      )
-    ),
-    plot.caption = element_text(
-      size = 10,
-      color = "#4e4d47",
-      margin = margin(
-        b = 0.3, r = -99, t = 0.3,
-        unit = "cm"
-      )
-    ),
-    legend.position = c(0.2, 0.09)
+    axis.text.x = element_blank(),
+    axis.text.y = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.border = element_rect(fill = NA, color = "black", linewidth = 0.5)
   )
 
-whi_ohu_plot
-
-# 6.3 with chloropleth on avail_pct column Units For Rent or For Sale Percentage
+aa_ohu_plot
 
 
-map_title = paste0(input_year," Hispanic Owner Occupancy")
-
-lat_ohu_plot <- ggplot(shp_join) +
-  geom_sf(aes(fill = lat_ohu), linewidth = 0, alpha = 0.9) +
-  theme_void() +
-  scale_fill_viridis_c(
-    trans = "log", 
-    # breaks = set_breaks,
-    # labels = label_breaks,
-    name = "units",
-    guide = guide_legend(
-      keyheight = unit(3, units = "mm"),
-      keywidth = unit(12, units = "mm"),
-      label.position = "bottom",
-      title.position = "top",
-      nrow = 1
-    )
-  ) +
-  labs(
-    title = map_title,
-    subtitle = "count of Housing Units",
-    caption = "Data: ACS Housing Tenure by Race [b25002 & b25003]"
-  ) +
-  theme(
-    text = element_text(color = "#22211d"),
-    plot.background = element_rect(fill = "#f5f5f2", color = NA),
-    panel.background = element_rect(fill = "#f5f5f2", color = NA),
-    legend.background = element_rect(fill = "#f5f5f2", color = NA),
-    plot.title = element_text(
-      size = 20, hjust = 0.01, color = "#4e4d47",
-      margin = margin(
-        b = -0.1, t = 0.4, l = 2,
-        unit = "cm"
-      )
-    ),
-    plot.subtitle = element_text(
-      size = 15, hjust = 0.01,
-      color = "#4e4d47",
-      margin = margin(
-        b = -0.1, t = 0.43, l = 2,
-        unit = "cm"
-      )
-    ),
-    plot.caption = element_text(
-      size = 10,
-      color = "#4e4d47",
-      margin = margin(
-        b = 0.3, r = -99, t = 0.3,
-        unit = "cm"
-      )
-    ),
-    legend.position = c(0.2, 0.09)
-  )
-
-lat_ohu_plot
 
 ## 7. EXPORT THE DATA to file for input year
-write.csv(calc, paste0(exp_path, "SHoP_b25091_b25070_",input_year,".csv"))
+write.csv(calc, paste0(exp_path, "SHoP_b25002_b25003_",input_year,".csv"))
 
 
 

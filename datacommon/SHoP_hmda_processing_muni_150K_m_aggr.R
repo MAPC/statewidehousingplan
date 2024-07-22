@@ -2,7 +2,6 @@
 library(tidyverse)
 library(lubridate)
 library(tidycensus)
-library(RPostgres)
 library(dplyr)
 library(stringr)
 library(mapcdatakeys)
@@ -17,9 +16,11 @@ library(mapcdatakeys)
 # Latest: post 2017
 # https://ffiec.cfpb.gov/data-publication/aggregate-reports
 
-# muni version draft for Statewide Housing Plan request
+# MUNI version draft for Statewide Housing Plan request
 # the main functions were pulled from the script by Aseem Deodhar: hmda_processing_ct_ma_aggr.R
-# lberman 2024-06-25
+# lberman 2024-06-25 rev 2024-07-22
+# modified for income levels higher than 150K
+
 
 # -------------------------------------------------------------------------
 
@@ -49,13 +50,6 @@ cosub_col <- if(hmda_yr < 2020) {
 import_path = "K:/DataServices/Datasets/Housing/HMDA/Data/Raw/Tabular/"
 
 exp_path = "K:/DataServices/Datasets/Housing/HMDA/Data/Modified/Tabular/"
-
-# 0.4  Database Connection -----------------------------------------------------
-# for VM
-config_path <- "K:/DataServices/Code/Python/Python_ACS_Script/config_local/"
-# for laptop in office
-#config_path <- "S:/Network Shares/NEW K Drive/DataServices/Code/Python/Python_ACS_Script/config_local/"
-source(paste0(config_path,"conf.R"))
 
 
 ####

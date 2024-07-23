@@ -82,6 +82,9 @@ vars.dec10 <- load_variables(2010, dataset = c("sf1"))
 #Load 2020 Decennial variables for easier filtering
 vars.dec20 <- load_variables(2020, dataset = c("dhc"))
 
+#decennial_call - Decennial Census Data API Query
+#decennial.var_name: list of variables to query the API
+#year: vintage of decennial census
 decennial_call <- function(decennial.var_name, year){
   if (year == 2010){
     get_decennial(
@@ -100,6 +103,69 @@ decennial_call <- function(decennial.var_name, year){
       year = year, #Set the year in the function call (either 2010 or 2020)
       sumfile = "dhc" #Different summary files depending on year
     )
+  }
+}
+
+#Decennial Data Cleaning Functions
+#dec.vars - loads a list of variables to pass to the decennial census query
+#vars: dataframe of all variables in decennial census. pick from vars.dec10 and vars.dec20
+#concept: string of the "concept" variable in the vars dataframe
+dec.vars <- function(vars, con){
+  vars |>  
+  filter(concept == con) |> 
+  select(name) |> 
+  mutate(
+    name = as.character(name)
+  ) |>  
+  pull(name) 
+}
+
+#dec.labels - Attaches relevant data labels to data pulled from the decennial census
+#by five-year age group
+#year: dataframe of all variables in decennial census. pick from vars.dec10 and vars.dec20
+#con: string of the "concept" variable in the vars dataframe
+dec.labels <- function(year, con){
+  if (year == "2010"){
+      vars.dec10 |>  
+      filter(concept == con) |> #Filter the data to the specific concept
+      select(name, label) |>  #Select relevant variables
+      filter(str_detect(label, "years")) |> #Removing overhead categories
+      #Mutate the text of the label variable to make easier cross-reference to ageCAT6
+      #age groups later on in the analysis
+      mutate( 
+        sex1 = str_extract(label, "Female"),
+        sex2 = str_extract(label, "Male"),
+        sex = coalesce(sex1,sex2),
+        label = gsub("Total!!Male!!","", label),
+        label = gsub("Total!!Female!!","", label),
+        label = gsub(" ", "_", label),
+        label = paste0("pop_", label)
+      ) |> 
+      #Remove superfluous variables used to coalesce
+      select(-c(sex1, sex2)) |>  
+      na.omit()
+    
+  } else{
+    vars.dec20 |>  
+      filter(concept == con) |> #Filter the data to the specific concept
+      select(name, label) |>  #Select relevant variables
+      filter(str_detect(label, "years")) |> #Removing overhead categories
+      #Mutate the text of the label variable to make easier cross-reference to ageCAT6
+      #age groups later on in the analysis
+      mutate(
+        sex1 = str_extract(label, "Female"),
+        sex2 = str_extract(label, "Male"),
+        sex = coalesce(sex1,sex2),
+        label = gsub("!!Total:!!Male:","", label),
+        label = gsub("!!Total:!!Female:","", label),
+        label = gsub(" ", "_", label),
+        label = sub("!!", "", label),
+        label = paste0("pop", label),
+      ) |> 
+      #Remove superfluous variables used to coalesce
+      select(-c(sex1, sex2)) |>  
+      na.omit()
+    
   }
 }
 
@@ -153,31 +219,10 @@ rm(umdi_pop)
 ```{r}
 #Decennial 2010 Population in Households
 #Creates a list of sex by age population variables to use in the API query
-pa.vars <- vars.dec10 |>  
-  filter(concept=='SEX BY AGE FOR THE POPULATION IN HOUSEHOLDS') |> 
-  select(name) |> 
-  mutate(
-    name = as.character(name)
-  ) |>  
-  pull(name)
+pa.vars <- dec.vars(vars.dec10, "SEX BY AGE FOR THE POPULATION IN HOUSEHOLDS")
 
 #Assigns appropriate labels to the Decennial Census variables
-pa.labels <- vars.dec10 |>  
-  filter(concept=='SEX BY AGE FOR THE POPULATION IN HOUSEHOLDS') |> 
-  select(name, label) |>  
-  mutate(
-    sex1 = str_extract(label, "Female"),
-    sex2 = str_extract(label, "Male"),
-    sex = coalesce(sex1,sex2),
-    label = gsub("Total!!Male!!","", label),
-    label = gsub("Total!!Female!!","", label),
-    label = gsub(" ", "_", label),
-    label = paste0("pop_", label)
-  ) |> 
-  select(
-    -c(sex1, sex2)
-  ) |>  
-  na.omit()
+pa.labels <- dec.labels("2010", "SEX BY AGE FOR THE POPULATION IN HOUSEHOLDS")
 
 #Queries the Census API via {tidycensus} to retrieve data about the population
 #in households
@@ -241,35 +286,10 @@ rm(pa.labels, pa.values, pa.vars)
 
 #Decennial 2020 Population in Households
 #Creates a list of sex by age population variables to use in the API query
-pa.vars <- vars.dec20 |>  
-  filter(concept=='SEX BY AGE FOR SELECTED AGE CATEGORIES') |> 
-  select(name) |> 
-  mutate(
-    name = as.character(name)
-  ) |>  
-  pull(name)
+pa.vars <- dec.vars(vars.dec20, "SEX BY AGE FOR THE POPULATION IN HOUSEHOLDS")
 
 #Assigns appropriate labels to the Decennial Census variables
-pa.labels <- vars.dec20 |>  
-  filter(concept=='SEX BY AGE FOR SELECTED AGE CATEGORIES') |> 
-  select(name, label) |>  
-  mutate(
-    sex1 = str_extract(label, "Female"),
-    sex2 = str_extract(label, "Male"),
-    sex = coalesce(sex1,sex2),
-    label = gsub("!!Total:!!Male:","", label),
-    label = gsub("!!Total:!!Female:","", label),
-    label = gsub(" ", "_", label),
-    label = sub("!!", "", label),
-    label = paste0("pop", label),
-  ) |>
-  filter(
-    !name %in% c("P12_001N", "P12_002N", "P12_026N")
-  ) |> 
-  select(
-    -c(sex1, sex2)
-  ) |>  
-  na.omit()
+pa.labels <- dec.labels("2020", "SEX BY AGE FOR THE POPULATION IN HOUSEHOLDS")
 
 #Queries the Census API via {tidycensus} to retrieve data about the population
 #in households
@@ -333,16 +353,74 @@ rm(pa.labels, pa.values, pa.vars)
 gc()
 ```
 
+# Group Quarters Population - Correctional Facilities
+```{r}
+#2010
+"PCO003"
+
+#2020
+"PCO3"
+"GROUP QUARTERS POPULATION IN CORRECTIONAL FACILITIES FOR ADULTS BY SEX BY AGE"
+```
+
+#Group Quarters Population - Juvenile Facilities
+```{r}
+#2010
+"PCO004"
+
+#2020
+"PCO4"
+"GROUP QUARTERS POPULATION IN JUVENILE FACILITIES BY SEX BY AGE"
+```
+
+# Group Quarters Population - Nursing Facilities
+```{r}
+#2010
+"PCO005"
+
+#2020
+"PCO5"
+"GROUP QUARTERS POPULATION IN NURSING FACILITIES/SKILLED-NURSING FACILITIES BY SEX BY AGE"
+```
+
+#Group Quarters Population - Other Institutionalized Facilities
+```{r}
+#2010
+"PCO006"
+
+#2020
+"PCO6"
+"GROUP QUARTERS POPULATION IN OTHER INSTITUTIONAL FACILITIES BY SEX BY AGE"
+```
+
 # Group Quarters Population - University/College Students
 ```{r}
+#2010
+"PCO008"
+
+#2020
+"PCO8"
+"GROUP QUARTERS POPULATION IN COLLEGE/UNIVERSITY STUDENT HOUSING BY SEX BY AGE"
 ```
 
 # Group Quarters Population - Military
 ```{r}
+#2010
+"PCO009"
+
+#2020
+"PCO9"
+"GROUP QUARTERS POPULATION IN MILITARY QUARTERS BY SEX BY AGE"
 ```
 
 #Group Quarters Population - Other Non-Institutionalized 
 ```{r}
+#2010
+"PCO010"
+
+#2020
+"PCO10"
+"GROUP QUARTERS POPULATION IN OTHER NONINSTITUTIONAL FACILITIES BY SEX BY AGE"
 ```
 
 # Calculate the Percentage of People in Households
@@ -356,7 +434,7 @@ hr.10
 ```
 
 
-# Part 2 - Load and process PUMS Data
+#2.0 - Load and process PUMS Data
 
 ```{r}
 #Set PUMS vintage final year for {tidycensus} API query.

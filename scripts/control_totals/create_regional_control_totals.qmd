@@ -4,8 +4,9 @@ format: html
 editor: visual
 ---
 
-# Setup - Define helper functions, set knitr path, load necessary packages, set muni data keys
+# 0.0 Setup - Define helper functions, set knitr path, load necessary packages, set muni data keys
 
+#0.1 - Set knitr path + root for inputs
 ```{r, setup, include=FALSE}
 #Use when Rproject is open
 #root <- '../../../../Data/Working/Regional_Control_Totals/'
@@ -13,18 +14,14 @@ editor: visual
 #General K drive filepath
 root <-"K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/"
 
+#Set output filepath
+output_path <- ""
+
+#Set knitr path
 knitr::opts_knit$set(root.dir = root)
 ```
 
-```{r}
-sun <- function(x){
-  sort(unique(x))}
-lun <- function(x){
-  length(unique(x))}
-sna <- function(x){
-  sort(names(x))}
-```
-
+# 0.2 - Set package dependencies, set environment, set up data keys
 ```{r}
 library(tidycensus)
 library(tidyverse)
@@ -69,7 +66,46 @@ GEOID.20 <- mapcdatakeys::all_muni_data_keys |>
   select(GEOID, muni_id)
 ```
 
-# Part 1 - Processing UMDI population data
+# 0.3 - Define Helper Functions
+```{r}
+sun <- function(x){
+  sort(unique(x))}
+lun <- function(x){
+  length(unique(x))}
+sna <- function(x){
+  sort(names(x))}
+
+#Decennial Census API Query Function
+#Load 2010 Decennial variables for easier filtering
+vars.dec10 <- load_variables(2010, dataset = c("sf1"))
+
+#Load 2020 Decennial variables for easier filtering
+vars.dec20 <- load_variables(2020, dataset = c("dhc"))
+
+decennial_call <- function(decennial.var_name, year){
+  if (year == 2010){
+    get_decennial(
+      variables = decennial.var_name,
+      geography = "county subdivision", #Municipalities
+      state = "MA", #Only evaluating MA municipalities
+      year = year, #Set the year in the function call (either 2010 or 2020)
+      sumfile = "sf1" #Different summary files depending on year
+    )
+    
+  } else{
+    get_decennial(
+      variables = decennial.var_name,
+      geography = "county subdivision", #Municipalities
+      state = "MA", #Only evaluating MA municipalities
+      year = year, #Set the year in the function call (either 2010 or 2020)
+      sumfile = "dhc" #Different summary files depending on year
+    )
+  }
+}
+
+```
+
+# 1.0 - Processing UMDI population data
 
 ```{r}
 # Load in Household Population Projections
@@ -116,11 +152,8 @@ rm(umdi_pop)
 
 ```{r}
 #Decennial 2010 Population in Households
-#Load Decnnial Census data for 2010
-vars2010 <- load_variables(2010, 'sf1')
-
 #Creates a list of sex by age population variables to use in the API query
-pa.vars <- vars2010 |>  
+pa.vars <- vars.dec10 |>  
   filter(concept=='SEX BY AGE FOR THE POPULATION IN HOUSEHOLDS') |> 
   select(name) |> 
   mutate(
@@ -129,7 +162,7 @@ pa.vars <- vars2010 |>
   pull(name)
 
 #Assigns appropriate labels to the Decennial Census variables
-pa.labels <- vars2010 |>  
+pa.labels <- vars.dec10 |>  
   filter(concept=='SEX BY AGE FOR THE POPULATION IN HOUSEHOLDS') |> 
   select(name, label) |>  
   mutate(
@@ -148,14 +181,7 @@ pa.labels <- vars2010 |>
 
 #Queries the Census API via {tidycensus} to retrieve data about the population
 #in households
-pa.values <-
-  get_decennial(
-    year = 2010,
-    state = 'MA',
-    sumfile = "sf1",
-    geography = 'county subdivision',
-    variables = pa.vars
-  )
+pa.values <- decennial_call(pa.vars, 2010)
 
 #Clean the Household Population data.
 hhpop.10 <- pa.values |> 
@@ -210,12 +236,12 @@ hhpop.10 <- pa.values |>
   ) |>  
   ungroup()
 
-#Decennial 2020 Population in Households
-#Load Decnnial Census data for 2010
-vars2020 <- load_variables(2020, 'dhc')
+#Remove dataframes no longer needed in the process.
+rm(pa.labels, pa.values, pa.vars)
 
+#Decennial 2020 Population in Households
 #Creates a list of sex by age population variables to use in the API query
-pa.vars <- vars2020 |>  
+pa.vars <- vars.dec20 |>  
   filter(concept=='SEX BY AGE FOR SELECTED AGE CATEGORIES') |> 
   select(name) |> 
   mutate(
@@ -224,7 +250,7 @@ pa.vars <- vars2020 |>
   pull(name)
 
 #Assigns appropriate labels to the Decennial Census variables
-pa.labels <- vars2020 |>  
+pa.labels <- vars.dec20 |>  
   filter(concept=='SEX BY AGE FOR SELECTED AGE CATEGORIES') |> 
   select(name, label) |>  
   mutate(
@@ -247,14 +273,7 @@ pa.labels <- vars2020 |>
 
 #Queries the Census API via {tidycensus} to retrieve data about the population
 #in households
-pa.values <-
-  get_decennial(
-    year = 2020,
-    state = 'MA',
-    sumfile = "dhc",
-    geography = 'county subdivision',
-    variables = pa.vars
-  )
+pa.values <- decennial_call(pa.vars, 2020)
 
 #Clean the 2020 Household Population data
 hhpop.20 <- pa.values |> 
@@ -310,8 +329,20 @@ hhpop.20 <- pa.values |>
   ungroup()
 
 #Remove dataframes no longer needed in the process.
-rm(pa.labels, pa.values, pa.vars, vars2010, vars2020)
+rm(pa.labels, pa.values, pa.vars)
 gc()
+```
+
+# Group Quarters Population - University/College Students
+```{r}
+```
+
+# Group Quarters Population - Military
+```{r}
+```
+
+#Group Quarters Population - Other Non-Institutionalized 
+```{r}
 ```
 
 # Calculate the Percentage of People in Households
@@ -323,6 +354,7 @@ hr.10
 #2. Calculate % of people in households in each age/sex group for each
 #decadal period. 
 ```
+
 
 # Part 2 - Load and process PUMS Data
 

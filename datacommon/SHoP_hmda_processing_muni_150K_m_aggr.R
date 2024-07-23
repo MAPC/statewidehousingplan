@@ -2,7 +2,6 @@
 library(tidyverse)
 library(lubridate)
 library(tidycensus)
-library(RPostgres)
 library(dplyr)
 library(stringr)
 library(mapcdatakeys)
@@ -17,9 +16,11 @@ library(mapcdatakeys)
 # Latest: post 2017
 # https://ffiec.cfpb.gov/data-publication/aggregate-reports
 
-# muni version draft for Statewide Housing Plan request
+# MUNI version draft for Statewide Housing Plan request
 # the main functions were pulled from the script by Aseem Deodhar: hmda_processing_ct_ma_aggr.R
-# lberman 2024-06-25
+# lberman 2024-06-25 rev 2024-07-22
+# modified for income levels higher than 150K
+
 
 # -------------------------------------------------------------------------
 
@@ -28,10 +29,14 @@ library(mapcdatakeys)
 hmda_yr <- 2022
 
 # note:  mapcdatakeys have not been updated after 2021 
-hmda_yr_fix <- 2021
+hmda_yr_fix <- if(hmda_yr < 2021) {
+  hmda_yr
+} else {
+  2021 
+}
 
 
-# derive year for keys
+# 0.2 derive year for keys
 cosub_yr <- str_sub(hmda_yr, -2)
 
 cosub_col <- if(hmda_yr < 2020) {
@@ -41,11 +46,13 @@ cosub_col <- if(hmda_yr < 2020) {
 } 
 
 
-
+# 0.3 set paths
 import_path = "K:/DataServices/Datasets/Housing/HMDA/Data/Raw/Tabular/"
 
 exp_path = "K:/DataServices/Datasets/Housing/HMDA/Data/Modified/Tabular/"
 
+
+####
 ## 1. import data
 raw_import <- read_csv(paste0(import_path,hmda_yr,"/hmda_ma_",hmda_yr,".csv"))
 
@@ -85,7 +92,7 @@ join_keys <- if(hmda_yr < 2020) {
 
 
 ## 2.4 rm rows with blank muni_id (which had blank or incorrect ct id)
-clean_import <- join_keys %>% 
+keys_import <- join_keys %>% 
   filter(!is.na(muni_id))
 
 
@@ -104,8 +111,8 @@ rm(missing_muni_id,x)
 ## 3. process raw data for muni level years 2018 - 2021
 
 # 3.1 clean up names found in derived_ethnicity and derived_race into column race_ethnicity
-#  note this step was significantly expanded to account for errors in the data, eg "joint" "Free From Text Only" 
-raw_muni <- clean_import %>% 
+#  expand with new lines to account for errors in the data, eg "joint" "Free From Text Only" 
+clean_import <- keys_import %>% 
   mutate(race_ethnicity = case_when(derived_ethnicity == "Hispanic or Latino" & derived_race == "White" ~ "lat",
                                     derived_ethnicity == "Hispanic or Latino" & derived_race == "Black or African American" ~ "lat",
                                     derived_ethnicity == "Hispanic or Latino" & derived_race == "Asian" ~ "lat",
@@ -162,25 +169,20 @@ raw_muni <- clean_import %>%
                                     derived_ethnicity == "Free Form Text Only" & derived_race == "Joint" ~ "na",  
                                     derived_ethnicity == "Free Form Text Only" & derived_race == "2 or more minority races" ~ "mlt"),                                      
          
-         income = income*1000,
-         muni_id = as.character(muni_id)) 
+         income = income*1000 
+         ) 
 
 # 3.2  ck removal of error in previous step  (note, categories added for "na" and "mlt")
-ck_muni <- raw_muni %>%
+ck_muni <- clean_import %>%
   filter(is.na(race_ethnicity))
 
-#note: when step 3.2 returns zero rows, copy the conditions to BOTH functions below, then proceed
+#note: when step 3.2 returns zero rows, then proceed
 rm(raw_muni,ck_muni)
 
 
-# 4. set up muni function
+# 4. test join (this section for checking ct_id join)
 
-# 4.0 checking acs call w tidycensus
-
-# 4.1 set up keys for join (removing broken version for 2022)
-
-#rm(ck_acs2)
-ck_acs2 <- get_acs(geography = "county subdivision", 
+ck_acs2 <- get_acs(geography = "tract", 
                    state = 25,
                    survey = "acs5", 
                    year = hmda_yr, 
@@ -192,96 +194,51 @@ ck_acs2 <- get_acs(geography = "county subdivision",
             #            mapcdatakeys::census_muni_keys %>%
             dist_keys %>% 
               select(c(muni_id,muni_name,c(!! cosub_col)),
-                     by = c('cosub_id' = 'ct20_id')
+#               select(c(muni_id,muni_name,ct20_id),  change hard code ct20 to vary by year ct10/ct20
+                       by = c('cosub_id' = !! cosub_col)
                      #                     c(ends_with(str_sub(hmda_yr, start = 3, end = 4)) & !contains("cosub_cn"))
               ) %>% rename(cosub_id = 3) %>% mutate(across(.cols = c(cosub_id, muni_id),
                                                            .fns = function(x){as.character(x)}))) %>%
   filter(!is.na(muni_id)) %>% arrange(muni_id) #%>% arrange(race_ethnicity) 
 
+rm(ck_acs2)
+
+####
+## 5.  FUNCTIONS
+####
+##  note:  amfi [adjusted median family income] is from ACS B19113 for the data year
+##  high_inc is based on (income/amfi * 100) where > 120 = 120% above the amfi
+
+
+# 5.1 
 hmda_mu_func_1821 <- function(hmda_yr){
   clean_import %>% 
     #  read_csv(paste0("D:/Work/00_MAPC/hmda/",hmda_yr,"_hmda_ma.csv")) %>%
-    mutate(race_ethnicity = case_when(derived_ethnicity == "Hispanic or Latino" & derived_race == "White" ~ "lat",
-                                      derived_ethnicity == "Hispanic or Latino" & derived_race == "Black or African American" ~ "lat",
-                                      derived_ethnicity == "Hispanic or Latino" & derived_race == "Asian" ~ "lat",
-                                      derived_ethnicity == "Hispanic or Latino" & derived_race == "Native Hawaiian or Other Pacific Islander" ~ "lat",
-                                      derived_ethnicity == "Hispanic or Latino" & derived_race == "American Indian or Alaska Native" ~ "lat",
-                                      derived_ethnicity == "Hispanic or Latino" & derived_race == "Race Not Available" ~ "lat",
-                                      derived_ethnicity == "Hispanic or Latino" & derived_race == "2 or more minority races" ~ "lat",
-                                      derived_ethnicity == "Hispanic or Latino" & derived_race == "Free Form Text Only" ~ "lat",
-                                      derived_ethnicity == "Hispanic or Latino" & derived_race == "joint" ~ "lat",
-                                      derived_ethnicity == "Hispanic or Latino" & derived_race == "Joint" ~ "lat",
-                                      
-                                      derived_ethnicity == "Not Hispanic or Latino" & derived_race == "White" ~ "whi",
-                                      derived_ethnicity == "Not Hispanic or Latino" & derived_race == "Black or African American" ~ "baa",
-                                      derived_ethnicity == "Not Hispanic or Latino" & derived_race == "Asian" ~ "asn",
-                                      derived_ethnicity == "Not Hispanic or Latino" & derived_race == "Native Hawaiian or Other Pacific Islander" ~ "nhp",
-                                      derived_ethnicity == "Not Hispanic or Latino" & derived_race == "American Indian or Alaska Native" ~ "nav",
-                                      derived_ethnicity == "Not Hispanic or Latino" & derived_race == "Joint" ~ "na",
-                                      derived_ethnicity == "Not Hispanic or Latino" & derived_race == "Race Not Available" ~ "na",
-                                      derived_ethnicity == "Not Hispanic or Latino" & derived_race == "2 or more minority races" ~ "mlt",
-                                      derived_ethnicity == "Not Hispanic or Latino" & derived_race == "Free Form Text Only" ~ "na",
-                                      
-                                      derived_ethnicity == "Ethnicity Not Available" & derived_race == "Race Not Available" ~ "na",
-                                      derived_ethnicity == "Ethnicity Not Available" & derived_race == "White" ~ "whi",
-                                      derived_ethnicity == "Ethnicity Not Available" & derived_race == "2 or more minority races" ~ "lat",
-                                      derived_ethnicity == "Ethnicity Not Available" & derived_race == "Black or African American" ~ "baa",
-                                      derived_ethnicity == "Ethnicity Not Available" & derived_race == "Asian" ~ "asn",
-                                      derived_ethnicity == "Ethnicity Not Available" & derived_race == "Native Hawaiian or Other Pacific Islander" ~ "nhp",
-                                      derived_ethnicity == "Ethnicity Not Available" & derived_race == "American Indian or Alaska Native" ~ "nav",
-                                      derived_ethnicity == "Ethnicity Not Available" & derived_race == "joint" ~ "na",
-                                      derived_ethnicity == "Ethnicity Not Available" & derived_race == "Joint" ~ "na",
-                                      derived_ethnicity == "Ethnicity Not Available" & derived_race == "Free Form Text Only" ~ "na",
-                                      
-                                      
-                                      derived_ethnicity == "White" & derived_race == "Joint" ~ "whi",
-                                      
-                                      derived_ethnicity == "Joint" & derived_race == "White" ~ "whi",
-                                      derived_ethnicity == "Joint" & derived_race == "Black or African American" ~ "baa",
-                                      derived_ethnicity == "Joint" & derived_race == "Asian" ~ "asn",
-                                      derived_ethnicity == "Joint" & derived_race == "Native Hawaiian or Other Pacific Islander" ~ "nhp",
-                                      derived_ethnicity == "Joint" & derived_race == "American Indian or Alaska Native" ~ "nav",
-                                      derived_ethnicity == "Joint" & derived_race == "Race Not Available" ~ "na",
-                                      derived_ethnicity == "Joint" & derived_race == "Joint" ~ "na",                                 
-                                      derived_ethnicity == "Joint" & derived_race == "2 or more minority races" ~ "mlt",                                
-                                      derived_ethnicity == "Joint" & derived_race == "Free Form Text Only" ~ "na",
-                                      
-                                      derived_ethnicity == "Free Form Text Only" & derived_race == "White" ~ "whi",
-                                      derived_ethnicity == "Free Form Text Only" & derived_race == "Black or African American" ~ "baa",
-                                      derived_ethnicity == "Free Form Text Only" & derived_race == "Asian" ~ "asn",
-                                      derived_ethnicity == "Free Form Text Only" & derived_race == "Native Hawaiian or Other Pacific Islander" ~ "nhp",
-                                      derived_ethnicity == "Free Form Text Only" & derived_race == "American Indian or Alaska Native" ~ "nav",
-                                      derived_ethnicity == "Free Form Text Only" & derived_race == "Race Not Available" ~ "na",
-                                      derived_ethnicity == "Free Form Text Only" & derived_race == "Free Form Text Only" ~ "na",
-                                      derived_ethnicity == "Free Form Text Only" & derived_race == "joint" ~ "na",  
-                                      derived_ethnicity == "Free Form Text Only" & derived_race == "Joint" ~ "na",  
-                                      derived_ethnicity == "Free Form Text Only" & derived_race == "2 or more minority races" ~ "mlt"),                                      
-           
-           income = income*1000,
-           muni_id = as.character(muni_id)) %>% 
-    
     select(activity_year,
            muni_id,
            race_ethnicity,
            action_taken,
            income) %>% 
+    filter(income > 150000) %>% 
+  
     left_join(., get_acs(geography = "county subdivision", state = 25,
-                         survey = "acs5", year = hmda_yr, table = 'B19113', cache_table = TRUE) %>% 
-                select(GEOID, estimate) %>% rename(cosub_id = GEOID, amfi = estimate)  %>% 
-                
+                         survey = "acs5", year = hmda_yr, table = 'B19113', cache_table = TRUE) %>%
+                select(GEOID, estimate) %>% rename(cosub_id = GEOID, amfi = estimate)  %>%
+
                 left_join(.,
-                          mapcdatakeys::census_muni_keys %>% 
-                            select(muni_id, muni_name, 
+                          mapcdatakeys::census_muni_keys %>%
+                            select(muni_id, muni_name,
                                    c(ends_with(str_sub(hmda_yr_fix, start = 3, end = 4)) & !contains("cosub_cn"))
                             ) %>% rename(cosub_id = 3) %>% mutate(across(.cols = c(cosub_id, muni_id),
-                                                                         .fns = function(x){as.character(x)}))) %>% 
-                filter(!is.na(muni_id)) %>% arrange(muni_id)) %>% arrange(race_ethnicity) %>% 
-    
+                                                                         .fns = function(x){as.character(x)}))) %>%
+                mutate(muni_id = as.integer(muni_id)) %>% 
+                filter(!is.na(muni_id)) %>% arrange(muni_id)) %>% arrange(race_ethnicity) %>%
+
     mutate(
       #calculate median income percent value
       med_inc_pc = (income/amfi)*100,
       #create binary for high income applicants     
-      high_inc = case_when(med_inc_pc >= 150 ~ 'hinc'),
+      high_inc = case_when(med_inc_pc >= 120 ~ 'hinc'),
       # create loan action_taken id
       loan_action_adj = case_when(action_taken == 3 ~ 'den',
                                   action_taken == 1 ~ 'app')) %>% 
@@ -303,81 +260,25 @@ hmda_mu_func_1821 <- function(hmda_yr){
                 names_glue = "{race_ethnicity}_{.value}",
                 values_from = c(app, den, rate)) %>% 
     full_join(.,
-              mapcdatakeys::all_muni_data_keys %>% select(muni_id, muni_name) %>% mutate(muni_id = as.character(muni_id))) %>% 
+              #mapcdatakeys::all_muni_data_keys %>% select(muni_id, muni_name) %>% mutate(muni_id = as.character(muni_id))) %>% 
+              mapcdatakeys::all_muni_data_keys %>% select(muni_id, muni_name) %>% mutate(muni_id = muni_id)) %>% 
     ungroup() %>% 
     mutate(year = hmda_yr) %>% 
     rename(municipal = muni_name)
 }
 
-## 5 set up muni aggregation levels function
+## 5.2 aggregation function
 
 hmda_mu_aggr_func_1821 <- function(hmda_yr, grp_id, grp_name){
   clean_import %>% 
     #  read_csv(paste0("D:/Work/00_MAPC/hmda/",hmda_yr,"_hmda_ma.csv")) %>%
-    mutate(race_ethnicity = case_when(derived_ethnicity == "Hispanic or Latino" & derived_race == "White" ~ "lat",
-                                      derived_ethnicity == "Hispanic or Latino" & derived_race == "Black or African American" ~ "lat",
-                                      derived_ethnicity == "Hispanic or Latino" & derived_race == "Asian" ~ "lat",
-                                      derived_ethnicity == "Hispanic or Latino" & derived_race == "Native Hawaiian or Other Pacific Islander" ~ "lat",
-                                      derived_ethnicity == "Hispanic or Latino" & derived_race == "American Indian or Alaska Native" ~ "lat",
-                                      derived_ethnicity == "Hispanic or Latino" & derived_race == "Race Not Available" ~ "lat",
-                                      derived_ethnicity == "Hispanic or Latino" & derived_race == "2 or more minority races" ~ "lat",
-                                      derived_ethnicity == "Hispanic or Latino" & derived_race == "Free Form Text Only" ~ "lat",
-                                      derived_ethnicity == "Hispanic or Latino" & derived_race == "joint" ~ "lat",
-                                      derived_ethnicity == "Hispanic or Latino" & derived_race == "Joint" ~ "lat",
-                                      
-                                      derived_ethnicity == "Not Hispanic or Latino" & derived_race == "White" ~ "whi",
-                                      derived_ethnicity == "Not Hispanic or Latino" & derived_race == "Black or African American" ~ "baa",
-                                      derived_ethnicity == "Not Hispanic or Latino" & derived_race == "Asian" ~ "asn",
-                                      derived_ethnicity == "Not Hispanic or Latino" & derived_race == "Native Hawaiian or Other Pacific Islander" ~ "nhp",
-                                      derived_ethnicity == "Not Hispanic or Latino" & derived_race == "American Indian or Alaska Native" ~ "nav",
-                                      derived_ethnicity == "Not Hispanic or Latino" & derived_race == "Joint" ~ "na",
-                                      derived_ethnicity == "Not Hispanic or Latino" & derived_race == "Race Not Available" ~ "na",
-                                      derived_ethnicity == "Not Hispanic or Latino" & derived_race == "2 or more minority races" ~ "mlt",
-                                      derived_ethnicity == "Not Hispanic or Latino" & derived_race == "Free Form Text Only" ~ "na",
-                                      
-                                      derived_ethnicity == "Ethnicity Not Available" & derived_race == "Race Not Available" ~ "na",
-                                      derived_ethnicity == "Ethnicity Not Available" & derived_race == "White" ~ "whi",
-                                      derived_ethnicity == "Ethnicity Not Available" & derived_race == "2 or more minority races" ~ "lat",
-                                      derived_ethnicity == "Ethnicity Not Available" & derived_race == "Black or African American" ~ "baa",
-                                      derived_ethnicity == "Ethnicity Not Available" & derived_race == "Asian" ~ "asn",
-                                      derived_ethnicity == "Ethnicity Not Available" & derived_race == "Native Hawaiian or Other Pacific Islander" ~ "nhp",
-                                      derived_ethnicity == "Ethnicity Not Available" & derived_race == "American Indian or Alaska Native" ~ "nav",
-                                      derived_ethnicity == "Ethnicity Not Available" & derived_race == "joint" ~ "na",
-                                      derived_ethnicity == "Ethnicity Not Available" & derived_race == "Joint" ~ "na",
-                                      derived_ethnicity == "Ethnicity Not Available" & derived_race == "Free Form Text Only" ~ "na",
-                                      
-                                      
-                                      derived_ethnicity == "White" & derived_race == "Joint" ~ "whi",
-                                      
-                                      derived_ethnicity == "Joint" & derived_race == "White" ~ "whi",
-                                      derived_ethnicity == "Joint" & derived_race == "Black or African American" ~ "baa",
-                                      derived_ethnicity == "Joint" & derived_race == "Asian" ~ "asn",
-                                      derived_ethnicity == "Joint" & derived_race == "Native Hawaiian or Other Pacific Islander" ~ "nhp",
-                                      derived_ethnicity == "Joint" & derived_race == "American Indian or Alaska Native" ~ "nav",
-                                      derived_ethnicity == "Joint" & derived_race == "Race Not Available" ~ "na",
-                                      derived_ethnicity == "Joint" & derived_race == "Joint" ~ "na",                                 
-                                      derived_ethnicity == "Joint" & derived_race == "2 or more minority races" ~ "mlt",                                
-                                      derived_ethnicity == "Joint" & derived_race == "Free Form Text Only" ~ "na",
-                                      
-                                      derived_ethnicity == "Free Form Text Only" & derived_race == "White" ~ "whi",
-                                      derived_ethnicity == "Free Form Text Only" & derived_race == "Black or African American" ~ "baa",
-                                      derived_ethnicity == "Free Form Text Only" & derived_race == "Asian" ~ "asn",
-                                      derived_ethnicity == "Free Form Text Only" & derived_race == "Native Hawaiian or Other Pacific Islander" ~ "nhp",
-                                      derived_ethnicity == "Free Form Text Only" & derived_race == "American Indian or Alaska Native" ~ "nav",
-                                      derived_ethnicity == "Free Form Text Only" & derived_race == "Race Not Available" ~ "na",
-                                      derived_ethnicity == "Free Form Text Only" & derived_race == "Free Form Text Only" ~ "na",
-                                      derived_ethnicity == "Free Form Text Only" & derived_race == "joint" ~ "na",  
-                                      derived_ethnicity == "Free Form Text Only" & derived_race == "Joint" ~ "na",  
-                                      derived_ethnicity == "Free Form Text Only" & derived_race == "2 or more minority races" ~ "mlt"),                                      
-           
-           income = income*1000,
-           muni_id = as.character(muni_id)) %>% 
-    
     select(activity_year,
            muni_id,
            race_ethnicity,
            action_taken,
            income) %>% 
+    filter(income > 150000) %>% 
+  
     left_join(., get_acs(geography = "county subdivision", state = 25,
                          survey = "acs5", year = hmda_yr, table = 'B19113', cache_table = TRUE) %>% 
                 select(GEOID, estimate) %>% rename(cosub_id = GEOID, amfi = estimate) %>% 
@@ -387,8 +288,8 @@ hmda_mu_aggr_func_1821 <- function(hmda_yr, grp_id, grp_name){
                                    c(ends_with(str_sub(hmda_yr_fix, start = 3, end = 4)) & !contains("cosub_cn"))
                             ) %>% rename(cosub_id = 3) %>% mutate(across(.cols = c(cosub_id, muni_id),
                                                                          .fns = function(x){as.character(x)}))) %>% 
+                mutate(muni_id = as.integer(muni_id)) %>% 
                 filter(!is.na(muni_id)) %>% arrange(muni_id)) %>% arrange(race_ethnicity) %>%
-    
     
     mutate(
       #calculate median income percent value
@@ -418,7 +319,7 @@ hmda_mu_aggr_func_1821 <- function(hmda_yr, grp_id, grp_name){
                        subrg_id, subrg_acr, county_id, county, 
                        cmtyp08_id, cmtyp08, cmsbt08_id, cmsbt08, 
                        rpa_id, rpa_name, region_id, region) %>% 
-                mutate(state_id = 353, state = "Massachusetts", muni_id = as.character(muni_id)), 
+                mutate(state_id = 353, state = "Massachusetts", muni_id = muni_id), 
               by = c("muni_id", "muni_name")) %>%
     #group_by(race_ethnicity, county_id, county) %>% 
     group_by(race_ethnicity, {{grp_id}}, {{grp_name}}) %>%
@@ -431,10 +332,8 @@ hmda_mu_aggr_func_1821 <- function(hmda_yr, grp_id, grp_name){
                 names_glue = "{race_ethnicity}_{.value}",
                 values_from = c(app, den, rate)) %>% 
     mutate(year = hmda_yr) %>% 
-    dplyr::rename(muni_id = 1, municipal = 2) %>% 
-    mutate(muni_id = as.character(muni_id)) 
+    dplyr::rename(muni_id = 1, municipal = 2)
 }
-
 
 ## 6. run muni data function
 # Municipal ---------------------------------------------------------------
@@ -466,7 +365,7 @@ hmda_mortgage_denials_by_race_150k_m_aggr <-
 
 ## 8  Binding 351 + 53 = 404 --------------------------------------------------
 
-## 8.1 keeping the na and mlt columns (not part of db schema)
+## 8.1 if keeping the na and mlt columns (not part of db schema)
 # hmda_mortgage_denials_by_race_150k_m %>% 
 #   bind_rows(., hmda_mortgage_denials_by_race_150k_m_aggr) %>% 
 #   write_csv(paste0(exp_path,"/output/",hmda_yr,"/hmda_mortgage_denials_by_race_150k_m_WITH_NA_MLT.csv"))
@@ -475,7 +374,6 @@ hmda_mortgage_denials_by_race_150k_m_aggr <-
 hmda_mortgage_denials_by_race_150k_m <- hmda_mortgage_denials_by_race_150k_m %>% 
   bind_rows(., hmda_mortgage_denials_by_race_150k_m_aggr) %>% 
   select(-c(mlt_app,na_app,mlt_den,na_den,mlt_rate,na_rate))
-
 
 ## 9 decimals fix rates before export
 df <- hmda_mortgage_denials_by_race_150k_m 

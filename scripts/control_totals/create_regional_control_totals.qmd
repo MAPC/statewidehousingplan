@@ -85,11 +85,11 @@ vars.dec20 <- load_variables(2020, dataset = c("dhc"))
 #decennial_call - Decennial Census Data API Query
 #decennial.var_name: list of variables to query the API
 #year: vintage of decennial census
-decennial_call <- function(decennial.var_name, year){
+decennial_call <- function(decennial.var_name, geog, year){
   if (year == 2010){
     get_decennial(
       variables = decennial.var_name,
-      geography = "county subdivision", #Municipalities
+      geography = geog, #Specify the level of geography
       state = "MA", #Only evaluating MA municipalities
       year = year, #Set the year in the function call (either 2010 or 2020)
       sumfile = "sf1" #Different summary files depending on year
@@ -98,7 +98,7 @@ decennial_call <- function(decennial.var_name, year){
   } else{
     get_decennial(
       variables = decennial.var_name,
-      geography = "county subdivision", #Municipalities
+      geography = geog, #Specify the level of geography
       state = "MA", #Only evaluating MA municipalities
       year = year, #Set the year in the function call (either 2010 or 2020)
       sumfile = "dhc" #Different summary files depending on year
@@ -112,7 +112,7 @@ decennial_call <- function(decennial.var_name, year){
 #concept: string of the "concept" variable in the vars dataframe
 dec.vars <- function(vars, con){
   vars |>  
-  filter(grepl(pattern = paste0("^",con,"$"), concept)) |> 
+  filter(concept == con) |> 
   select(name) |> 
   mutate(
     name = as.character(name)
@@ -178,7 +178,6 @@ gq.clean <- function(df){
       label = str_replace(label, "Total_!!Female!!","")
     )
 }
-
 ```
 
 # 1.0 - Processing UMDI population data
@@ -223,7 +222,7 @@ rm(umdi_pop)
 #1. Population checks using Census data for QA/QC?
 ```
 
-#Population
+# Population
 
 ```{r}
 #Decennial 2010 Population
@@ -235,7 +234,7 @@ pop.vars <- data.frame(pop.vars) |> dplyr::slice(1:49) |> pull(pop.vars)
 pop.labels <- dec.labels("2010", "SEX BY AGE") |> slice(1:46)
 
 #Queries the Census API via {tidycensus} to retrieve data about the population
-pop.values <- decennial_call(pop.vars, 2010)
+pop.values <- decennial_call(pop.vars, geog = "county subdivision", 2010)
 
 #Clean the Population data.
 pop.10 <- pop.values |> 
@@ -301,11 +300,11 @@ pop.vars <- dec.vars(vars.dec20, "SEX BY AGE FOR SELECTED AGE CATEGORIES")
 pop.labels <- dec.labels("2020", "SEX BY AGE FOR SELECTED AGE CATEGORIES")
 
 #Queries the Census API via {tidycensus} to retrieve data about the population
-pop.values <- decennial_call(pop.vars, 2020)
+pop.values <- decennial_call(pop.vars, geog = "county subdivision", 2020)
 
 #Clean the Population data.
 pop.20 <- pop.values |> 
-  filter(GEOID %in% GEOID.10$GEOID) |> 
+  filter(GEOID %in% GEOID.20$GEOID) |> 
   right_join(
     pop.labels,
     by = c("variable"="name")
@@ -335,7 +334,7 @@ pop.20 <- pop.values |>
   ) |> 
   filter(!is.na(ageCAT6)) |>  
   right_join(
-    GEOID.10,
+    GEOID.20,
     by = c('GEOID')
   ) |>  
   mutate(
@@ -360,7 +359,6 @@ pop.20 <- pop.values |>
 rm(pop.labels, pop.values, pop.vars)
 gc()
 ```
-
 # Query Census Household Population data for 2010 and 2020
 # Determine General Household Formation Rate (% of population in households)
 
@@ -374,7 +372,7 @@ pa.labels <- dec.labels("2010", "SEX BY AGE FOR THE POPULATION IN HOUSEHOLDS")
 
 #Queries the Census API via {tidycensus} to retrieve data about the population
 #in households
-pa.values <- decennial_call(pa.vars, 2010)
+pa.values <- decennial_call(pa.vars, geog = "county subdivision", 2010)
 
 #Clean the Household Population data.
 hhpop.10 <- pa.values |> 
@@ -441,7 +439,7 @@ pa.labels <- dec.labels("2020", "SEX BY AGE FOR THE POPULATION IN HOUSEHOLDS")
 
 #Queries the Census API via {tidycensus} to retrieve data about the population
 #in households
-pa.values <- decennial_call(pa.vars, 2020)
+pa.values <- decennial_call(pa.vars, geog = "county subdivision", 2020)
 
 #Clean the 2020 Household Population data
 hhpop.20 <- pa.values |> 
@@ -500,79 +498,86 @@ hhpop.20 <- pa.values |>
 rm(pa.labels, pa.values, pa.vars)
 gc()
 ```
-
-# Group Quarters Population - Correctional Facilities
+# Join 2010 and 2020 Population and Household Population data 
 ```{r}
-#2010
-PCO003.vars <- dec.vars(vars.dec10, "GROUP QUARTERS POPULATION IN CORRECTIONAL FACILITIES FOR ADULTS BY SEX BY AGE")
+population.df <- purrr::reduce(
+  list(pop.10, pop.20, hhpop.10,hhpop.20),
+  dplyr::left_join, by = c("muni_id", "Sex", "ageCAT6")
+  ) |> 
+  dplyr::rename(
+    Population.10 = Population.x,
+    Population.20 = Population.y,
+    HHPopulation.10 = HHPopulation.x,
+    HHPopulation.20 = HHPopulation.y
+  ) |> 
+  rowwise() |> 
+  mutate(
+    GQPopulation.10 = Population.10 - HHPopulation.10,
+    GQPopulation.20 = Population.20 - HHPopulation.20
+  )
 
-PCO003.labels <- dec.labels("2010", "GROUP QUARTERS POPULATION IN CORRECTIONAL FACILITIES FOR ADULTS BY SEX BY AGE") |> gq.clean() 
-
-PCO003.values <- decennial_call(PCO003.vars, 2010)
-
-#2020
-"PCO3"
-"GROUP QUARTERS POPULATION IN CORRECTIONAL FACILITIES FOR ADULTS BY SEX BY AGE"
 ```
 
-#Group Quarters Population - Juvenile Facilities
+# Group Quarters Population - Total
 ```{r}
-#2010
-"PCO004"
+#===============================================================================
+#Group Quarters Population 2010
+#Creates a list of sex by age group quarters population variables to use in the API query
+gq.vars <- dec.vars(vars.dec10, "GROUP QUARTERS POPULATION BY SEX BY AGE")
 
-#2020
-"PCO4"
-"GROUP QUARTERS POPULATION IN JUVENILE FACILITIES BY SEX BY AGE"
-```
+#Assigns appropriate labels to the Decennial Census variables
+gq.labels <- dec.labels("2010", "GROUP QUARTERS POPULATION BY SEX BY AGE") |> gq.clean()
 
-# Group Quarters Population - Nursing Facilities
-```{r}
-#2010
-"PCO005"
+#Queries the Census API via {tidycensus} to retrieve data about the group 
+#quarters population
+gq.values <- decennial_call(gq.vars, geog = "county", 2010)
 
-#2020
-"PCO5"
-"GROUP QUARTERS POPULATION IN NURSING FACILITIES/SKILLED-NURSING FACILITIES BY SEX BY AGE"
-```
+#Clean the 2010 Group Quarters Population data
 
-#Group Quarters Population - Other Institutionalized Facilities
-```{r}
-#2010
-"PCO006"
+#Remove dataframes no longer needed in the process.
+rm(gq.labels, gq.values, gq.vars)
 
-#2020
-"PCO6"
-"GROUP QUARTERS POPULATION IN OTHER INSTITUTIONAL FACILITIES BY SEX BY AGE"
+#===============================================================================
+#Group Quarters Population 2020
+#Creates a list of sex by age group quarters population variables to use in the API query
+gq.vars <- dec.vars(vars.dec20, "GROUP QUARTERS POPULATION BY SEX BY AGE")
+
+#Assigns appropriate labels to the Decennial Census variables
+gq.labels <- dec.labels("2020", "GROUP QUARTERS POPULATION BY SEX BY AGE") |> gq.clean()
+
+#Queries the Census API via {tidycensus} to retrieve data about the group 
+#quarters population
+gq.values <- decennial_call(gq.vars, geog = "county", 2020)
+
+#Clean the 2010 Group Quarters Population data
+
+#Remove dataframes no longer needed in the process.
+rm(gq.labels, gq.values, gq.vars)
+gc()
 ```
 
 # Group Quarters Population - University/College Students
 ```{r}
 #2010
-"PCO008"
+gq.vars <- dec.vars(vars.dec10, "GROUP QUARTERS POPULATION IN COLLEGE/UNIVERSITY STUDENT HOUSING BY SEX BY AGE")
+
+gq.labels <- dec.labels("2010", "GROUP QUARTERS POPULATION IN COLLEGE/UNIVERSITY STUDENT HOUSING BY SEX BY AGE") |> gq.clean()
+
+gq.values <- decennial_call(gq.vars, geog = "county", 2010)
+
+#Remove dataframes no longer needed in the process.
+rm(gq.labels, gq.values, gq.vars)
 
 #2020
-"PCO8"
-"GROUP QUARTERS POPULATION IN COLLEGE/UNIVERSITY STUDENT HOUSING BY SEX BY AGE"
-```
+gq.vars <- dec.vars(vars.dec20, "GROUP QUARTERS POPULATION IN COLLEGE/UNIVERSITY STUDENT HOUSING BY SEX BY AGE")
 
-# Group Quarters Population - Military
-```{r}
-#2010
-"PCO009"
+gq.labels <- dec.labels("2020", "GROUP QUARTERS POPULATION IN COLLEGE/UNIVERSITY STUDENT HOUSING BY SEX BY AGE") |> gq.clean()
 
-#2020
-"PCO9"
-"GROUP QUARTERS POPULATION IN MILITARY QUARTERS BY SEX BY AGE"
-```
+gq.values <- decennial_call(gq.vars, geog = "county", 2020)
 
-#Group Quarters Population - Other Non-Institutionalized 
-```{r}
-#2010
-"PCO010"
-
-#2020
-"PCO10"
-"GROUP QUARTERS POPULATION IN OTHER NONINSTITUTIONAL FACILITIES BY SEX BY AGE"
+#Remove dataframes no longer needed in the process.
+rm(gq.labels, gq.values, gq.vars)
+gc()
 ```
 
 # Calculate the Percentage of People in Households

@@ -246,7 +246,7 @@ compare_muni_mfi <- acs2_mfi_lim %>%
 
 ## 4.6 export to csv
 
-write_csv(compare_muni_mfi, paste0(test_path,"/",hmda_yr,"_compare_fmi_three_sources.csv"))
+write_csv(compare_muni_mfi, paste0(test_path,"/",hmda_yr,"_compare_mfi_three_sources.csv"))
 
 rm(ck_acs2,acs2_mfi,inc_lim,acs2_mfi_lim)
 

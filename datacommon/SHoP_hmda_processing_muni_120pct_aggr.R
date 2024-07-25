@@ -20,13 +20,13 @@ library(mapcdatakeys)
 
 # muni version draft for Statewide Housing Plan request
 # the main functions were pulled from the script by Aseem Deodhar: hmda_processing_ct_ma_aggr.R
-# lberman 2024-06-25
+# lberman 2024-06-25 rev 2014-07-25
 
 # -------------------------------------------------------------------------
 
 
 ## 0. set variables
-hmda_yr <- 2022
+hmda_yr <- 2021
 
 # note:  mapcdatakeys have not been updated after 2021 
 hmda_yr_fix <- if(hmda_yr < 2021) {
@@ -50,6 +50,8 @@ cosub_col <- if(hmda_yr < 2020) {
 import_path = "K:/DataServices/Datasets/Housing/HMDA/Data/Raw/Tabular/"
 
 exp_path = "K:/DataServices/Datasets/Housing/HMDA/Data/Modified/Tabular/"
+
+test_path = "H:/0_PROJECTS/2024_statewide_housing_plan/output/"
 
 # 0.4  Database Connection -----------------------------------------------------
 # for VM
@@ -102,16 +104,15 @@ join_keys <- if(hmda_yr < 2020) {
 keys_import <- join_keys %>% 
   filter(!is.na(muni_id))
 
-# 2.5  why are there 81,551 rows in 2021 raw data  that are dropped?
+# 2.5  check rows to be dropped 
 missing_muni_id <- join_keys %>% 
   filter(is.na(muni_id))
-# clearly some ids do not begin with 25, not in MA, but other cases of ct ids not in ct20 keys...
 
-# 2.6  looking at the distinct ct20_id in hmda data
+# 2.6 of these, which have distinct tract ids?
 x <- distinct(missing_muni_id, census_tract, .keep_all = TRUE)
-# there are 151 of the ct20_id that don't exist in our keys at all (eg 25021442102, 25015820204)
-# method to resolve the missing IDs unknown, ignoring the 81,551 observations for 2021 with GEOIDs that don't match our keys
-# note:  this has been the case all along, just pointing it out
+
+# 2.7 export for research
+write_csv(x, paste0(test_path,"/",hmda_yr,"_non_join_census_tracts.csv"))
 
 rm(missing_muni_id,x)
 
@@ -187,7 +188,7 @@ ck_muni <- clean_import %>%
 rm(raw_muni,ck_muni)
 
 
-# 4. checking acs via tidycensus and join on cosub_5y column
+# 4. check tidycensus join to cosub_5y and compare mfi sources
 # 4.1 join 
 ck_acs2 <- get_acs(geography = "tract", 
                    state = 25,
@@ -197,8 +198,6 @@ ck_acs2 <- get_acs(geography = "tract",
                    cache_table = TRUE) %>% 
   select(GEOID, estimate) %>% rename(cosub_id = GEOID, amfi = estimate) %>% 
   left_join(.,
-            #            broken section for 2022, using a df trim_keys instead
-            #            mapcdatakeys::census_muni_keys %>%
             dist_keys %>% 
               select(c(muni_id,muni_name,c(!! cosub_col)),
 #               select(c(muni_id,muni_name,ct20_id),  change hard code ct20 to vary by year ct10/ct20
@@ -246,7 +245,7 @@ compare_muni_mfi <- acs2_mfi_lim %>%
   arrange(muni_id)
 
 ## 4.6 export to csv
-test_path = "H:/0_PROJECTS/2024_statewide_housing_plan/output/"
+
 write_csv(compare_muni_mfi, paste0(test_path,"/",hmda_yr,"_compare_fmi_three_sources.csv"))
 
 rm(ck_acs2,acs2_mfi,inc_lim,acs2_mfi_lim)
@@ -407,7 +406,7 @@ hmda_mortgage_denials_by_race_120pct_aggr <-
 
 ## 8  Binding 351 + 53 = 404 --------------------------------------------------
 
-## 8.1 keeping the na and mlt columns (not part of db schema)
+## 8.1 keeping the na and mlt columns (not part of db schema)  (SWITCH TO KEEP COLS: na, mlt)
 # hmda_mortgage_denials_by_race_120pct %>% 
 #   bind_rows(., hmda_mortgage_denials_by_race_120pct_aggr) %>% 
 #   write_csv(paste0(exp_path,"/output/",hmda_yr,"/hmda_mortgage_denials_by_race_120pct_WITH_NA_MLT.csv"))

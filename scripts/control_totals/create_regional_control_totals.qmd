@@ -198,7 +198,9 @@ gq.clean <- function(df){
     mutate(
       label = str_replace(label,"\\s*\\([^\\)]+\\)",""),
       label = str_replace(label, "Total_!!Male!!",""),
-      label = str_replace(label, "Total_!!Female!!","")
+      label = str_replace(label, "Total_!!Female!!",""),
+      label = str_replace(label, "Total_:!!Male:!!",""),
+      label = str_replace(label, "Total_:!!Female:!!","")
     )
 }
 ```
@@ -248,6 +250,7 @@ rm(umdi_pop)
 # Population
 
 ```{r}
+#===============================================================================
 #Decennial 2010 Population
 #Creates a list of sex by age population variables to use in the API query
 pop.vars <- dec.vars(vars.dec10, "SEX BY AGE")
@@ -315,6 +318,7 @@ pop.10 <- pop.values |>
 #Remove dataframes no longer needed in the process.
 rm(pop.labels, pop.values, pop.vars)
 
+#===============================================================================
 #Decennial 2020 Population
 #Creates a list of sex by age population variables to use in the API query
 pop.vars <- dec.vars(vars.dec20, "SEX BY AGE FOR SELECTED AGE CATEGORIES")
@@ -386,6 +390,7 @@ gc()
 # Determine General Household Formation Rate (% of population in households)
 
 ```{r}
+#===============================================================================
 #Decennial 2010 Population in Households
 #Creates a list of sex by age population variables to use in the API query
 pa.vars <- dec.vars(vars.dec10, "SEX BY AGE FOR THE POPULATION IN HOUSEHOLDS")
@@ -453,6 +458,7 @@ hhpop.10 <- pa.values |>
 #Remove dataframes no longer needed in the process.
 rm(pa.labels, pa.values, pa.vars)
 
+#===============================================================================
 #Decennial 2020 Population in Households
 #Creates a list of sex by age population variables to use in the API query
 pa.vars <- dec.vars(vars.dec20, "SEX BY AGE FOR THE POPULATION IN HOUSEHOLDS")
@@ -568,8 +574,8 @@ gqpop.10 <- gq.values |>
       label == 'pop_Under_5_years' ~ '1',
       label == "pop_5_to_9_years" ~ '2',
       label == "pop_10_to_14_years" ~ '3',
-      label %in% c("pop_15_to_17_years","pop_18_and_19_years") ~ '4',
-      label %in% c("pop_20_years","pop_21_years","pop_22_to_24_years") ~ '5',
+      label == "pop_15_to_19_years" ~ '4',
+      label == "pop_20_to_24_years" ~ '5',
       label == "pop_25_to_29_years" ~ '6',
       label == "pop_30_to_34_years" ~ '7',
       label == "pop_35_to_39_years" ~ '8',
@@ -577,8 +583,8 @@ gqpop.10 <- gq.values |>
       label == "pop_45_to_49_years" ~ '10',
       label == "pop_50_to_54_years" ~ '11',
       label == "pop_55_to_59_years" ~ '12',
-      label %in% c("pop_60_and_61_years","pop_62_to_64_years") ~ '13',
-      label %in% c("pop_65_and_66_years","pop_67_to_69_years") ~ '14',
+      label == "pop_60_to_64_years" ~ '13',
+      label == "pop_65_to_69_years" ~ '14',
       label == "pop_70_to_74_years" ~ '15',
       label == "pop_75_to_79_years" ~ '16',
       label == "pop_80_to_84_years" ~ '17',
@@ -636,8 +642,8 @@ gqpop.20 <- gq.values |>
       label == 'pop_Under_5_years' ~ '1',
       label == "pop_5_to_9_years" ~ '2',
       label == "pop_10_to_14_years" ~ '3',
-      label %in% c("pop_15_to_17_years","pop_18_and_19_years") ~ '4',
-      label %in% c("pop_20_years","pop_21_years","pop_22_to_24_years") ~ '5',
+      label == "pop_15_to_19_years" ~ '4',
+      label == "pop_20_to_24_years" ~ '5',
       label == "pop_25_to_29_years" ~ '6',
       label == "pop_30_to_34_years" ~ '7',
       label == "pop_35_to_39_years" ~ '8',
@@ -645,8 +651,8 @@ gqpop.20 <- gq.values |>
       label == "pop_45_to_49_years" ~ '10',
       label == "pop_50_to_54_years" ~ '11',
       label == "pop_55_to_59_years" ~ '12',
-      label %in% c("pop_60_and_61_years","pop_62_to_64_years") ~ '13',
-      label %in% c("pop_65_and_66_years","pop_67_to_69_years") ~ '14',
+      label == "pop_60_to_64_years" ~ '13',
+      label == "pop_65_to_69_years" ~ '14',
       label == "pop_70_to_74_years" ~ '15',
       label == "pop_75_to_79_years" ~ '16',
       label == "pop_80_to_84_years" ~ '17',
@@ -708,8 +714,8 @@ cu.gqpop.10 <- gq.values |>
       label == 'pop_Under_5_years' ~ '1',
       label == "pop_5_to_9_years" ~ '2',
       label == "pop_10_to_14_years" ~ '3',
-      label %in% c("pop_15_to_17_years","pop_18_and_19_years") ~ '4',
-      label %in% c("pop_20_years","pop_21_years","pop_22_to_24_years") ~ '5',
+      label == "pop_15_to_19_years" ~ '4',
+      label == "pop_20_to_24_years" ~ '5',
       label == "pop_25_to_29_years" ~ '6',
       label == "pop_30_to_34_years" ~ '7',
       label == "pop_35_to_39_years" ~ '8',
@@ -717,8 +723,8 @@ cu.gqpop.10 <- gq.values |>
       label == "pop_45_to_49_years" ~ '10',
       label == "pop_50_to_54_years" ~ '11',
       label == "pop_55_to_59_years" ~ '12',
-      label %in% c("pop_60_and_61_years","pop_62_to_64_years") ~ '13',
-      label %in% c("pop_65_and_66_years","pop_67_to_69_years") ~ '14',
+      label == "pop_60_to_64_years" ~ '13',
+      label == "pop_65_to_69_years" ~ '14',
       label == "pop_70_to_74_years" ~ '15',
       label == "pop_75_to_79_years" ~ '16',
       label == "pop_80_to_84_years" ~ '17',
@@ -773,11 +779,8 @@ cu.gqpop.20 <- gq.values |>
   #Change the Census age category levels to match the ageCAT6 labels
   mutate(
     ageCAT6 = case_when(
-      label == 'pop_Under_5_years' ~ '1',
-      label == "pop_5_to_9_years" ~ '2',
-      label == "pop_10_to_14_years" ~ '3',
-      label %in% c("pop_15_to_17_years","pop_18_and_19_years") ~ '4',
-      label %in% c("pop_20_years","pop_21_years","pop_22_to_24_years") ~ '5',
+      label == "pop_Under_20_years" ~ '4',
+      label == "pop_20_to_24_years" ~ '5',
       label == "pop_25_to_29_years" ~ '6',
       label == "pop_30_to_34_years" ~ '7',
       label == "pop_35_to_39_years" ~ '8',
@@ -785,12 +788,8 @@ cu.gqpop.20 <- gq.values |>
       label == "pop_45_to_49_years" ~ '10',
       label == "pop_50_to_54_years" ~ '11',
       label == "pop_55_to_59_years" ~ '12',
-      label %in% c("pop_60_and_61_years","pop_62_to_64_years") ~ '13',
-      label %in% c("pop_65_and_66_years","pop_67_to_69_years") ~ '14',
-      label == "pop_70_to_74_years" ~ '15',
-      label == "pop_75_to_79_years" ~ '16',
-      label == "pop_80_to_84_years" ~ '17',
-      label == "pop_85_years_and_over" ~ '18'
+      label == "pop_60_to_64_years" ~ '13',
+      label == "pop_65_and_over" ~ '14'
     )
   ) |> 
   filter(!is.na(ageCAT6)) |>  
@@ -825,6 +824,26 @@ gc()
 # Univerity/College Housing 
 
 ```{r}
+#Join the total GQ Population and University/College GQ Population
+gqpop.df <- purrr::reduce(
+  list(gqpop.10, gqpop.20, cu.gqpop.10, cu.gqpop.20),
+  dplyr::left_join, by = c("county_id", "Sex", "ageCAT6")
+  ) |> 
+  mutate(across(everything(), ~ replace_na(., 0))) |> 
+  #Rename variables
+  dplyr::rename(
+    GQPopulation.10 = GQPopulation.x,
+    GQPopulation.20 = GQPopulation.y,
+    CU.GQPopulation.10 = CU.GQPopulation.x,
+    CU.GQPopulation.20 = CU.GQPopulation.y
+  ) |> 
+  rowwise() |> 
+  #Calculate the proportion of the gqpopulation living in university or college
+  #housing by age and sex for both 2010 and 2020
+  mutate(
+    pct_CU.GQPopulation.10 = CU.GQPopulation.10/GQPopulation.10,
+    pct_CU.GQPopulation.20 = CU.GQPopulation.20/GQPopulation.20
+  )
 ```
 
 # QC Check - Compare the calculated GQ Population to the GQ Population at the county

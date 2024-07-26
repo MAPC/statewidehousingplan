@@ -683,26 +683,153 @@ gc()
 
 # Group Quarters Population - University/College Students
 ```{r}
-#2010
+#===============================================================================
+#Group Quarters Population - College and University Student Housing 2020
+#Creates a list of sex by age group quarters population variables to use in the API query
 gq.vars <- dec.vars(vars.dec10, "GROUP QUARTERS POPULATION IN COLLEGE/UNIVERSITY STUDENT HOUSING BY SEX BY AGE")
 
+#Assigns appropriate labels to the Decennial Census variables
 gq.labels <- dec.labels("2010", "GROUP QUARTERS POPULATION IN COLLEGE/UNIVERSITY STUDENT HOUSING BY SEX BY AGE") |> gq.clean()
 
+#Queries the Census API via {tidycensus} to retrieve data about the group 
+#quarters population in college or university housing
 gq.values <- decennial_call(gq.vars, geog = "county", 2010)
+
+#Clean the 2020 Group Quarters Population data
+cu.gqpop.10 <- gq.values |> 
+  filter(GEOID %in% GEOID.cn.10$GEOID) |> 
+  right_join(
+    gq.labels,
+    by = c("variable" = "name")
+  )|> 
+  #Change the Census age category levels to match the ageCAT6 labels
+  mutate(
+    ageCAT6 = case_when(
+      label == 'pop_Under_5_years' ~ '1',
+      label == "pop_5_to_9_years" ~ '2',
+      label == "pop_10_to_14_years" ~ '3',
+      label %in% c("pop_15_to_17_years","pop_18_and_19_years") ~ '4',
+      label %in% c("pop_20_years","pop_21_years","pop_22_to_24_years") ~ '5',
+      label == "pop_25_to_29_years" ~ '6',
+      label == "pop_30_to_34_years" ~ '7',
+      label == "pop_35_to_39_years" ~ '8',
+      label == "pop_40_to_44_years" ~ '9',
+      label == "pop_45_to_49_years" ~ '10',
+      label == "pop_50_to_54_years" ~ '11',
+      label == "pop_55_to_59_years" ~ '12',
+      label %in% c("pop_60_and_61_years","pop_62_to_64_years") ~ '13',
+      label %in% c("pop_65_and_66_years","pop_67_to_69_years") ~ '14',
+      label == "pop_70_to_74_years" ~ '15',
+      label == "pop_75_to_79_years" ~ '16',
+      label == "pop_80_to_84_years" ~ '17',
+      label == "pop_85_years_and_over" ~ '18'
+    )
+  ) |> 
+  filter(!is.na(ageCAT6)) |>  
+  right_join(
+    GEOID.cn.10,
+    by = c('GEOID')
+  ) |>  
+  mutate(
+    county_id = as.character(county_id)
+  ) |> 
+  dplyr::rename(
+    CU.GQPopulation = value,
+    Sex = sex
+  ) |>  
+  select(county_id, Sex, ageCAT6, CU.GQPopulation) |>  
+  group_by(
+    county_id,
+    Sex,
+    ageCAT6
+  ) |> 
+  summarise(
+    CU.GQPopulation = sum(CU.GQPopulation)
+  ) |>  
+  ungroup()
 
 #Remove dataframes no longer needed in the process.
 rm(gq.labels, gq.values, gq.vars)
 
-#2020
+#===============================================================================
+#Group Quarters Population - College and University Student Housing 2020
+#Creates a list of sex by age group quarters population variables to use in the API query
 gq.vars <- dec.vars(vars.dec20, "GROUP QUARTERS POPULATION IN COLLEGE/UNIVERSITY STUDENT HOUSING BY SEX BY AGE")
 
+#Assigns appropriate labels to the Decennial Census variables
 gq.labels <- dec.labels("2020", "GROUP QUARTERS POPULATION IN COLLEGE/UNIVERSITY STUDENT HOUSING BY SEX BY AGE") |> gq.clean()
 
+#Queries the Census API via {tidycensus} to retrieve data about the group 
+#quarters population in college or university housing
 gq.values <- decennial_call(gq.vars, geog = "county", 2020)
+
+#Clean the 2020 Group Quarters Population data
+cu.gqpop.20 <- gq.values |> 
+  filter(GEOID %in% GEOID.cn.20$GEOID) |> 
+  right_join(
+    gq.labels,
+    by = c("variable" = "name")
+  )|> 
+  #Change the Census age category levels to match the ageCAT6 labels
+  mutate(
+    ageCAT6 = case_when(
+      label == 'pop_Under_5_years' ~ '1',
+      label == "pop_5_to_9_years" ~ '2',
+      label == "pop_10_to_14_years" ~ '3',
+      label %in% c("pop_15_to_17_years","pop_18_and_19_years") ~ '4',
+      label %in% c("pop_20_years","pop_21_years","pop_22_to_24_years") ~ '5',
+      label == "pop_25_to_29_years" ~ '6',
+      label == "pop_30_to_34_years" ~ '7',
+      label == "pop_35_to_39_years" ~ '8',
+      label == "pop_40_to_44_years" ~ '9',
+      label == "pop_45_to_49_years" ~ '10',
+      label == "pop_50_to_54_years" ~ '11',
+      label == "pop_55_to_59_years" ~ '12',
+      label %in% c("pop_60_and_61_years","pop_62_to_64_years") ~ '13',
+      label %in% c("pop_65_and_66_years","pop_67_to_69_years") ~ '14',
+      label == "pop_70_to_74_years" ~ '15',
+      label == "pop_75_to_79_years" ~ '16',
+      label == "pop_80_to_84_years" ~ '17',
+      label == "pop_85_years_and_over" ~ '18'
+    )
+  ) |> 
+  filter(!is.na(ageCAT6)) |>  
+  right_join(
+    GEOID.cn.20,
+    by = c('GEOID')
+  ) |>  
+  mutate(
+    county_id = as.character(county_id)
+  ) |> 
+  dplyr::rename(
+    CU.GQPopulation = value,
+    Sex = sex
+  ) |>  
+  select(county_id, Sex, ageCAT6, CU.GQPopulation) |>  
+  group_by(
+    county_id,
+    Sex,
+    ageCAT6
+  ) |> 
+  summarise(
+    CU.GQPopulation = sum(CU.GQPopulation)
+  ) |>  
+  ungroup()
 
 #Remove dataframes no longer needed in the process.
 rm(gq.labels, gq.values, gq.vars)
 gc()
+```
+
+# Calculate the percentage of the group quarters population living in 
+# Univerity/College Housing 
+
+```{r}
+```
+
+# QC Check - Compare the calculated GQ Population to the GQ Population at the county
+# Level (by age by sex)
+```{r}
 ```
 
 # Calculate the Percentage of People in Households

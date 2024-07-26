@@ -844,11 +844,68 @@ gqpop.df <- purrr::reduce(
     pct_CU.GQPopulation.10 = CU.GQPopulation.10/GQPopulation.10,
     pct_CU.GQPopulation.20 = CU.GQPopulation.20/GQPopulation.20
   )
+
+#Remove intermediate dataframes
+rm(cu.gqpop.10, cu.gqpop.20)
+gc()
 ```
 
 # QC Check - Compare the calculated GQ Population to the GQ Population at the county
 # Level (by age by sex)
 ```{r}
+#Create a municipality to county crosswalk with {mapcdatakeys}
+muni_county.xw <- mapcdatakeys::all_muni_data_keys |> 
+  select(muni_id,muni_name,county_id,county) |> 
+  #Make all variables characters
+  mutate(across(everything(), ~as.character(.)))
+
+#Join the municipal level population data to the county to muni crosswalk
+qc.population.df <- left_join(
+  population.df,
+  muni_county.xw,
+  by = c("muni_id")
+) |> 
+  group_by(
+    county_id,
+    Sex,
+    ageCAT6
+  ) |> 
+  #Aggregate municipal level calculated group quarters to the county level
+  summarise(
+    calc.GQPopulation.10 = sum(GQPopulation.10),
+    calc.GQPopulation.20 = sum(GQPopulation.20)
+  ) |> 
+  ungroup()
+
+#Join gq population calculated in from the population - household population data
+#aggregated to county level to the gq population data pulled directly from the Census
+qc.population.df <- purrr::reduce(
+  list(qc.population.df, gqpop.10, gqpop.20),
+  dplyr::left_join, by = c("county_id", "Sex", "ageCAT6")
+) |> 
+  dplyr::rename(
+    GQPopulation.10 = GQPopulation.x,
+    GQPopulation.20 = GQPopulation.y,
+  ) |> 
+  #Calculate the difference between the calculated gq population and the available gq population
+  mutate(
+    gq.check.10 = calc.GQPopulation.10 - GQPopulation.10,
+    gq.check.20 = calc.GQPopulation.20 - GQPopulation.20
+  )
+
+#Print terms to automatically tell the user if they have passed the QC check.
+if (sum(qc.population.df$gq.check.10 > 0)){
+  print("STOP! Please check 2010 Census data queries and Group Quarters population calculations.")
+} else{
+  print("PROCEED!")
+}
+
+if(sum(qc.population.df$gq.check.20 > 0)){
+  print("STOP! Please check 2020 Census data queries and Group Quarters population calculations.")
+} else{
+  print("PROCEED!")
+}
+
 ```
 
 # Calculate the Percentage of People in Households

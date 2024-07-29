@@ -41,12 +41,18 @@ set.seed(351)
 keys.mpo <- mapcdatakeys::all_muni_data_keys |> 
   select(
     muni_id, muni_name, mpo
+  ) |> 
+  mutate(
+    muni_id = as.character(muni_id)
   )
 
 #RPA Data Keys
 keys.rpa <- mapcdatakeys::all_muni_data_keys |> 
   select(
     muni_id, muni_name, rpa_acr
+  ) |> 
+  mutate(
+    muni_id = as.character(muni_id)
   )
 
 #Municipal GEOIDs for 2010 Decennial Census
@@ -223,7 +229,9 @@ umdi_pop<- fread(paste0(root, "UMDI/UMDI_V2024_MCD_Age_Sex_detail_2010-2050_a.cs
   #Change the data type of both "year" and "pop" variables
   mutate(
     year = as.numeric(year),
-    pop=as.numeric(gsub(',','',pop))
+    pop = as.numeric(gsub(',','',pop)),
+    muni_id = as.character(muni_id),
+    ageCAT6 = as.character(ageCAT6)
   )
 
 #RPA Aggregations (MAPC101)
@@ -529,6 +537,7 @@ gc()
 ```
 # Join 2010 and 2020 Population and Household Population data 
 ```{r}
+#Join Census Population and Household Population 
 population.df <- purrr::reduce(
   list(pop.10, pop.20, hhpop.10,hhpop.20),
   dplyr::left_join, by = c("muni_id", "Sex", "ageCAT6")
@@ -540,6 +549,7 @@ population.df <- purrr::reduce(
     HHPopulation.20 = HHPopulation.y
   ) |> 
   rowwise() |> 
+  #Calculate Group Quarters population using Census Pop and HHpop data.
   mutate(
     GQPopulation.10 = Population.10 - HHPopulation.10,
     GQPopulation.20 = Population.20 - HHPopulation.20
@@ -904,6 +914,94 @@ if(sum(qc.population.df$gq.check.20 > 0)){
   print("STOP! Please check 2020 Census data queries and Group Quarters population calculations.")
 } else{
   print("PROCEED!")
+}
+
+```
+
+# QC Check - Compare Census Population by Age by Sex to Projected Population data
+```{r}
+#Projections 
+proj.pop.10 <- umdi.pop.MAPC101 |> 
+  filter(year == 2010) |> 
+  mutate(
+    muni_id = as.character(muni_id),
+    ageCAT6 = as.character(ageCAT6)
+  ) |> 
+  select(
+    muni_id,
+    Sex,
+    ageCAT6,
+    pop
+  )
+
+proj.pop.20 <- umdi.pop.MAPC101 |> 
+  filter(year == 2020) |> 
+  mutate(
+    muni_id = as.character(muni_id),
+    ageCAT6 = as.character(ageCAT6)
+  ) |> 
+  select(
+    muni_id,
+    Sex,
+    ageCAT6,
+    pop
+  )
+
+#Census
+pop.10 <- population.df |> 
+  select(
+    muni_id,
+    Sex,
+    ageCAT6,
+    Population.10
+  )
+  
+pop.20 <- population.df |> 
+  select(
+    muni_id,
+    Sex,
+    ageCAT6,
+    Population.20
+  )
+
+#QC Check - 2010 Population
+qc.population.10 <- left_join(
+  pop.10,
+  proj.pop.10,
+  by = c("muni_id", "Sex", "ageCAT6")
+) |> 
+  mutate(
+    qc.check = Population.10 - pop
+  )
+
+#Print terms to automatically tell the user if they have passed the QC check.
+if (sum(qc.population.10$qc.check > 0)){
+  print("STOP! Please check 2010 Census data queries and UMDI Population Projections data.")
+} else{
+  print("PROCEED!")
+  
+  #Remove QC dataframes
+  rm(qc.population.10, pop.10, proj.pop.10)
+}
+
+#QC Check - 2020 Population
+qc.population.20 <- left_join(
+  pop.20,
+  proj.pop.20,
+  by = c("muni_id", "Sex", "ageCAT6")
+) |> 
+  mutate(
+    qc.check = Population.20 - pop
+  )
+
+#Print terms to automatically tell the user if they have passed the QC check
+if(sum(qc.population.20$qc.check > 0)){
+  print("STOP! Please check 2020 Census data queries and UMDI Population Projections data.")
+} else{
+  print("PROCEED!")
+  
+  #Remove QC dataframes
+  rm(qc.population.20, pop.20, proj.pop.20)
 }
 
 ```

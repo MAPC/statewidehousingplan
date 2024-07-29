@@ -251,8 +251,6 @@ umdi.pop.MAPC97 <- left_join(
 #Remove topline umdi population projections
 rm(umdi_pop)
 
-#TODO: 
-#1. Population checks using Census data for QA/QC?
 ```
 
 # Population
@@ -914,6 +912,10 @@ if(sum(qc.population.df$gq.check.20 > 0)){
   print("STOP! Please check 2020 Census data queries and Group Quarters population calculations.")
 } else{
   print("PROCEED!")
+  
+  #Remove unneeded dataframes
+  rm(qc.population.df, muni_county.xw, gqpop.10, gqpop.20, gqpop.df, hhpop.10, hhpop.20,
+     pop.10, pop.20)
 }
 
 ```

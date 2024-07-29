@@ -26,9 +26,9 @@ library(mapcdatakeys)
 
 
 ## 0. set variables
-hmda_yr <- 2021
+hmda_yr <- 2020
 
-# note:  mapcdatakeys have not been updated after 2021 
+# 0.1 note:  mapcdatakeys have not been updated after 2021 
 hmda_yr_fix <- if(hmda_yr < 2021) {
   hmda_yr
 } else {
@@ -77,9 +77,11 @@ keys <- if(hmda_yr < 2020) {
 # 2.1 trim to distinct ct id
 
 dist_keys <- if(hmda_yr < 2020) {
-  distinct(keys, ct10_id, .keep_all = TRUE)
+  distinct(keys, ct10_id, .keep_all = TRUE) %>% 
+  mutate(cosub_id = ct10_id)
 } else {
-  distinct(keys, ct20_id, .keep_all = TRUE)
+  distinct(keys, ct20_id, .keep_all = TRUE) %>% 
+  mutate(cosub_id = ct20_id)
 } 
 
 # note there are only 1619 ct20_id rows in keys
@@ -90,12 +92,12 @@ dist_keys <- if(hmda_yr < 2020) {
 join_keys <- if(hmda_yr < 2020) {
   raw_import %>%
     left_join(.,
-              dist_keys %>% select(ct10_id,muni_id,muni_name,county),
+              dist_keys %>% select(ct10_id,muni_id,muni_name,county,cosub_id),
               by = c('census_tract' = 'ct10_id')) 
 } else {
   raw_import %>%
     left_join(.,
-              dist_keys %>% select(ct20_id,muni_id,muni_name,county),
+              dist_keys %>% select(ct20_id,muni_id,muni_name,county,cosub_id),
               by = c('census_tract' = 'ct20_id')) 
 } 
 
@@ -188,97 +190,50 @@ ck_muni <- clean_import %>%
 rm(raw_muni,ck_muni)
 
 
-# 4. check tidycensus join to cosub_5y and compare mfi sources
-# 4.1 join 
-ck_acs2 <- get_acs(geography = "tract", 
-                   state = 25,
-                   survey = "acs5", 
-                   year = hmda_yr, 
-                   table = 'B19113', 
-                   cache_table = TRUE) %>% 
-  select(GEOID, estimate) %>% rename(cosub_id = GEOID, amfi = estimate) %>% 
-  left_join(.,
-            dist_keys %>% 
-              select(c(muni_id,muni_name,c(!! cosub_col)),
-#               select(c(muni_id,muni_name,ct20_id),  change hard code ct20 to vary by year ct10/ct20
-                       by = c('cosub_id' = !! cosub_col)
-                     #                     c(ends_with(str_sub(hmda_yr, start = 3, end = 4)) & !contains("cosub_cn"))
-              ) %>% rename(cosub_id = 3) %>% mutate(across(.cols = c(cosub_id, muni_id),
-                                                           .fns = function(x){as.character(x)}))) %>%
-  filter(!is.na(muni_id)) %>% arrange(muni_id) #%>% arrange(race_ethnicity) 
+# 4. get HUD Income limits 
 
-# 4.2 rename the fields joined from B19113
-ck_acs2 <- ck_acs2 %>% 
-  mutate(ck_cosub = as.numeric(cosub_id)) %>%
-  mutate(ck_amfi = amfi) %>%
-  mutate(ck_muni_id = muni_id) %>%
-  mutate(ck_muni_nm = muni_name) %>%
-  select(-c(cosub_id,amfi,muni_id,muni_name))
-
-# 4.3 compare ck_amfi from B19113 != ffiec_msa_md_median_family_income
-acs2_mfi <- clean_import %>%
-    left_join(.,
-              ck_acs2 %>% select(ck_cosub,ck_amfi,ck_muni_id,ck_muni_nm),
-              by = c('census_tract' = 'ck_cosub')) 
-  
-# 4.4 join HUD income limits 
-inc_lim <- dbGetQuery(con_sdevm, "SELECT * FROM tabular.hous_section8_income_limits_by_year_m WHERE fy_year = 2022") %>% 
+# 4.1 retrieve by year from sdvm
+inc_lim <- dbGetQuery(con_sdevm, paste0("SELECT * FROM tabular.hous_section8_income_limits_by_year_m WHERE fy_year = 2020")) %>% 
+#inc_lim <- dbGetQuery(con_sdevm, paste0("SELECT * FROM tabular.hous_section8_income_limits_by_year_m WHERE fy_year = ",hmda_yr,"\"")) %>% 
   select(c(muni_id,municipal,median)) %>% 
-  mutate(lim_muni_id = muni_id) %>% 
-  mutate(lim_muni_nm = municipal) %>% 
-  mutate(lim_median = median) %>% 
+  mutate(hud_muni_id = muni_id) %>% 
+  mutate(hud_muni_nm = municipal) %>% 
+  mutate(hud_median = median) %>% 
   select(-c(muni_id,municipal,median))
 
-acs2_mfi_lim <- acs2_mfi%>%
+mfi_import <- clean_import %>%
   left_join(.,
-            inc_lim %>% select(lim_muni_id,lim_muni_nm,lim_median),
-            by = c('muni_id' = 'lim_muni_id')) 
+            inc_lim %>% select(hud_muni_id,hud_muni_nm,hud_median),
+            by = c('muni_id' = 'hud_muni_id')) %>% 
+            select(-c(hud_muni_nm))        
 
-# 4.5 compare all three median values (note: amfi is based on tract granularity)
-acs2_mfi_lim <- acs2_mfi_lim %>% 
-  mutate(ffiec_mfi = ffiec_msa_md_median_family_income) %>% 
-  arrange(census_tract)
+#rm(inc_lim,keys_import,raw_import,keys,join_keys)
 
-compare_muni_mfi <- acs2_mfi_lim %>% 
-  select(c(activity_year,census_tract,muni_id,muni_name,ffiec_mfi,ck_amfi,lim_median)) %>% 
-  distinct(census_tract, .keep_all = TRUE) %>%
-  arrange(muni_id)
 
-## 4.6 export to csv
 
-write_csv(compare_muni_mfi, paste0(test_path,"/",hmda_yr,"_compare_mfi_three_sources.csv"))
+## 5 analysis functions
 
-rm(ck_acs2,acs2_mfi,inc_lim,acs2_mfi_lim)
-
-####
 ##  note:  amfi [adjusted median family income] is joined from ACS B19113 for the data year
 ##  high_inc is based on (income/amfi * 100) where > 120 = 120% above the amfi
 
+## replacing b19113.amfi  with sdvm.hous_section8_income_limits_by_year_m.median = hud_median
+
+
 hmda_mu_func_1821 <- function(hmda_yr){
-  clean_import %>% 
-    #  read_csv(paste0("D:/Work/00_MAPC/hmda/",hmda_yr,"_hmda_ma.csv")) %>%
+  mfi_import %>% 
     select(activity_year,
            muni_id,
+           muni_name,
            race_ethnicity,
            action_taken,
-           income) %>%
+           income,
+           hud_median) %>%
     
-    left_join(., get_acs(geography = "county subdivision", state = 25,
-                         survey = "acs5", year = hmda_yr, table = 'B19113', cache_table = TRUE) %>%
-                select(GEOID, estimate) %>% rename(cosub_id = GEOID, amfi = estimate)  %>%
-
-                left_join(.,
-                          mapcdatakeys::census_muni_keys %>%
-                            select(muni_id, muni_name,
-                                   c(ends_with(str_sub(hmda_yr_fix, start = 3, end = 4)) & !contains("cosub_cn"))
-                            ) %>% rename(cosub_id = 3) %>% mutate(across(.cols = c(cosub_id, muni_id),
-                                                                         .fns = function(x){as.character(x)}))) %>%
-                mutate(muni_id = as.integer(muni_id)) %>% 
-                filter(!is.na(muni_id)) %>% arrange(muni_id)) %>% arrange(race_ethnicity) %>%
+    # removed left_join to tidycensus table B19113
 
     mutate(
       #calculate median income percent value
-      med_inc_pc = (income/amfi)*100,
+      med_inc_pc = (income/hud_median)*100,
       #create binary for high income applicants     
       high_inc = case_when(med_inc_pc >= 120 ~ 'hinc'),
       # create loan action_taken id
@@ -302,8 +257,8 @@ hmda_mu_func_1821 <- function(hmda_yr){
                 names_glue = "{race_ethnicity}_{.value}",
                 values_from = c(app, den, rate)) %>% 
     full_join(.,
-              #mapcdatakeys::all_muni_data_keys %>% select(muni_id, muni_name) %>% mutate(muni_id = as.character(muni_id))) %>% 
-              mapcdatakeys::all_muni_data_keys %>% select(muni_id, muni_name) %>% mutate(muni_id = muni_id)) %>% 
+              #mapcdatakeys::all_muni_data_keys %>% select(muni_id, muni_name) %>% mutate(muni_id = as.character(muni_id))) %>%
+              mapcdatakeys::all_muni_data_keys %>% select(muni_id, muni_name) %>% mutate(muni_id = muni_id)) %>%
     ungroup() %>% 
     mutate(year = hmda_yr) %>% 
     rename(municipal = muni_name)
@@ -312,29 +267,36 @@ hmda_mu_func_1821 <- function(hmda_yr){
 ## 5 set up muni aggregation levels function
 
 hmda_mu_aggr_func_1821 <- function(hmda_yr, grp_id, grp_name){
-  clean_import %>% 
-    #  read_csv(paste0("D:/Work/00_MAPC/hmda/",hmda_yr,"_hmda_ma.csv")) %>%
+  mfi_import %>% 
     select(activity_year,
            muni_id,
+           muni_name,
            race_ethnicity,
            action_taken,
-           income) %>% 
+           income,
+           hud_median,
+           cosub_id
+           ) %>% 
   
-    left_join(., get_acs(geography = "county subdivision", state = 25,
-                         survey = "acs5", year = hmda_yr, table = 'B19113', cache_table = TRUE) %>% 
-                select(GEOID, estimate) %>% rename(cosub_id = GEOID, amfi = estimate) %>% 
-                left_join(.,
-                          mapcdatakeys::census_muni_keys %>% 
-                            select(muni_id, muni_name, 
-                                   c(ends_with(str_sub(hmda_yr_fix, start = 3, end = 4)) & !contains("cosub_cn"))
-                            ) %>% rename(cosub_id = 3) %>% mutate(across(.cols = c(cosub_id, muni_id),
-                                                                         .fns = function(x){as.character(x)}))) %>% 
-                mutate(muni_id = as.integer(muni_id)) %>% 
-                filter(!is.na(muni_id)) %>% arrange(muni_id)) %>% arrange(race_ethnicity) %>%
+    # left_join(., get_acs(geography = "county subdivision", state = 25,
+    #                      survey = "acs5", year = hmda_yr, table = 'B19113', cache_table = TRUE) %>% 
+    #             select(GEOID, estimate) %>% rename(cosub_id = GEOID, amfi = estimate) %>% 
+    #             left_join(.,
+    #                       mapcdatakeys::census_muni_keys %>% 
+    #                         select(muni_id, muni_name, 
+    #                                c(ends_with(str_sub(hmda_yr_fix, start = 3, end = 4)) & !contains("cosub_cn"))
+    #                         ) %>% rename(cosub_id = 3) %>% mutate(across(.cols = c(cosub_id, muni_id),
+    #                                                                      .fns = function(x){as.character(x)}))) %>% 
+    #             mutate(muni_id = as.integer(muni_id)) %>% 
+    #             filter(!is.na(muni_id)) %>% arrange(muni_id)) %>% arrange(race_ethnicity) %>%
+
+    # left_join(.,
+    #           dist_keys %>% select(ct20_id,muni_id),
+    #           by = c('census_tract' = ct20_id)) %>%      
     
     mutate(
       #calculate median income percent value
-      med_inc_pc = (income/amfi)*100,
+      med_inc_pc = (income/hud_median)*100,
       #create binary for high income applicants     
       high_inc = case_when(med_inc_pc >= 120 ~ 'hinc'),
       # create loan action_taken id
@@ -378,8 +340,7 @@ hmda_mu_aggr_func_1821 <- function(hmda_yr, grp_id, grp_name){
 
 ## 6. run muni data function
 # Municipal ---------------------------------------------------------------
-hmda_mortgage_denials_by_race_120pct <- hmda_mu_func_1821(hmda_yr = hmda_yr)
-
+hmda_mortgage_denials_by_race_120pct_m <- hmda_mu_func_1821(hmda_yr = hmda_yr)
 
 ## 7. run aggregation function
 # Aggregations ---------
@@ -406,16 +367,9 @@ hmda_mortgage_denials_by_race_120pct_aggr <-
 
 ## 8  Binding 351 + 53 = 404 --------------------------------------------------
 
-## 8.1 keeping the na and mlt columns (not part of db schema)  (SWITCH TO KEEP COLS: na, mlt)
-# hmda_mortgage_denials_by_race_120pct %>% 
-#   bind_rows(., hmda_mortgage_denials_by_race_120pct_aggr) %>% 
-#   write_csv(paste0(exp_path,"/output/",hmda_yr,"/hmda_mortgage_denials_by_race_120pct_WITH_NA_MLT.csv"))
-
-## 8.2 bind the columns and trim to db schema
-hmda_mortgage_denials_by_race_120pct <- hmda_mortgage_denials_by_race_120pct %>% 
-  bind_rows(., hmda_mortgage_denials_by_race_120pct_aggr) %>% 
-  select(-c(mlt_app,na_app,mlt_den,na_den,mlt_rate,na_rate))
-
+## 8.1 keeping the na and mlt columns (not part of orig db schema)
+hmda_mortgage_denials_by_race_120pct <- hmda_mortgage_denials_by_race_120pct_m %>%
+   bind_rows(., hmda_mortgage_denials_by_race_120pct_aggr)
 
 ## 9 decimals fix rates before export
 df <- hmda_mortgage_denials_by_race_120pct 
@@ -427,7 +381,11 @@ df <- df %>%
   mutate(lat_rate = round(lat_rate, 2)) %>% 
   mutate(nav_rate = round(nav_rate, 2)) %>% 
   mutate(nhp_rate = round(nhp_rate, 2)) %>% 
-  mutate(whi_rate = round(whi_rate, 2))  
-
+  mutate(whi_rate = round(whi_rate, 2)) %>%  
+  mutate(mlt_rate = round(mlt_rate, 2)) %>% 
+  mutate(na_rate = round(na_rate, 2))
+  
 ## 10. export to csv
 write_csv(df, paste0(exp_path,"/",hmda_yr,"/hmda_mortgage_denials_by_race_120pct.csv"))
+
+#ck output at exp_path = "K:/DataServices/Datasets/Housing/HMDA/Data/Modified/Tabular/"

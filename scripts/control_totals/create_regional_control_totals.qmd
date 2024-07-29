@@ -1104,9 +1104,7 @@ population.MAPC97.df <- population.df |>
   )
 
 #===============================================================================
-#TODO:
-#1. Join 2010 and 2020 Household Population data to the UMDI MCD
-#level population projections.
+#MAPC101
 umdi.pop.MAPC101 <- left_join(
   umdi.pop.MAPC101,
   population.MAPC101.df,
@@ -1150,16 +1148,76 @@ umdi.pop.MAPC101 <- left_join(
       year != 2010 & ageCAT6 == "16" ~ pop*pct_pop.in.hhd.20,
       year != 2010 & ageCAT6 == "17" ~ pop*pct_pop.in.hhd.20,
       year != 2010 & ageCAT6 == "18" ~ pop*pct_pop.in.hhd.20,
+    ),
+    #Round the Household Population to the nearest whole number (person).
+    hhpop = round(hhpop, 0)
+  ) |> 
+  select(
+    -c(
+      GQPopulation.10,
+      GQPopulation.20,
+      pct_pop.in.hhd.10,
+      pct_pop.in.hhd.20
     )
   )
 
+#MAPC97
 umdi.pop.MAPC97 <- left_join(
   umdi.pop.MAPC97,
   population.MAPC97.df,
   by = c("mpo","Sex","ageCAT6")
-)
-#2. Calculate % of people in households in each age/sex group for each
-#decadal period. 
+) |> 
+  mutate(
+    hhpop = case_when(
+      year == 2010 & ageCAT6 == "1" ~ pop*pct_pop.in.hhd.10,
+      year == 2010 & ageCAT6 == "2" ~ pop*pct_pop.in.hhd.10,
+      year == 2010 & ageCAT6 == "3" ~ pop*pct_pop.in.hhd.10,
+      year == 2010 & ageCAT6 == "4" ~ pop - GQPopulation.10,
+      year == 2010 & ageCAT6 == "5" ~ pop - GQPopulation.10,
+      year == 2010 & ageCAT6 == "6" ~ pop*pct_pop.in.hhd.10,
+      year == 2010 & ageCAT6 == "7" ~ pop*pct_pop.in.hhd.10,
+      year == 2010 & ageCAT6 == "8" ~ pop*pct_pop.in.hhd.10,
+      year == 2010 & ageCAT6 == "9" ~ pop*pct_pop.in.hhd.10,
+      year == 2010 & ageCAT6 == "10" ~ pop*pct_pop.in.hhd.10,
+      year == 2010 & ageCAT6 == "11" ~ pop*pct_pop.in.hhd.10,
+      year == 2010 & ageCAT6 == "12" ~ pop*pct_pop.in.hhd.10,
+      year == 2010 & ageCAT6 == "13" ~ pop*pct_pop.in.hhd.10,
+      year == 2010 & ageCAT6 == "14" ~ pop*pct_pop.in.hhd.10,
+      year == 2010 & ageCAT6 == "15" ~ pop*pct_pop.in.hhd.10,
+      year == 2010 & ageCAT6 == "16" ~ pop*pct_pop.in.hhd.10,
+      year == 2010 & ageCAT6 == "17" ~ pop*pct_pop.in.hhd.10,
+      year == 2010 & ageCAT6 == "18" ~ pop*pct_pop.in.hhd.10,
+      year != 2010 & ageCAT6 == "1" ~ pop*pct_pop.in.hhd.20,
+      year != 2010 & ageCAT6 == "2" ~ pop*pct_pop.in.hhd.20,
+      year != 2010 & ageCAT6 == "3" ~ pop*pct_pop.in.hhd.20,
+      year != 2010 & ageCAT6 == "4" ~ pop - GQPopulation.20,
+      year != 2010 & ageCAT6 == "5" ~ pop - GQPopulation.20,
+      year != 2010 & ageCAT6 == "6" ~ pop*pct_pop.in.hhd.20,
+      year != 2010 & ageCAT6 == "7" ~ pop*pct_pop.in.hhd.20,
+      year != 2010 & ageCAT6 == "8" ~ pop*pct_pop.in.hhd.20,
+      year != 2010 & ageCAT6 == "9" ~ pop*pct_pop.in.hhd.20,
+      year != 2010 & ageCAT6 == "10" ~ pop*pct_pop.in.hhd.20,
+      year != 2010 & ageCAT6 == "11" ~ pop*pct_pop.in.hhd.20,
+      year != 2010 & ageCAT6 == "12" ~ pop*pct_pop.in.hhd.20,
+      year != 2010 & ageCAT6 == "13" ~ pop*pct_pop.in.hhd.20,
+      year != 2010 & ageCAT6 == "14" ~ pop*pct_pop.in.hhd.20,
+      year != 2010 & ageCAT6 == "15" ~ pop*pct_pop.in.hhd.20,
+      year != 2010 & ageCAT6 == "16" ~ pop*pct_pop.in.hhd.20,
+      year != 2010 & ageCAT6 == "17" ~ pop*pct_pop.in.hhd.20,
+      year != 2010 & ageCAT6 == "18" ~ pop*pct_pop.in.hhd.20,
+    ),
+    #Round the Household Population to the nearest whole number (person).
+    hhpop = round(hhpop, 0)
+  ) |> 
+  select(
+    -c(
+      GQPopulation.10,
+      GQPopulation.20,
+      pct_pop.in.hhd.10,
+      pct_pop.in.hhd.20
+    )
+  )
+
 ```
 
 

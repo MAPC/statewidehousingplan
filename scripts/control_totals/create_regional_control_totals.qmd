@@ -215,16 +215,18 @@ gq.clean <- function(df){
 
 ```{r}
 # Load in Household Population Projections
-umdi_pop<- fread(paste0(root, "UMDI/UMDI_V2024_MCD_Age_Sex_detail_2010-2050_a.csv")) |>
+umdi_pop <- read_excel(paste0(root, "UMDI/UMDI_V2024_H1_2024.07.19.xlsx"), sheet = 1) |>
+  filter(Model == "V2024_H1" & (Year %in% c(2010,2020,2030,2040,2050))) |> 
   #Select years of interest - decadal intervals
   #ageCAT6 refers to 5 year age groups (0-4, 5-9, 10-14, etc.)
-  select(muni_name,muni_id,ageCAT6,Sex,`2010`,`2020`,`2030`,`2040`,`2050`) |> 
-  #Pivot to a long dataframe
-  pivot_longer(5:9) |> 
+  select(MCD,`MCD Code`,`Age Group`,Sex, Year, Population) |> 
   #Rename variables
   dplyr::rename(
-    year = name,
-    pop = value
+    muni_name = MCD,
+    muni_id = `MCD Code`,
+    ageCAT6 = `Age Group`,
+    year = Year,
+    pop = Population
   ) |>  
   #Change the data type of both "year" and "pop" variables
   mutate(
@@ -239,14 +241,34 @@ umdi.pop.MAPC101 <- left_join(
   umdi_pop,
   keys.rpa,
   by = c("muni_id", "muni_name")
-)
+) |> 
+  group_by(
+    rpa_acr,
+    Sex,
+    ageCAT6,
+    year
+  ) |> 
+  summarise(
+    pop = sum(pop)
+  ) |> 
+  ungroup()
 
 #MPO Aggregations (MAPC97)
 umdi.pop.MAPC97 <- left_join(
   umdi_pop,
   keys.mpo,
   by = c("muni_id", "muni_name")
-)
+)|> 
+  group_by(
+    mpo,
+    Sex,
+    ageCAT6,
+    year
+  ) |> 
+  summarise(
+    pop = sum(pop)
+  ) |> 
+  ungroup()
 
 #Remove topline umdi population projections
 rm(umdi_pop)
@@ -1008,12 +1030,134 @@ if(sum(qc.population.20$qc.check > 0)){
 
 ```
 
-# Calculate the Percentage of People in Households
+# Calculate the Percentage of People in Households by RPA and MPO
 ```{r}
-hr.10
+#===============================================================================
+#Calculating MAPC101 Population in Households Rate by RPA, Sex, Age Category
+population.MAPC101.df <- population.df |> 
+  left_join(
+    keys.rpa,
+    by = c("muni_id")
+  ) |> 
+  group_by(
+    rpa_acr,
+    Sex,
+    ageCAT6
+  ) |> 
+  summarise(
+    Population.10 = sum(Population.10),
+    Population.20 = sum(Population.20),
+    HHPopulation.10 = sum(HHPopulation.10),
+    HHPopulation.20 = sum(HHPopulation.20),
+    GQPopulation.10 = sum(GQPopulation.10),
+    GQPopulation.20 = sum(GQPopulation.20)
+  ) |> 
+  ungroup() |> 
+  rowwise() |> 
+  mutate(
+    pct_pop.in.hhd.10 = HHPopulation.10/Population.10,
+    pct_pop.in.hhd.20 = HHPopulation.20/Population.20
+  ) |> 
+  select(
+    rpa_acr,
+    Sex,
+    ageCAT6,
+    GQPopulation.10,
+    GQPopulation.20,
+    pct_pop.in.hhd.10,
+    pct_pop.in.hhd.20
+  )
+
+#Calculating MAPC97 Population in Households Rate by RPA, Sex, Age Category
+population.MAPC97.df <- population.df |> 
+  left_join(
+    keys.mpo,
+    by = c("muni_id")
+  ) |> 
+  group_by(
+    mpo,
+    Sex,
+    ageCAT6
+  ) |> 
+  summarise(
+    Population.10 = sum(Population.10),
+    Population.20 = sum(Population.20),
+    HHPopulation.10 = sum(HHPopulation.10),
+    HHPopulation.20 = sum(HHPopulation.20),
+    GQPopulation.10 = sum(GQPopulation.10),
+    GQPopulation.20 = sum(GQPopulation.20)
+  ) |> 
+  ungroup() |> 
+  rowwise() |> 
+  mutate(
+    pct_pop.in.hhd.10 = HHPopulation.10/Population.10,
+    pct_pop.in.hhd.20 = HHPopulation.20/Population.20
+  ) |> 
+  select(
+    mpo,
+    Sex,
+    ageCAT6,
+    GQPopulation.10,
+    GQPopulation.20,
+    pct_pop.in.hhd.10,
+    pct_pop.in.hhd.20
+  )
+
+#===============================================================================
 #TODO:
 #1. Join 2010 and 2020 Household Population data to the UMDI MCD
 #level population projections.
+umdi.pop.MAPC101 <- left_join(
+  umdi.pop.MAPC101,
+  population.MAPC101.df,
+  by = c("rpa_acr","Sex","ageCAT6")
+) |> 
+  mutate(
+    hhpop = case_when(
+      year == 2010 & ageCAT6 == "1" ~ pop*pct_pop.in.hhd.10,
+      year == 2010 & ageCAT6 == "2" ~ pop*pct_pop.in.hhd.10,
+      year == 2010 & ageCAT6 == "3" ~ pop*pct_pop.in.hhd.10,
+      year == 2010 & ageCAT6 == "4" ~ pop - GQPopulation.10,
+      year == 2010 & ageCAT6 == "5" ~ pop - GQPopulation.10,
+      year == 2010 & ageCAT6 == "6" ~ pop*pct_pop.in.hhd.10,
+      year == 2010 & ageCAT6 == "7" ~ pop*pct_pop.in.hhd.10,
+      year == 2010 & ageCAT6 == "8" ~ pop*pct_pop.in.hhd.10,
+      year == 2010 & ageCAT6 == "9" ~ pop*pct_pop.in.hhd.10,
+      year == 2010 & ageCAT6 == "10" ~ pop*pct_pop.in.hhd.10,
+      year == 2010 & ageCAT6 == "11" ~ pop*pct_pop.in.hhd.10,
+      year == 2010 & ageCAT6 == "12" ~ pop*pct_pop.in.hhd.10,
+      year == 2010 & ageCAT6 == "13" ~ pop*pct_pop.in.hhd.10,
+      year == 2010 & ageCAT6 == "14" ~ pop*pct_pop.in.hhd.10,
+      year == 2010 & ageCAT6 == "15" ~ pop*pct_pop.in.hhd.10,
+      year == 2010 & ageCAT6 == "16" ~ pop*pct_pop.in.hhd.10,
+      year == 2010 & ageCAT6 == "17" ~ pop*pct_pop.in.hhd.10,
+      year == 2010 & ageCAT6 == "18" ~ pop*pct_pop.in.hhd.10,
+      year != 2010 & ageCAT6 == "1" ~ pop*pct_pop.in.hhd.20,
+      year != 2010 & ageCAT6 == "2" ~ pop*pct_pop.in.hhd.20,
+      year != 2010 & ageCAT6 == "3" ~ pop*pct_pop.in.hhd.20,
+      year != 2010 & ageCAT6 == "4" ~ pop - GQPopulation.20,
+      year != 2010 & ageCAT6 == "5" ~ pop - GQPopulation.20,
+      year != 2010 & ageCAT6 == "6" ~ pop*pct_pop.in.hhd.20,
+      year != 2010 & ageCAT6 == "7" ~ pop*pct_pop.in.hhd.20,
+      year != 2010 & ageCAT6 == "8" ~ pop*pct_pop.in.hhd.20,
+      year != 2010 & ageCAT6 == "9" ~ pop*pct_pop.in.hhd.20,
+      year != 2010 & ageCAT6 == "10" ~ pop*pct_pop.in.hhd.20,
+      year != 2010 & ageCAT6 == "11" ~ pop*pct_pop.in.hhd.20,
+      year != 2010 & ageCAT6 == "12" ~ pop*pct_pop.in.hhd.20,
+      year != 2010 & ageCAT6 == "13" ~ pop*pct_pop.in.hhd.20,
+      year != 2010 & ageCAT6 == "14" ~ pop*pct_pop.in.hhd.20,
+      year != 2010 & ageCAT6 == "15" ~ pop*pct_pop.in.hhd.20,
+      year != 2010 & ageCAT6 == "16" ~ pop*pct_pop.in.hhd.20,
+      year != 2010 & ageCAT6 == "17" ~ pop*pct_pop.in.hhd.20,
+      year != 2010 & ageCAT6 == "18" ~ pop*pct_pop.in.hhd.20,
+    )
+  )
+
+umdi.pop.MAPC97 <- left_join(
+  umdi.pop.MAPC97,
+  population.MAPC97.df,
+  by = c("mpo","Sex","ageCAT6")
+)
 #2. Calculate % of people in households in each age/sex group for each
 #decadal period. 
 ```

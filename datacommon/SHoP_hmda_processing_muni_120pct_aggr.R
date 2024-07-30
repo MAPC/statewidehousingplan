@@ -63,7 +63,7 @@ raw_import <- read_csv(paste0(import_path,hmda_yr,"/hmda_ma_",hmda_yr,".csv"))
 ## 2. get data keys xw for the year
 # see: https://github.com/MAPC/mapcdatakeys/blob/main/census_geog_keys.md
 
-keys <- if(hmda_yr < 2022) {
+keys <- if(hmda_yr < 2022) { #hmda data uses 2010 census tracts through 2021
   mapcdatakeys::geog_xw_2010  
 } else {
   mapcdatakeys::geog_xw_2020  

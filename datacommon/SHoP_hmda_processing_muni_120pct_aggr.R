@@ -27,25 +27,15 @@ library(mapcdatakeys)
 
 
 ## 0. set variables
-hmda_yr <- 2020
-
-# 0.1 note:  mapcdatakeys have not been updated after 2021 
-hmda_yr_fix <- if(hmda_yr < 2020) {
-  hmda_yr
-} else if(hmda_yr == 2020 ) {
-  2019 
-} else {
-  2021 
-}
+hmda_yr <- 2021
 
 
 # 0.2 derive year for keys
 cosub_yr <- str_sub(hmda_yr, -2)
 
-cosub_col <- if(hmda_yr < 2020) {
+# note census tract IDs for 2020 were not applied until 2022
+cosub_col <- if(hmda_yr < 2022) {
   "ct10_id"
-} else if(hmda_yr == 2020) {
-  "ct10_id"  
 } else {
   "ct20_id"  
 } 
@@ -73,9 +63,7 @@ raw_import <- read_csv(paste0(import_path,hmda_yr,"/hmda_ma_",hmda_yr,".csv"))
 ## 2. get data keys xw for the year
 # see: https://github.com/MAPC/mapcdatakeys/blob/main/census_geog_keys.md
 
-keys <- if(hmda_yr < 2021) {
-  mapcdatakeys::geog_xw_2010  
-} else if(hmda_yr == 2020) {
+keys <- if(hmda_yr < 2022) {
   mapcdatakeys::geog_xw_2010  
 } else {
   mapcdatakeys::geog_xw_2020  
@@ -83,12 +71,9 @@ keys <- if(hmda_yr < 2021) {
 
 # 2.1 trim to distinct ct id
 
-dist_keys <- if(hmda_yr < 2021) {
+dist_keys <- if(hmda_yr < 2022) {
   distinct(keys, ct10_id, .keep_all = TRUE) %>% 
   mutate(cosub_id = ct10_id)
-} else if(hmda_yr == 2020) {
-  distinct(keys, ct10_id, .keep_all = TRUE) %>% 
-    mutate(cosub_id = ct10_id)
 } else {
   distinct(keys, ct20_id, .keep_all = TRUE) %>% 
   mutate(cosub_id = ct20_id)
@@ -99,12 +84,7 @@ dist_keys <- if(hmda_yr < 2021) {
 
 # 2.3  join keys to raw data
 
-join_keys <- if(hmda_yr < 2021) {
-  raw_import %>%
-    left_join(.,
-              dist_keys %>% select(ct10_id,muni_id,muni_name,county,cosub_id),
-              by = c('census_tract' = 'ct10_id')) 
-} else if(hmda_yr == 2020) {
+join_keys <- if(hmda_yr < 2022) {
   raw_import %>%
     left_join(.,
               dist_keys %>% select(ct10_id,muni_id,muni_name,county,cosub_id),
@@ -294,22 +274,6 @@ hmda_mu_aggr_func_1821 <- function(hmda_yr, grp_id, grp_name){
            cosub_id
            ) %>% 
   
-    # left_join(., get_acs(geography = "county subdivision", state = 25,
-    #                      survey = "acs5", year = hmda_yr, table = 'B19113', cache_table = TRUE) %>% 
-    #             select(GEOID, estimate) %>% rename(cosub_id = GEOID, amfi = estimate) %>% 
-    #             left_join(.,
-    #                       mapcdatakeys::census_muni_keys %>% 
-    #                         select(muni_id, muni_name, 
-    #                                c(ends_with(str_sub(hmda_yr_fix, start = 3, end = 4)) & !contains("cosub_cn"))
-    #                         ) %>% rename(cosub_id = 3) %>% mutate(across(.cols = c(cosub_id, muni_id),
-    #                                                                      .fns = function(x){as.character(x)}))) %>% 
-    #             mutate(muni_id = as.integer(muni_id)) %>% 
-    #             filter(!is.na(muni_id)) %>% arrange(muni_id)) %>% arrange(race_ethnicity) %>%
-
-    # left_join(.,
-    #           dist_keys %>% select(ct20_id,muni_id),
-    #           by = c('census_tract' = ct20_id)) %>%      
-    
     mutate(
       #calculate median income percent value
       med_inc_pc = (income/hud_median)*100,

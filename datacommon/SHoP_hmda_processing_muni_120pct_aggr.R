@@ -20,7 +20,8 @@ library(mapcdatakeys)
 
 # muni version draft for Statewide Housing Plan request
 # the main functions were pulled from the script by Aseem Deodhar: hmda_processing_ct_ma_aggr.R
-# lberman 2024-06-25 rev 2014-07-25
+# note: if else checks for corrections of ct_id (for example 2020 use ct10_id!)
+# lberman 2024-06-25 rev 2014-07-30
 
 # -------------------------------------------------------------------------
 
@@ -29,8 +30,10 @@ library(mapcdatakeys)
 hmda_yr <- 2020
 
 # 0.1 note:  mapcdatakeys have not been updated after 2021 
-hmda_yr_fix <- if(hmda_yr < 2021) {
+hmda_yr_fix <- if(hmda_yr < 2020) {
   hmda_yr
+} else if(hmda_yr == 2020 ) {
+  2019 
 } else {
   2021 
 }
@@ -41,6 +44,8 @@ cosub_yr <- str_sub(hmda_yr, -2)
 
 cosub_col <- if(hmda_yr < 2020) {
   "ct10_id"
+} else if(hmda_yr == 2020) {
+  "ct10_id"  
 } else {
   "ct20_id"  
 } 
@@ -68,7 +73,9 @@ raw_import <- read_csv(paste0(import_path,hmda_yr,"/hmda_ma_",hmda_yr,".csv"))
 ## 2. get data keys xw for the year
 # see: https://github.com/MAPC/mapcdatakeys/blob/main/census_geog_keys.md
 
-keys <- if(hmda_yr < 2020) {
+keys <- if(hmda_yr < 2021) {
+  mapcdatakeys::geog_xw_2010  
+} else if(hmda_yr == 2020) {
   mapcdatakeys::geog_xw_2010  
 } else {
   mapcdatakeys::geog_xw_2020  
@@ -76,9 +83,12 @@ keys <- if(hmda_yr < 2020) {
 
 # 2.1 trim to distinct ct id
 
-dist_keys <- if(hmda_yr < 2020) {
+dist_keys <- if(hmda_yr < 2021) {
   distinct(keys, ct10_id, .keep_all = TRUE) %>% 
   mutate(cosub_id = ct10_id)
+} else if(hmda_yr == 2020) {
+  distinct(keys, ct10_id, .keep_all = TRUE) %>% 
+    mutate(cosub_id = ct10_id)
 } else {
   distinct(keys, ct20_id, .keep_all = TRUE) %>% 
   mutate(cosub_id = ct20_id)
@@ -89,7 +99,12 @@ dist_keys <- if(hmda_yr < 2020) {
 
 # 2.3  join keys to raw data
 
-join_keys <- if(hmda_yr < 2020) {
+join_keys <- if(hmda_yr < 2021) {
+  raw_import %>%
+    left_join(.,
+              dist_keys %>% select(ct10_id,muni_id,muni_name,county,cosub_id),
+              by = c('census_tract' = 'ct10_id')) 
+} else if(hmda_yr == 2020) {
   raw_import %>%
     left_join(.,
               dist_keys %>% select(ct10_id,muni_id,muni_name,county,cosub_id),
@@ -112,6 +127,7 @@ missing_muni_id <- join_keys %>%
 
 # 2.6 of these, which have distinct tract ids?
 x <- distinct(missing_muni_id, census_tract, .keep_all = TRUE)
+
 
 # 2.7 export for research
 write_csv(x, paste0(test_path,"/",hmda_yr,"_non_join_census_tracts.csv"))
@@ -187,14 +203,14 @@ ck_muni <- clean_import %>%
   filter(is.na(race_ethnicity))
 
 #note: when step 3.2 returns zero rows, then proceed
-rm(raw_muni,ck_muni)
+rm(ck_muni)
 
 
 # 4. get HUD Income limits 
 
 # 4.1 retrieve by year from sdvm
-inc_lim <- dbGetQuery(con_sdevm, paste0("SELECT * FROM tabular.hous_section8_income_limits_by_year_m WHERE fy_year = 2020")) %>% 
-#inc_lim <- dbGetQuery(con_sdevm, paste0("SELECT * FROM tabular.hous_section8_income_limits_by_year_m WHERE fy_year = ",hmda_yr,"\"")) %>% 
+qry <- paste0("SELECT * FROM tabular.hous_section8_income_limits_by_year_m WHERE fy_year = ",hmda_yr) #keep hmda_yr for the HUD income limits
+inc_lim <- dbGetQuery(con_sdevm, qry) %>% 
   select(c(muni_id,municipal,median)) %>% 
   mutate(hud_muni_id = muni_id) %>% 
   mutate(hud_muni_nm = municipal) %>% 

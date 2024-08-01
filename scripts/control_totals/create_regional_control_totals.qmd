@@ -1220,6 +1220,11 @@ umdi.pop.MAPC97 <- left_join(
     )
   )
 
+#Removing dataframes no longer necessary for the creation of reweighter targets.
+rm(population.MAPC101.df, population.MAPC97.df, population.df, GEOID.cn.10, GEOID.cn.20,
+   vars.dec10, vars.dec20)
+gc()
+
 ```
 
 
@@ -1267,7 +1272,7 @@ pums_data <- get_pums(
   ) |> 
   #Join RPA to PUMA crosswalk to PUMS data
   left_join(
-    xw,
+    xw.rpa,
     by = c('PUMA')
   ) |>  
   mutate(

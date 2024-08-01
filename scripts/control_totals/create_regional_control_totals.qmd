@@ -43,7 +43,8 @@ keys.mpo <- mapcdatakeys::all_muni_data_keys |>
     muni_id, muni_name, mpo
   ) |> 
   mutate(
-    muni_id = as.character(muni_id)
+    muni_id = as.character(muni_id),
+    muni_name = ifelse(muni_name == "Manchester-by-the-Sea", "Manchester", muni_name)
   )
 
 #RPA Data Keys
@@ -52,7 +53,8 @@ keys.rpa <- mapcdatakeys::all_muni_data_keys |>
     muni_id, muni_name, rpa_acr
   ) |> 
   mutate(
-    muni_id = as.character(muni_id)
+    muni_id = as.character(muni_id),
+    muni_name = ifelse(muni_name == "Manchester-by-the-Sea", "Manchester", muni_name)
   )
 
 #Municipal GEOIDs for 2010 Decennial Census

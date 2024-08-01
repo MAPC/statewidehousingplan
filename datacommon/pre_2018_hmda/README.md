@@ -4,7 +4,7 @@
 #### CODE
 
 
-__1_hmda_cleaning__:  paths to shapefile and geojson versions of 2020 Census Tracts
+__1_hmda_cleaning__:  this script loads large data file and renames the columns.
 
 The source data file (hmda_lar.csv) is too large [3.3 GB]
 

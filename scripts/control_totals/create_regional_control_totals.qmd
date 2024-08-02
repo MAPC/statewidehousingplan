@@ -1623,6 +1623,46 @@ headship_rates <- pums_data |>
 
 # Create Laborforce Participation rates for ACS 2017-2021 PUMS
 ```{r}
+lfpr <- pums_data |> 
+  #Takes only observations that are in housing units and in the labor force.
+  filter(TYPEHUGQ == "1" & lf >= 1) |> 
+  #Sets the level of aggregation (e.g. we want the number of observations by year, by RPA, by age group, by sex, by educational attainment) 
+  group_by(rpa_acr, ageCAT6, eduattn, SEX) |> 
+  #Sums up the number of observations by the level of aggregation set above using the person weight.
+  count(var = lf, wt = PWGTP) |> 
+  #Removes the level of aggregation set earlier by group_by()
+  ungroup() |> 
+  #Recodes factor variables as the categories they represent.
+  #Converts numbers into frequencies.
+  mutate(
+    var = case_when(
+      var == 1 ~ "in LF",
+      var == 2 ~ "not in LF"),
+    SEX = case_when(
+      SEX == 1 ~ "Male",
+      SEX == 2 ~ "Female"),
+    EDUATTN = case_when(
+      eduattn == 1 ~ "High School or less",
+      eduattn == 2 ~ "Some college or Associate's degree",
+      eduattn == 3 ~ "Bachelor's",
+      eduattn == 4 ~ "Master's or higher")
+  ) |> 
+  group_by(rpa_acr, ageCAT6, SEX, EDUATTN) |>  
+  #Converts numbers into frequencies for those in and not in the laborforce, based
+  #on the demographic variables.
+  mutate(
+    freq = (n/sum(n))
+  ) |>  
+  ungroup() |> 
+  filter(var == "in LF") |> 
+  #Drops the "n" variable 
+  select(-n)
+
+```
+
+# Create Household Projections
+```{r}
+
 ```
 
 ```{r}

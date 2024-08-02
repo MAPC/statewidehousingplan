@@ -1619,6 +1619,10 @@ headship_rates <- pums_data |>
   #Removes the level of aggregation set earlier by group_by()
   ungroup()
 
+#TODO:
+# 1. Compare to 2015-2019 ACS PUMS Headship rates
+# 2. Compare to adjusted headships rates from last projections
+
 ```
 
 # Create Laborforce Participation rates for ACS 2017-2021 PUMS
@@ -1657,6 +1661,11 @@ lfpr <- pums_data |>
   filter(var == "in LF") |> 
   #Drops the "n" variable 
   select(-n)
+
+#TODO:
+# 1. Compare to 2015-2019 ACS PUMS headship rates
+# 2. Compare to CPS rates
+# 3. Do a similar lfpr adjustment exercise we did last time to the 2015-2019 lfpr
 
 ```
 

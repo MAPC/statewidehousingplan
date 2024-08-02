@@ -1669,9 +1669,42 @@ lfpr <- pums_data |>
 
 ```
 
-# Create Household Projections
-```{r}
+# Create Household Projections by RPA and Household Type
+# 1. For MAPC101
+# 2. For MAPC97
 
+```{r}
+#===============================================================================
+# x.1.1 - Household Projections by RPA (MAPC101) and Household Type
+proj.hh.MAPC101_by.rpa.hhtype <- left_join(
+  umdi.pop.MAPC101,
+  headship_rates,
+  by = c("rpa_acr", "ageCAT6")
+) |> 
+  rowwise() |> 
+  #Calculating the number of households in each RPA and age catergory
+  mutate(
+    hh = hhpop*freq
+  )
+
+#===============================================================================
+# x.1.2 Household Projections by MPO (MAPC97) and Household Type
+proj.hh.MAPC97_by.mpo.hhtype <- left_join(
+  umdi.pop.MAPC97,
+  headship_rates,
+  by = c("rpa_acr", "ageCAT6")
+) |> 
+  rowwise() |> 
+  #Calculating the number of households in each RPA and age catergory
+  mutate(
+    hh = hhpop*freq
+  )
+
+```
+
+# Create Reweighter Template Files for Household Projections by RPA and Household Type
+
+```{r}
 ```
 
 ```{r}
@@ -1679,73 +1712,6 @@ lfpr <- pums_data |>
 # 5. Generate BASELINE data for the reweighter targeting files
 #
 #5.1.1 Labor Force Participation by Sex, Age, Educational Attainment
-#STATE LEVEL
-PUMS_LF_PAGEC_SEX_EDUATTN_STATE <- PUMS_data %>%
-  #Takes only observations that are in housing units and in the labor force.
-  filter(TYPE == 1 & lf >= 1) %>%
-  #Sets the level of aggregation (e.g. we want the number of observations by year, by age group, by sex, by educational attainment) 
-  group_by(year, PAGEC, SEX, eduattn) %>%
-  #Sums up the number of observations by the level of aggregation set above using the person weight.
-  count(var = lf, wt = PWGTP) %>%
-  #Recodes factor variables as the categories they represent.
-  #Converts numbers into frequencies.
-  mutate(
-    var = case_when(
-      var == 1 ~ "in LF",
-      var == 2 ~ "not in LF"),
-    SEX = case_when(
-      SEX == 1 ~ "Male",
-      SEX == 2 ~ "Female"),
-    EDUATTN = case_when(
-      eduattn == 1 ~ "High School or less",
-      eduattn == 2 ~ "Some college or Associate's degree",
-      eduattn == 3 ~ "Bachelor's",
-      eduattn == 4 ~ "Master's or higher"),
-    freq = (n/sum(n))) %>%
-  filter(var == "in LF" & year == 2019) %>%
-  #Removes the level of aggregation set earlier by group_by()
-  ungroup() %>%
-  #Drops the "n" variable 
-  select(-n)# %>%
-  #Rearranges the dataframe to have each column be a level of labor force participation.
-  #and each row be an age sex, and educational attainment group.
-  #pivot_wider(names_from = var, values_from = freq)
-  #pivot_wider(names_from = var, values_from = n)
-
-#RPA LEVEL
-PUMS_pop_by_educ <- PUMS_data %>%
-  #Takes only observations that are in housing units and in the labor force.
-  filter(TYPE == 1 & lf >= 1) %>%
-  #Sets the level of aggregation (e.g. we want the number of observations by year, by RPA, by age group, by sex, by educational attainment) 
-  group_by(year, RPA, PAGEC, SEX) %>%
-  #Sums up the number of observations by the level of aggregation set above using the person weight.
-  count(var = eduattn, wt = PWGTP) %>%
-  #Removes the level of aggregation set earlier by group_by()
-  ungroup() %>%
-  #Recodes factor variables as the categories they represent.
-  mutate(
-    var = case_when(
-      var == 1 ~ "High School or less",
-      var == 2 ~ "Some college or Associate's degree",
-      var == 3 ~ "Bachelor's",
-      var == 4 ~ "Master's or higher"),
-    SEX = case_when(
-      SEX == 1 ~ "Male",
-      SEX == 2 ~ "Female"),
-  ) %>%
-  group_by(
-    year, RPA, PAGEC, SEX
-  ) %>% 
-  #Converts numbers into frequencies for those in and not in the laborforce, based
-  #on the demographic variables.
-  mutate(
-    freq = (n/sum(n))
-  ) %>% 
-  ungroup() %>% 
-  filter(year == 2019) %>%
-  #Drops the "n" variable 
-  select(-n)
-
 PUMS_LF_PAGEC_SEX_EDUATTN_RPA <- PUMS_data %>%
   #Takes only observations that are in housing units and in the labor force.
   filter(TYPE == 1 & lf >= 1) %>%

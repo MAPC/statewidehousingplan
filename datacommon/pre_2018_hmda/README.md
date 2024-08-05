@@ -31,3 +31,9 @@ To facilitate the script, a filter by year was added *before* the renaming colum
 __2_hmda_geographies__:  this script joins an index of parent and related geographies
 
 *index saved to \output folder*:  census_tracts_2000_munijoin_trim.csv
+
+
+__3_hmda_subsetting_income__:  this script loops through the raw data (with geographies) to calculate income brackets
+
+
+__4_hmda_subsetting_race__:  this script loops through the raw data (with geographies) to calculate applications and denials by race and ethnicity groups.

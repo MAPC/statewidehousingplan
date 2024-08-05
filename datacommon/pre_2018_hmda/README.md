@@ -1,14 +1,15 @@
 ### Data loading and cleaning of HMDA files 2007-2017
 
 
-#### CODE
+#### CODE 
 
-##### adapted from the code in this folder (author?)
+##### adapted from the code in this folder 
 
 *original code folder*: K:\DataServices\Datasets\Housing\HMDA\Code\2007-2017
 
 *source file*: K:\DataServices\Datasets\Housing\HMDA\Data\Raw\Tabular\2007_2017\hmda_lar.csv
 
+##### author:  Taylor Perez
 
 
 __1_hmda_cleaning__:  this script loads large data file and renames the columns.

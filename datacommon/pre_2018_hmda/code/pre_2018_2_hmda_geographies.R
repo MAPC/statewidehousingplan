@@ -1,90 +1,130 @@
 ###### THIS CODE ADDS RELEVANT GEOGRAPHIES
-###### TO THE HMDA DATASET FOR 2007-2017
-
-#.libPaths("H:/Data/RLibrary")
-# original
-#wd <- "K:/DataServices/Datasets/Housing/HMDA/2007_2017/"
-#wd <- "C:/Users/lberman/Desktop/SWAP/other_projects/hmda/pre_2018/"
-
-
-wd <- "K:/DataServices/Datasets/Housing/HMDA/Code/datacommon/pre_2018_hmda/"
-setwd(wd)
-
-data_path <- "K:/DataServices/Datasets/Housing/HMDA/Data/Raw/Tabular/2007_2017/"
-
-
-
-setwd(wd)
+###### TO THE HMDA DATASET FOR YEARS 2007-2017
+### Author: Taylor Perez
 
 library(dplyr)
 library(foreign)
 library(tidyverse)
 
-#install.packages("pacman")
-#pacman::p_load("dplyr","foreign","tidyverse")
+# edited by lberman 2024-08-05
+# changed to processing for single years (removing steps for binding)
+# changed joins to use (ct00_id, ct10_id,ct20_id) from mapcdatakeys based on input year value 
 
-### set year ###
-year <- 2016
+#####
+## 0. SET PATHS and YEAR
 
-######### load in data #########
+#set for K
+#wd <- "K:/DataServices/Datasets/Housing/HMDA/Code/datacommon/pre_2018_hmda/"
+#data_path <- "K:/DataServices/Datasets/Housing/HMDA/Data/Raw/Tabular/2007_2017/"
 
-HMDA.all <- read.csv(paste0("output/hmda_all_cleaned_",year,".csv"),colClasses=c(geoid="character"),header=TRUE)
-HMDA.all <- HMDA.all[!(is.na(HMDA.all$geoid) | HMDA.all$geoid == ""),] # remove rows with no associated geography
+## 0.1 set local paths
+wd <- "C:/Users/lberman/Desktop/SWAP/other_projects/hmda/pre_2018/"
+data_path <- "C:/Users/lberman/Desktop/SWAP/other_projects/hmda/pre_2018/raw/"
 
-######### add geographies #########
-### NOTE: joins based on information from https://www.ffiec.gov/hmda/glossary.htm
-
-# fix tract IDs
-HMDA.all$tract_id <- gsub("\\.","",HMDA.all$geoid) # remove decimal
-HMDA.all$county_id <- as.character(HMDA.all$county_id) # redefine county column
-HMDA.all$countyid <- ifelse(nchar(HMDA.all$county_id)==1,paste("00",HMDA.all$county_id,sep=""),paste("0",HMDA.all$county_id,sep="")) # add leading zeros
-HMDA.all$geoid2 <- paste(as.character(HMDA.all$state_id),HMDA.all$countyid,HMDA.all$tract_id,sep="") # concatenate for final GEOID (tracts)
-
-######### add municipality information #########
-
-# years 2007-2011 (2000 Census IDs)
-tracts_2000 <- read.dbf("data_keys/Census00_Tract_MuniJoin.dbf") # load in data key
-
-# save full index copy for reference
-write.csv(tracts_2000,"output/census_tracts_2000_munijoin_trim.csv")
-
-tracts_2000 <- tracts_2000[,c(6:9,20:21)] # remove unnecessary columns
-tracts_2000$ct_id <- as.character(tracts_2000$ct_id)
-
-# save minimal cols copy for reference
-write.csv(tracts_2000,"output/census_tracts_2000_munijoin_trim.csv")
+setwd(wd)
 
 
-HMDA_2007_2011 <- subset(HMDA.all,asofyear <= 2011)
-HMDA_2007_2011_munis <- left_join(HMDA_2007_2011,tracts_2000,by=c("geoid2"="ct_id")) # join municipality info by CT ID
-HMDA_2007_2011_munis <- HMDA_2007_2011_munis[,-c(68:70,79,82:84)]
-HMDA_2007_2011_munis$town <- str_to_title(HMDA_2007_2011_munis$town) # get muni names in title case
-colnames(HMDA_2007_2011_munis)[78] <- "municipal" # rename columns for later rbind
-colnames(HMDA_2007_2011_munis)[79] <- "muni_id"
+## 0.2 set year 
+hmda_yr <- 2017
 
-# years 2012-2017 (2010 Census IDs)
-tracts_2010 <- read.csv("data_keys/census_2010_munis.csv",header=TRUE,colClasses=c(ct10_id="character")) # load in data key
-tracts_2010.muni_all <- aggregate(as.character(municipal) ~ ct10_id,tracts_2010,toString) # aggregate ct10_ids with all associated municipalities as one column
-tracts_2010.muni_id <- aggregate(muni_id ~ ct10_id,tracts_2010,toString) # aggregate ct10_ids with all associated municipality IDs as one column
-tracts_2010.agg <- cbind(tracts_2010.muni_all,tracts_2010.muni_id)
-tracts_2010.agg <- tracts_2010.agg[,-3] # remove additional ct10_id
-colnames(tracts_2010.agg)[2] <- "municipal" # rename muni column
 
-HMDA_2012_2017 <- subset(HMDA.all,asofyear > 2011)
-HMDA_2012_2017_munis <- left_join(HMDA_2012_2017,tracts_2010.agg,by=c("geoid2"="ct10_id")) # join municipality info by CT ID
-HMDA_2012_2017_munis <- HMDA_2012_2017_munis[,-c(68:70,79,84)] # remove unnecessary columns
+## 0.3 derive year for keys
+cosub_yr <- str_sub(hmda_yr, -2)
 
-# bind rows
-HMDA.all.munis <- rbind(HMDA_2007_2011_munis,HMDA_2012_2017_munis)
+# note census tract IDs for 2020 were not applied until 2022
+cosub_col <- if(hmda_yr < 2013) {
+  "ct00_id"
+} else if (hmda_yr < 2022) {
+  "ct10_id"  
+} else {
+  "ct20_id"  
+}
 
-# reorder columns & final cleaning
-HMDA.all.munis <- HMDA.all.munis[,c(77,79,78,76,39,56:57,1:38,40:55,58:75)] # reorder to get all geographies to left of table
-colnames(HMDA.all.munis)[1] <- "ct_id" # rename to standard
-HMDA.all.munis$countyname <- as.character(HMDA.all.munis$countyname)
-HMDA.all.munis$countyname <- substring(HMDA.all.munis$countyname,1,nchar(HMDA.all.munis$countyname)-7) # remove "County" from county names 
-HMDA.all.munis$msamd <- as.character(HMDA.all.munis$msamd) # get msamd IDs as character
-HMDA.all.munis <- HMDA.all.munis[,-c(30,45)] # remove leftover geography columns 
+#####
+## 1. load in data ##   use the final coded version created by [pre_2018_1_hmda_cleaning.R]
 
-######### export data #########
+HMDA.input <- read.csv(paste0("output/hmda_codes_cleaned_",hmda_yr,".csv"),colClasses=c(geoid="character"),header=TRUE)
+#HMDA.all <- read.csv(paste0("output/hmda_all_cleaned_",year,".csv"),colClasses=c(geoid="character"),header=TRUE)
 
-write.csv(HMDA.all.munis,file="HMDA_2007_2017_final.csv",row.names=FALSE)
+## 1.1 rm blank rows
+HMDA.input <- HMDA.input[!(is.na(HMDA.input$geoid) | HMDA.input$geoid == ""),] # remove rows with no associated geography
+
+
+# 1.2 fix tract IDs
+HMDA.input$tract_id <- gsub("\\.","",HMDA.input$geoid) # remove decimal
+HMDA.input$county_id <- as.character(HMDA.input$county_id) # redefine county column
+HMDA.input$countyid <- ifelse(nchar(HMDA.input$county_id)==1,paste("00",HMDA.input$county_id,sep=""),paste("0",HMDA.input$county_id,sep="")) # add leading zeros
+HMDA.input$geoid2 <- paste(as.character(HMDA.input$state_id),HMDA.input$countyid,HMDA.input$tract_id,sep="") # concatenate for final GEOID (tracts)
+
+
+# 1.3 reset geoid2 to num
+HMDA.input <- HMDA.input %>% 
+  mutate(geoid2 = as.numeric(geoid2))
+
+
+## 2.1 get data keys xw for the year
+# see: https://github.com/MAPC/mapcdatakeys/blob/main/census_geog_keys.md
+
+keys <- if(hmda_yr < 2013) {
+  read_csv(paste0(test_path,'geog_xw_2000_DRAFT.csv'))  
+} else if(hmda_yr < 2022) { #hmda data uses 2010 census tracts through 2021
+  mapcdatakeys::geog_xw_2010  
+} else {
+  mapcdatakeys::geog_xw_2020  
+} 
+
+# 2.1 trim to distinct ct id
+
+dist_keys <- if(hmda_yr < 2013) {
+  distinct(keys, ct00_id, .keep_all = TRUE) 
+} else if(hmda_yr < 2022) {
+  distinct(keys, ct10_id, .keep_all = TRUE)
+} else {
+  distinct(keys, ct20_id, .keep_all = TRUE)
+} 
+
+# 2.3 trim to needed cols
+trim_keys <- if(hmda_yr < 2013) {
+  dist_keys %>% select(c(ct00_id,county,muni_id,muni_name))
+} else if(hmda_yr < 2022) {
+  dist_keys %>% select(c(ct10_id,county,muni_id,muni_name)) 
+} else {
+  dist_keys %>% select(c(ct20_id,county,muni_id,muni_name))
+} 
+
+rm(keys,dist_keys)
+
+##### add geographies #####
+
+# 3 join muni keys
+HMDA_munis <- left_join(HMDA.input,trim_keys,by=c("geoid2"="ct10_id")) # join municipality info by CT ID
+
+
+# 3.1 trim to needed cols
+HMDA_geog <- if(hmda_yr < 2013) {
+  HMDA_munis %>% 
+    mutate(ct00_id = as.character(geoid2)) %>% 
+    mutate(msamd = as.character(msamd)) %>% 
+    mutate(county_id = as.integer(county_id)) %>% 
+    select(-c(geoid2,seqnum,countyid))
+} else if(hmda_yr < 2022) {
+  HMDA_munis %>% 
+    mutate(ct10_id = as.character(geoid2)) %>% 
+    mutate(msamd = as.character(msamd)) %>% 
+    mutate(county_id = as.integer(county_id)) %>% 
+    select(-c(geoid2,seqnum,county_id))
+} else {
+  HMDA_munis %>% 
+    mutate(ct20_id = as.character(geoid2)) %>% 
+    mutate(msamd = as.character(msamd)) %>% 
+    mutate(county_id = as.integer(county_id)) %>% 
+    select(-c(geoid2,seqnum,county_id))
+} 
+
+
+# 3.2 re-order to get all geographies to left of table
+HMDA_geog <- HMDA_geog[,c(49,44,46,45,48,47,1:43)] 
+
+
+## 4  export data 
+write.csv(HMDA_geog,paste0("output/hmda_geog_",hmda_yr,".csv"),row.names=FALSE)

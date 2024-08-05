@@ -1,37 +1,45 @@
 ###### THIS CODE CLEANS THE HMDA DATASET
 ###### FOR 2007-2017
+### Author: Taylor Perez
 
 library(dplyr)
-
 
 # edited by lberman 2024-08-01
 # purpose:  prevent citrix VM from crashing, filter the raw file (3.3GB) to single years
 # re-order the functions to take advantage of processing only one year at a time
-# 
+ 
 
-#original
-#wd <- "C:/Users/lberman/Desktop/SWAP/other_projects/hmda/pre_2018/"
+#####
+## 0. SET PATHS
 
-wd <- "K:/DataServices/Datasets/Housing/HMDA/Code/datacommon/pre_2018_hmda/"
+#set for K
+#wd <- "K:/DataServices/Datasets/Housing/HMDA/Code/datacommon/pre_2018_hmda/"
+#data_path <- "K:/DataServices/Datasets/Housing/HMDA/Data/Raw/Tabular/2007_2017/"
+
+## 0.1 set local paths
+wd <- "C:/Users/lberman/Desktop/SWAP/other_projects/hmda/pre_2018/"
+data_path <- "C:/Users/lberman/Desktop/SWAP/other_projects/hmda/pre_2018/raw/"
+
 setwd(wd)
 
-data_path <- "K:/DataServices/Datasets/Housing/HMDA/Data/Raw/Tabular/2007_2017/"
 
 
-### load in data
+### 1, load in data
 
 HMDA <- read.csv("hmda_lar.csv",header=TRUE,colClasses=c(census_tract_number="character"))
 # you only want to read this 3.3 GB .csv once.    
 # reset year below this line and re-run to end to cycle through years.
 
 ## filter to single year (to make filesizes manageable)
-year <- 2012
+
+## 2 set year 
+year <- 2017
 
 HMDA_year <- HMDA %>% 
   filter(as_of_year == year)
 
 
-### rename columns
+## 3.  rename columns
 colnames(HMDA_year)[1] <- "action"
 colnames(HMDA_year)[2] <- "action_nm"
 colnames(HMDA_year)[3] <- "agency"
@@ -111,23 +119,18 @@ colnames(HMDA_year)[77] <- "ratespread"
 colnames(HMDA_year)[78] <- "tractmsamd"
 colnames(HMDA_year)
 
-
-
-### export data - with strings
-
+### 4. export data - with strings
 write.csv(HMDA_year,paste0("output/hmda_all_cleaned_",year,".csv"),row.names=FALSE)
 
-### export data - no strings
 
-#altered for single year
-
+# 4.1 altered for single year
 HMDA.codes <- HMDA_year[,-grep("nm$",colnames(HMDA_year))]
 HMDA.codes <- HMDA.codes[,-grep("name$",colnames(HMDA.codes))]
 HMDA.codes <- HMDA.codes[,-grep("abbr$",colnames(HMDA.codes))]
 head(HMDA.codes)
 
+# 4.2 export final coded version
 write.csv(HMDA.codes,paste0("output/hmda_codes_cleaned_",year,".csv"),row.names=FALSE)
-#orig
-#write.csv(HMDA.codes,file="clean_raw/hmda_codes_cleaned.csv",row.names=FALSE)
+
 
 

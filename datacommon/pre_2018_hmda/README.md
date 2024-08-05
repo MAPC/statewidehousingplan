@@ -37,3 +37,14 @@ __3_hmda_subsetting_income__:  this script loops through the raw data (with geog
 
 
 __4_hmda_subsetting_race__:  this script loops through the raw data (with geographies) to calculate applications and denials by race and ethnicity groups.
+
+
+### output samples
+
+*hmda_codes_cleaned_2017.csv*
+
+*hmda_geog_2017.csv*
+
+*hmda_income_2017.csv*
+
+*hmda_re_2017.csv*

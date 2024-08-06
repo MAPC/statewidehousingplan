@@ -246,7 +246,7 @@ umdi.pop.MAPC101 <- left_join(
 ) |> 
   group_by(
     rpa_acr,
-    Sex,
+    #Sex,
     ageCAT6,
     year
   ) |> 
@@ -263,7 +263,7 @@ umdi.pop.MAPC97 <- left_join(
 )|> 
   group_by(
     mpo,
-    Sex,
+    #Sex,
     ageCAT6,
     year
   ) |> 
@@ -1043,7 +1043,7 @@ population.MAPC101.df <- population.df |>
   ) |> 
   group_by(
     rpa_acr,
-    Sex,
+    #Sex,
     ageCAT6
   ) |> 
   summarise(
@@ -1062,7 +1062,7 @@ population.MAPC101.df <- population.df |>
   ) |> 
   select(
     rpa_acr,
-    Sex,
+    #Sex,
     ageCAT6,
     GQPopulation.10,
     GQPopulation.20,
@@ -1072,7 +1072,7 @@ population.MAPC101.df <- population.df |>
 
 write.csv(
   population.MAPC101.df,
-  paste0(output_path,"pct_pop.in.hhds.MAPC101_by.RPA.Sex.ageCAT6.csv"),
+  paste0(output_path,"pct_pop.in.hhds.MAPC101_by.RPA.ageCAT6.csv"),
   row.names = FALSE
 )
 
@@ -1084,7 +1084,7 @@ population.MAPC97.df <- population.df |>
   ) |> 
   group_by(
     mpo,
-    Sex,
+    #Sex,
     ageCAT6
   ) |> 
   summarise(
@@ -1103,7 +1103,7 @@ population.MAPC97.df <- population.df |>
   ) |> 
   select(
     mpo,
-    Sex,
+    #Sex,
     ageCAT6,
     GQPopulation.10,
     GQPopulation.20,
@@ -1113,7 +1113,7 @@ population.MAPC97.df <- population.df |>
 
 write.csv(
   population.MAPC97.df,
-  paste0(output_path,"pct_pop.in.hhds.MAPC97_by.MPO.Sex.ageCAT6.csv"),
+  paste0(output_path,"pct_pop.in.hhds.MAPC97_by.MPO.ageCAT6.csv"),
   row.names = FALSE
 )
 
@@ -1122,7 +1122,7 @@ write.csv(
 umdi.pop.MAPC101 <- left_join(
   umdi.pop.MAPC101,
   population.MAPC101.df,
-  by = c("rpa_acr","Sex","ageCAT6")
+  by = c("rpa_acr","ageCAT6")
 ) |> 
   mutate(
     hhpop = case_when(
@@ -1179,7 +1179,7 @@ umdi.pop.MAPC101 <- left_join(
 umdi.pop.MAPC97 <- left_join(
   umdi.pop.MAPC97,
   population.MAPC97.df,
-  by = c("mpo","Sex","ageCAT6")
+  by = c("mpo","ageCAT6")
 ) |> 
   mutate(
     hhpop = case_when(

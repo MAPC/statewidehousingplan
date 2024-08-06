@@ -1267,6 +1267,23 @@ lsf[,mx:=max(Shape_Area),PUMA]
 xw <- lsf[Shape_Area==mx, .(rpa_acr,PUMA)]
 xw[,PUMA:=sprintf("%05d",PUMA)]
 
+#Manufacturing MVC and NPEDC RPAs manually
+matrix <- matrix(nrow = 1, ncol = 2)
+col_names <- c("rpa_acr", "PUMA")
+
+mvc <- data.frame(matrix = matrix)
+npedc <- data.frame(matrix = matrix)
+colnames(mvc) <- col_names
+colnames(npedc) <- col_names
+mvc[[1]] <- "MVC"
+mvc[[2]] <- "04800"
+npedc[[1]] <- "NPEDC"
+npedc[[2]] <- "04800"
+
+xw <- bind_rows(xw, mvc, npedc)
+
+rm(matrix, col_names, mvc, npedc)
+
 #List of all 2017-2021 ACS PUMS Variables
 allvars <- pums_variables |>  filter(year==yr) |>  select(var_code) |>  unique()
 
@@ -1401,6 +1418,13 @@ pums_data <- get_pums(
       Person_Total == 1 & HHder != 99 ~ 5
     )
   )
+
+#Check to make sure all RPAs have been included in the PUMA-RPA Crosswalk.
+if (length(unique(pums_data$rpa_acr)) != 13){
+  print("STOP! Check the PUMA - RPA Crosswalk for MVC and NPEDC.")
+} else{
+  print("Proceed!")
+}
 
 ```
 
@@ -1573,21 +1597,21 @@ lf_baseline <- pums_data %>%
 #Output the baseline file for Household Population aggregations
 write.csv(
   hhpop_baseline,
-  paste0(output_path,"hhpop_baseline.1722.csv"), 
+  paste0(output_path,"hhpop_baseline.1721.csv"), 
   row.names = FALSE
 )
 
 #Output the baseline file for Household Type aggregations
 write.csv(
   hhtype_baseline,
-  paste0(output_path,"hhtype_baseline.1722.csv"),
+  paste0(output_path,"hhtype_baseline.1721.csv"),
   row.names = FALSE
 )
 
 #Output the baseline file for Laborforce aggregations
 write.csv(
   lf_baseline,
-  paste0(output_path,"lf_baseline.1722.csv"),
+  paste0(output_path,"lf_baseline.1721.csv"),
   row.names = FALSE
 )
 
@@ -1617,7 +1641,40 @@ headship_rates <- pums_data |>
       var == 5 ~ "single"),
     freq = (n/sum(n))) |> 
   #Removes the level of aggregation set earlier by group_by()
-  ungroup()
+  ungroup() |> 
+  select(
+    -c(n)
+  )
+
+#QC Check - determine if the frequencies in each RP, Age Group crosstab add to 1
+hr_check <- headship_rates |> 
+  group_by(
+    rpa_acr,
+    ageCAT6
+  ) |> 
+  summarise(
+    freq_check = sum(freq)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    flag = ifelse(freq_check != 1, 1, 0)
+  )
+
+if (sum(hr_check$flag) > 0){
+  print("STOP! Check headship rate calculations!")
+} else{
+  print("Proceed!")
+}
+
+#Write an intermediate file for the headship rates for the 17-21 PUMS
+write.csv(
+  headship_rates,
+  paste0(output_path, "headship_rates.1721.csv"),
+  row.names = FALSE
+)
+
+#Remove QC check dataframe
+rm(hr_check)
 
 #TODO:
 # 1. Compare to 2015-2019 ACS PUMS Headship rates
@@ -1684,20 +1741,41 @@ proj.hh.MAPC101_by.rpa.hhtype <- left_join(
   rowwise() |> 
   #Calculating the number of households in each RPA and age catergory
   mutate(
-    hh = hhpop*freq
+    hh = round(hhpop*freq, 0),
+  ) |> 
+  # Filter the headships rates foe the three household type categories
+  # 1. hhderchild = households with a child under 18
+  # 3. hhdernochild = Multiple adult, no children households
+  # 5. single = Single householder
+  filter(
+    var == "hhderchild" | var == "hhdernochild" | var == "single"
+  ) |> 
+  select(
+    -c(pop, hhpop, freq)
   )
+  
 
 #===============================================================================
 # x.1.2 Household Projections by MPO (MAPC97) and Household Type
 proj.hh.MAPC97_by.mpo.hhtype <- left_join(
   umdi.pop.MAPC97,
   headship_rates,
-  by = c("rpa_acr", "ageCAT6")
+  by = c("mpo" = "rpa_acr", "ageCAT6")
 ) |> 
   rowwise() |> 
   #Calculating the number of households in each RPA and age catergory
   mutate(
-    hh = hhpop*freq
+    hh = round(hhpop*freq, 0)
+  )  |> 
+  # Filter the headships rates foe the three household type categories
+  # 1. hhderchild = households with a child under 18
+  # 3. hhdernochild = Multiple adult, no children households
+  # 5. single = Single householder
+  filter(
+    var == "hhderchild" | var == "hhdernochild" | var == "single"
+  ) |> 
+  select(
+    -c(pop, hhpop, freq)
   )
 
 ```

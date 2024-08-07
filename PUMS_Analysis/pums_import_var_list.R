@@ -17,7 +17,7 @@ options(scipen = 999)
 
 # set output path
 exp_path = "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS"
-
+exp_path ="C:/Users/lberman/Downloads"
 
 # Housing units are uniquely identified by the SERIALNO variable
 # Persons are uniquely identified by the combination of SERIALNO and SPORDER.
@@ -62,6 +62,7 @@ var.list  <- c('RT',
                'HHLDRAGEP',
                'HHLDRRAC1P',
                'HHT',
+               'HHT2',
                'HINCP',
                'HUGCL',
                'HUPAC',
@@ -111,15 +112,30 @@ var.list.b  <- c('PSF',
                'WAOB')
 
 
-# ck_vars <- pums_vars_2021 %>% 
-#   filter(var_code %in% var.list)
-# 
-# # count uniq vars
-# uniq_vars <- ck_vars %>% 
-#   distinct(var_code,var_label,level) %>% 
-#   arrange(var_code)
-  
+# 2.1 filter to the requested var.lists
 
+ck_vars <- pums_vars_2021 %>% 
+   filter(var_code %in% var.list)
+ 
+ck_vars_b <- pums_vars_2021 %>% 
+   filter(var_code %in% var.list.b)
+
+pums_vars <- rbind(ck_vars,ck_vars_b)
+
+# 2.2  save full Data Dictionary of var.list
+
+write_csv(pums_vars, paste0(exp_path,"/pums_vars_DataDict.csv"))
+
+# 2.3 trim to uniq variables (not split to hous / person, or sub-sets)
+# # count uniq vars
+uniq_vars <- pums_vars %>%
+  distinct(var_code,var_label,level) %>%
+  arrange(var_code)
+  
+# 2.4  save version of uniq variables in var.list
+write_csv(uniq_vars, paste0(exp_path,"/pums_vars_uniq.csv"))
+
+######
 # 3 retrieve data function
 # WGTP = housing-unit weight; PWGTP person weight
 # add "recode = TRUE" to retrieve non-coded readable values
@@ -153,4 +169,4 @@ pums_2021 <- merge(pums_2021_raw,pums_2021_raw_b,by='uniq_obs')
 
 
 # 6 export
-write_csv(pums_2021, paste0(exp_path,"/pums_raw_vars_2021.csv"))
+write_csv(pums_2021, paste0(exp_path,"/pums_raw_data_2021.csv"))

@@ -1838,14 +1838,66 @@ proj.hh.MAPC97_by.mpo.hhtype <- left_join(
 # Create Reweighter Template Files for Household Projections by RPA/MPO and Household Type
 
 ```{r}
+#Set list of decades to iterate through projections data.
 years <- c(2010, 2020, 2030, 2040, 2050)
 
+#===============================================================================
+#Iterate through household projections to create reweighter targeting files for households
 # MAPC101/RPA Versions
 for (i in years) {
   tmp <- proj.hh.MAPC101_by.rpa.hhtype |> 
     filter(
       year == i
+    ) |> 
+    select(-c(year))
+  
+  target.file <- left_join(
+    hhtype_baseline,
+    tmp,
+    by = c("RPA" = "rpa_acr", "AgeCat", "HHtype")
+  ) |> 
+    dplyr::rename(
+      TARGET = hh
     )
+  
+  write.csv(
+    target.file,
+    paste0(output_path, "hhtype.MAPC101.targetfile.",i,".csv"),
+    row.names = FALSE
+  )
+  
+  rm(tmp, target.file)
+  
+  print(paste0("MAPC101 Reweighter Target File for ",i," has been generated."))
+}
+
+#===============================================================================
+# MAPC97/MPO Versions
+for (i in years) {
+  tmp <- proj.hh.MAPC97_by.mpo.hhtype |> 
+    filter(
+      year == i
+    ) |> 
+    select(-c(year))
+  
+  target.file <- left_join(
+    hhtype_baseline,
+    tmp,
+    by = c("RPA" = "mpo", "AgeCat", "HHtype")
+  ) |> 
+    dplyr::rename(
+      TARGET = hh
+    )
+  
+  write.csv(
+    target.file,
+    paste0(output_path, "hhtype.MAPC97.targetfile.",i,".csv"),
+    row.names = FALSE
+  )
+  
+  rm(tmp, target.file)
+  
+  print(paste0("MAPC97 Reweighter Target File for ",i," has been generated."))
 }
 
 ```

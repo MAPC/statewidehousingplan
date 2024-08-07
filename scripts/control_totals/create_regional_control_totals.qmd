@@ -1472,7 +1472,8 @@ hhpop_baseline <- pums_data |>
       AgeCat == 16 ~ "x == 16",
       AgeCat == 17 ~ "x == 17",
       AgeCat == 18 ~ "x == 18"
-   )
+   ),
+   INTER = BASELINE
   )
 
 # x.1.2 - Baseline of Households by Household Type
@@ -1524,7 +1525,8 @@ hhtype_baseline <- pums_data |>
       AgeCat == 16 ~ "x == 16",
       AgeCat == 17 ~ "x == 17",
       AgeCat == 18 ~ "x == 18"
-    )
+    ),
+    INTER = BASELINE
   ) |> 
   dplyr::filter(HHtype == "hhderchild" | HHtype == "hhdernochild" | HHtype == "single") |>  
   mutate(
@@ -1536,27 +1538,27 @@ hhtype_baseline <- pums_data |>
   )
 
 # x.1.3 - Baseline of People in the laborforce
-lf_baseline <- pums_data %>% 
-  filter(TYPEHUGQ == "1" & lf == "1") %>%  
+lf_baseline <- pums_data |>  
+  filter(TYPEHUGQ == "1" & lf == "1") |>   
   mutate(
     ageCAT6 = as.factor(ageCAT6),
     RPA = as.factor(rpa_acr),
     eduattn = as.factor(eduattn)
-  ) %>% 
+  ) |>  
   group_by(
     RPA,
     ageCAT6
-  ) %>% 
+  ) |>  
   dplyr::count(
     var = eduattn,
     wt = PWGTP
-  ) %>% 
-  ungroup() %>% 
+  ) |>  
+  ungroup() |>  
   rename(
     eduattn = var,
     BASELINE = n,
     AgeCat = ageCAT6
-  ) %>% 
+  ) |> 
   mutate(
     eduattn = case_when(
       eduattn == 1 ~ "High School or less",
@@ -1584,14 +1586,15 @@ lf_baseline <- pums_data %>%
       AgeCat == 17 ~ "x == 17",
       AgeCat == 18 ~ "x == 18"
     )
-  ) %>% 
+  ) |>  
   mutate(
     eduattn = case_when(
       eduattn == "High School or less" ~ "x == 1",
       eduattn == "Some college or Associate's degree" ~ "x == 2",
       eduattn == "Bachelor's" ~ "x == 3",
       eduattn == "Master's or higher" ~ "x == 4"
-    )
+    ),
+    INTER = BASELINE
   )
 
 #Output the baseline file for Household Population aggregations
@@ -1783,6 +1786,8 @@ proj.hh.MAPC97_by.mpo.hhtype <- left_join(
 # Create Reweighter Template Files for Household Projections by RPA and Household Type
 
 ```{r}
+
+
 ```
 
 ```{r}

@@ -1753,9 +1753,35 @@ proj.hh.MAPC101_by.rpa.hhtype <- left_join(
   filter(
     var == "hhderchild" | var == "hhdernochild" | var == "single"
   ) |> 
-  select(
-    -c(pop, hhpop, freq)
-  )
+  mutate(
+    HHtype = case_when(
+      var == "hhderchild" ~ "x == 1",
+      var == "hhdernochild" ~ "x == 3",
+      var == "single" ~ "x == 5"
+    ),
+    AgeCat = case_when(
+      ageCAT6 == 1 ~ "x == 1",
+      ageCAT6 == 2 ~ "x == 2",
+      ageCAT6 == 3 ~ "x == 3",
+      ageCAT6 == 4 ~ "x == 4",
+      ageCAT6 == 5 ~ "x == 5",
+      ageCAT6 == 6 ~ "x == 6",
+      ageCAT6 == 7 ~ "x == 7",
+      ageCAT6 == 8 ~ "x == 8",
+      ageCAT6 == 9 ~ "x == 9",
+      ageCAT6 == 10 ~ "x == 10",
+      ageCAT6 == 11 ~ "x == 11",
+      ageCAT6 == 12 ~ "x == 12",
+      ageCAT6 == 13 ~ "x == 13",
+      ageCAT6 == 14 ~ "x == 14",
+      ageCAT6 == 15 ~ "x == 15",
+      ageCAT6 == 16 ~ "x == 16",
+      ageCAT6 == 17 ~ "x == 17",
+      ageCAT6 == 18 ~ "x == 18"
+    )
+  ) |> 
+  select(-c(pop, hhpop, freq, var, ageCAT6)) |> 
+  relocate(rpa_acr, AgeCat, HHtype, hh, year)
   
 
 #===============================================================================
@@ -1777,16 +1803,50 @@ proj.hh.MAPC97_by.mpo.hhtype <- left_join(
   filter(
     var == "hhderchild" | var == "hhdernochild" | var == "single"
   ) |> 
-  select(
-    -c(pop, hhpop, freq)
-  )
+  mutate(
+    HHtype = case_when(
+      var == "hhderchild" ~ "x == 1",
+      var == "hhdernochild" ~ "x == 3",
+      var == "single" ~ "x == 5"
+    ),
+    AgeCat = case_when(
+      ageCAT6 == 1 ~ "x == 1",
+      ageCAT6 == 2 ~ "x == 2",
+      ageCAT6 == 3 ~ "x == 3",
+      ageCAT6 == 4 ~ "x == 4",
+      ageCAT6 == 5 ~ "x == 5",
+      ageCAT6 == 6 ~ "x == 6",
+      ageCAT6 == 7 ~ "x == 7",
+      ageCAT6 == 8 ~ "x == 8",
+      ageCAT6 == 9 ~ "x == 9",
+      ageCAT6 == 10 ~ "x == 10",
+      ageCAT6 == 11 ~ "x == 11",
+      ageCAT6 == 12 ~ "x == 12",
+      ageCAT6 == 13 ~ "x == 13",
+      ageCAT6 == 14 ~ "x == 14",
+      ageCAT6 == 15 ~ "x == 15",
+      ageCAT6 == 16 ~ "x == 16",
+      ageCAT6 == 17 ~ "x == 17",
+      ageCAT6 == 18 ~ "x == 18"
+    )
+  ) |> 
+  select(-c(pop, hhpop, freq, var, ageCAT6)) |> 
+  relocate(mpo, AgeCat, HHtype, hh, year)
 
 ```
 
-# Create Reweighter Template Files for Household Projections by RPA and Household Type
+# Create Reweighter Template Files for Household Projections by RPA/MPO and Household Type
 
 ```{r}
+years <- c(2010, 2020, 2030, 2040, 2050)
 
+# MAPC101/RPA Versions
+for (i in years) {
+  tmp <- proj.hh.MAPC101_by.rpa.hhtype |> 
+    filter(
+      year == i
+    )
+}
 
 ```
 

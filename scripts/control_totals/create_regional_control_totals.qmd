@@ -2228,7 +2228,6 @@ temp_hhd_proj <- fread(paste0(inpath,'hhtype_baseline.csv'))
 temp_lf_proj <-  fread(paste0(inpath,'lf_baseline.csv'))
 temp_pop_proj <-  fread(paste0(inpath,'hhpop_baseline.csv'))
 
-      HH_type == "hhderchild" ~ "x == 1",
 ####LF Projections####
 
 setwd(outpath)

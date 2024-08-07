@@ -203,6 +203,8 @@ dec.labels <- function(year, con){
 #Group Quarters Cleaning function
 gq.clean <- function(df){
     df |> 
+    # Mutate the text of the label variable to make easier cross-reference to ageCAT6
+    # age groups later on in the analysis
     mutate(
       label = str_replace(label,"\\s*\\([^\\)]+\\)",""),
       label = str_replace(label, "Total_!!Male!!",""),
@@ -277,7 +279,8 @@ rm(umdi_pop)
 
 ```
 
-# Population
+# 2.0 Querying and Processing Census Population Data
+# 2.1 Total Population by Age by Sex from 2010 and 2020 Decennial Censuses 
 
 ```{r}
 #===============================================================================
@@ -416,8 +419,7 @@ pop.20 <- pop.values |>
 rm(pop.labels, pop.values, pop.vars)
 gc()
 ```
-# Query Census Household Population data for 2010 and 2020
-# Determine General Household Formation Rate (% of population in households)
+# 2.2 Query Census Household Population data for 2010 and 2020
 
 ```{r}
 #===============================================================================
@@ -557,13 +559,14 @@ hhpop.20 <- pa.values |>
 rm(pa.labels, pa.values, pa.vars)
 gc()
 ```
-# Join 2010 and 2020 Population and Household Population data 
+# 2.3 Join 2010 and 2020 Population and Household Population data 
 ```{r}
 #Join Census Population and Household Population 
 population.df <- purrr::reduce(
   list(pop.10, pop.20, hhpop.10,hhpop.20),
   dplyr::left_join, by = c("muni_id", "Sex", "ageCAT6")
   ) |> 
+  #Rename variables for legibility.
   dplyr::rename(
     Population.10 = Population.x,
     Population.20 = Population.y,
@@ -579,7 +582,8 @@ population.df <- purrr::reduce(
 
 ```
 
-# Group Quarters Population - Total
+# 3.0 Group Quarters 
+# 3.1 Group Quarters Population - Total
 ```{r}
 #===============================================================================
 #Group Quarters Population 2010
@@ -719,7 +723,7 @@ rm(gq.labels, gq.values, gq.vars)
 gc()
 ```
 
-# Group Quarters Population - University/College Students
+# 3.2 Group Quarters Population - University/College Students
 ```{r}
 #===============================================================================
 #Group Quarters Population - College and University Student Housing 2020
@@ -852,8 +856,7 @@ rm(gq.labels, gq.values, gq.vars)
 gc()
 ```
 
-# Calculate the percentage of the group quarters population living in 
-# Univerity/College Housing 
+# 3.3 Calculate the percentage of the group quarters population living in Univerity/College Housing 
 
 ```{r}
 #Join the total GQ Population and University/College GQ Population
@@ -877,13 +880,19 @@ gqpop.df <- purrr::reduce(
     pct_CU.GQPopulation.20 = CU.GQPopulation.20/GQPopulation.20
   )
 
+#Write the comparison to .csv as an intermediate data product.
+write.csv(
+  gqpop.df,
+  paste0(output_path,"prop.College.Uni_to_Total.GQ.1020.csv"),
+  row.names = FALSE
+)
+
 #Remove intermediate dataframes
 rm(cu.gqpop.10, cu.gqpop.20)
 gc()
 ```
 
-# QC Check - Compare the calculated GQ Population to the GQ Population at the county
-# Level (by age by sex)
+# 3.4 QC Check - Compare the calculated GQ Population to the GQ Population at the county level (by age by sex)
 ```{r}
 #Create a municipality to county crosswalk with {mapcdatakeys}
 muni_county.xw <- mapcdatakeys::all_muni_data_keys |> 
@@ -944,7 +953,7 @@ if(sum(qc.population.df$gq.check.20 > 0)){
 
 ```
 
-# QC Check - Compare Census Population by Age by Sex to Projected Population data
+# 4.0 QC Check - Compare Census Population by Age by Sex to Projected Population data
 ```{r}
 #Projections 
 proj.pop.10 <- umdi.pop.MAPC101 |> 
@@ -1032,7 +1041,8 @@ if(sum(qc.population.20$qc.check > 0)){
 
 ```
 
-# Calculate the Percentage of People in Households by RPA and MPO
+# 5.1 Calculate the Percentage of People in Households by RPA and MPO
+
 ```{r}
 #===============================================================================
 #Calculating MAPC101 Population in Households Rate by RPA, Sex, Age Category
@@ -1043,9 +1053,9 @@ population.MAPC101.df <- population.df |>
   ) |> 
   group_by(
     rpa_acr,
-    #Sex,
     ageCAT6
   ) |> 
+  #Sum Population, Household Population, and Group Quarters population to higher order groups.
   summarise(
     Population.10 = sum(Population.10),
     Population.20 = sum(Population.20),
@@ -1056,13 +1066,13 @@ population.MAPC101.df <- population.df |>
   ) |> 
   ungroup() |> 
   rowwise() |> 
+  #Calculate the percentage of people in households by RPA and 5-year Age Category
   mutate(
     pct_pop.in.hhd.10 = HHPopulation.10/Population.10,
     pct_pop.in.hhd.20 = HHPopulation.20/Population.20
   ) |> 
   select(
     rpa_acr,
-    #Sex,
     ageCAT6,
     GQPopulation.10,
     GQPopulation.20,
@@ -1070,13 +1080,15 @@ population.MAPC101.df <- population.df |>
     pct_pop.in.hhd.20
   )
 
+#Write the intermediate dataframe to .csv.
 write.csv(
   population.MAPC101.df,
   paste0(output_path,"pct_pop.in.hhds.MAPC101_by.RPA.ageCAT6.csv"),
   row.names = FALSE
 )
 
-#Calculating MAPC97 Population in Households Rate by RPA, Sex, Age Category
+#===============================================================================
+#Calculating MAPC97 Population in Households Rate by MPO and Age Category
 population.MAPC97.df <- population.df |> 
   left_join(
     keys.mpo,
@@ -1084,9 +1096,9 @@ population.MAPC97.df <- population.df |>
   ) |> 
   group_by(
     mpo,
-    #Sex,
     ageCAT6
   ) |> 
+  #Sum Population, Household Population, and Group Quarters population to higher order groups.
   summarise(
     Population.10 = sum(Population.10),
     Population.20 = sum(Population.20),
@@ -1096,14 +1108,14 @@ population.MAPC97.df <- population.df |>
     GQPopulation.20 = sum(GQPopulation.20)
   ) |> 
   ungroup() |> 
-  rowwise() |> 
+  rowwise() |>
+  #Calculate the percentage of people in households by MPO and 5-year Age Category
   mutate(
     pct_pop.in.hhd.10 = HHPopulation.10/Population.10,
     pct_pop.in.hhd.20 = HHPopulation.20/Population.20
   ) |> 
   select(
     mpo,
-    #Sex,
     ageCAT6,
     GQPopulation.10,
     GQPopulation.20,
@@ -1111,19 +1123,33 @@ population.MAPC97.df <- population.df |>
     pct_pop.in.hhd.20
   )
 
+#Write the intermediate dataframe to .csv.
 write.csv(
   population.MAPC97.df,
   paste0(output_path,"pct_pop.in.hhds.MAPC97_by.MPO.ageCAT6.csv"),
   row.names = FALSE
 )
 
+```
+
+# 5.2 Calculate the projected number of people in households
+
+```{r}
 #===============================================================================
-#MAPC101
+#Calculating the MAPC101 Projected Population in Households by RPA and Age Category
 umdi.pop.MAPC101 <- left_join(
   umdi.pop.MAPC101,
   population.MAPC101.df,
   by = c("rpa_acr","ageCAT6")
 ) |> 
+  #Create projected household population using % of people in household rates created in the 
+  #preceding code bloc.
+  
+  #2010 Household Population is calculated using rates generated from 2010 Decennial Census data.
+  #2020-2050 Household Population is calulcated using rates generated from 2020 Decennial Census data.
+  
+  #Household Population for age groups 15-19 (ageCAT6 == 4) and 20-24 (ageCAT6 == 5) is calculated
+  #using a constant number of GQ population (representing a consistent number of students in GQ).
   mutate(
     hhpop = case_when(
       year == 2010 & ageCAT6 == "1" ~ pop*pct_pop.in.hhd.10,
@@ -1175,12 +1201,21 @@ umdi.pop.MAPC101 <- left_join(
     )
   )
 
-#MAPC97
+#===============================================================================
+#Calculating the MAPC97 Projected Population in Households by MPO and Age Category
 umdi.pop.MAPC97 <- left_join(
   umdi.pop.MAPC97,
   population.MAPC97.df,
   by = c("mpo","ageCAT6")
 ) |> 
+  #Create projected household population using % of people in household rates created in the 
+  #preceding code bloc.
+  
+  #2010 Household Population is calculated using rates generated from 2010 Decennial Census data.
+  #2020-2050 Household Population is calulcated using rates generated from 2020 Decennial Census data.
+  
+  #Household Population for age groups 15-19 (ageCAT6 == 4) and 20-24 (ageCAT6 == 5) is calculated
+  #using a constant number of GQ population (representing a consistent number of students in GQ).
   mutate(
     hhpop = case_when(
       year == 2010 & ageCAT6 == "1" ~ pop*pct_pop.in.hhd.10,
@@ -1240,12 +1275,10 @@ gc()
 ```
 
 
-#2.0 - Load and process PUMS Data
+#6.0 - Load and process PUMS Data
+#6.1 - Create PUMA to RPA/MPO Crosswalk for 2010 PUMAs
 
 ```{r}
-#Set PUMS vintage final year for {tidycensus} API query.
-yr <- 2021
-
 #Set up datakeys for future joins.
 mkeys <- mapcdatakeys::all_muni_data_keys |>  select(muni_id,rpa_acr,mpo)
 
@@ -1268,21 +1301,38 @@ xw <- lsf[Shape_Area==mx, .(rpa_acr,PUMA)]
 xw[,PUMA:=sprintf("%05d",PUMA)]
 
 #Manufacturing MVC and NPEDC RPAs manually
+#Create an empty matrix with 2x1 dimenstions
 matrix <- matrix(nrow = 1, ncol = 2)
+#Set the column names to match the PUMA to RPA/MPO crosswalk
 col_names <- c("rpa_acr", "PUMA")
 
+#Create dataframes with matrix dimensions for both RPAs
 mvc <- data.frame(matrix = matrix)
 npedc <- data.frame(matrix = matrix)
+
+#Assign column names to the dataframes
 colnames(mvc) <- col_names
 colnames(npedc) <- col_names
+
+#Populate data into the MVC and MPEDC dataframes
 mvc[[1]] <- "MVC"
 mvc[[2]] <- "04800"
 npedc[[1]] <- "NPEDC"
 npedc[[2]] <- "04800"
 
+#Append MVC and NPEDC data to PUMA to RPA/MPO crosswalk
 xw <- bind_rows(xw, mvc, npedc)
 
+#Remove intermediate dataframes.
 rm(matrix, col_names, mvc, npedc)
+gc()
+
+```
+# 6.2 Query 2017-2021 ACS 5-year PUMS data + categorize data
+
+```{r}
+#Set PUMS vintage final year for {tidycensus} API query.
+yr <- 2021
 
 #List of all 2017-2021 ACS PUMS Variables
 allvars <- pums_variables |>  filter(year==yr) |>  select(var_code) |>  unique()
@@ -1428,14 +1478,15 @@ if (length(unique(pums_data$rpa_acr)) != 13){
 
 ```
 
-# Generating reweighter target files
-# x.1 - Generate the ACS 2017-2021 PUMS Baseline data for each of our categories
+# 7.0 Generating reweighter target files
+# 7.1 - Generate the ACS 2017-2021 PUMS Baseline data for each of our categories
 
 ```{r}
 #===============================================================================
-# x.1 - Generate BASELINE data for the reweighter targeting files
-# x.1.1 -Baseline of people in Households
+# 7.1 - Generate BASELINE data for the reweighter targeting files
+# 7.1.1 -Baseline of people in Households
 hhpop_baseline <- pums_data |>  
+  # Filter for households.
   filter(TYPEHUGQ == "1") |>  
   mutate(
     ageCAT6 = as.factor(ageCAT6),
@@ -1444,6 +1495,7 @@ hhpop_baseline <- pums_data |>
   group_by(
     RPA
   ) |>  
+  # Sum the person weights in the PUMS data.
   dplyr::count(
     var = ageCAT6,
     wt = PWGTP
@@ -1452,6 +1504,7 @@ hhpop_baseline <- pums_data |>
     AgeCat = var,
     BASELINE = n
   ) |>  
+  #Rename variables to match the reweigher input requirements.
   mutate(
     AgeCat = case_when(
       AgeCat == 1 ~ "x == 1",
@@ -1476,8 +1529,9 @@ hhpop_baseline <- pums_data |>
    INTER = BASELINE
   )
 
-# x.1.2 - Baseline of Households by Household Type
-hhtype_baseline <- pums_data |>  
+# 7.1.2 - Baseline of Households by Household Type
+hhtype_baseline <- pums_data |> 
+  # Filter for households and the head of household for each SERIALNO
   filter(TYPEHUGQ == "1" & SPORDER == "1") |>   
   mutate(
     ageCAT6 = as.factor(ageCAT6),
@@ -1487,7 +1541,8 @@ hhtype_baseline <- pums_data |>
   group_by(
     RPA,
     ageCAT6
-  ) |>  
+  ) |> 
+  # Sum the household weights in the PUMS data.
   dplyr::count(
     var = HHtype,
     wt = WGTP
@@ -1498,6 +1553,7 @@ hhtype_baseline <- pums_data |>
     BASELINE = n,
     AgeCat = ageCAT6
   ) |> 
+  #Rename variables to match the reweigher input requirements.
   mutate(
     HHtype = case_when(
       HHtype == 1 ~ "hhderchild",
@@ -1528,6 +1584,7 @@ hhtype_baseline <- pums_data |>
     ),
     INTER = BASELINE
   ) |> 
+  #Filter for household types with householders (what we need for the reweighter!)
   dplyr::filter(HHtype == "hhderchild" | HHtype == "hhdernochild" | HHtype == "single") |>  
   mutate(
     HHtype = case_when(
@@ -1537,8 +1594,9 @@ hhtype_baseline <- pums_data |>
     )
   )
 
-# x.1.3 - Baseline of People in the laborforce
+# 7.1.3 - Baseline of People in the laborforce
 lf_baseline <- pums_data |>  
+  # Filter for households and people in the labor force
   filter(TYPEHUGQ == "1" & lf == "1") |>   
   mutate(
     ageCAT6 = as.factor(ageCAT6),
@@ -1548,7 +1606,8 @@ lf_baseline <- pums_data |>
   group_by(
     RPA,
     ageCAT6
-  ) |>  
+  ) |> 
+  # Sum the person weights in the PUMS data.
   dplyr::count(
     var = eduattn,
     wt = PWGTP
@@ -1559,6 +1618,7 @@ lf_baseline <- pums_data |>
     BASELINE = n,
     AgeCat = ageCAT6
   ) |> 
+  #Rename variables to match the reweigher input requirements.
   mutate(
     eduattn = case_when(
       eduattn == 1 ~ "High School or less",
@@ -1620,7 +1680,7 @@ write.csv(
 
 ```
 
-# Create Headship rates for ACS 2017-2021 PUMS
+# 7.2 Create Headship rates for ACS 2017-2021 PUMS
 
 ```{r}
 #Generating headship rates by RPA and 5-year age group for the ACS 2017-2022 PUMS
@@ -1685,7 +1745,7 @@ rm(hr_check)
 
 ```
 
-# Create Laborforce Participation rates for ACS 2017-2021 PUMS
+# 7.3 Create Laborforce Participation rates for ACS 2017-2021 PUMS
 ```{r}
 lfpr <- pums_data |> 
   #Takes only observations that are in housing units and in the labor force.
@@ -1729,13 +1789,13 @@ lfpr <- pums_data |>
 
 ```
 
-# Create Household Projections by RPA and Household Type
-# 1. For MAPC101
-# 2. For MAPC97
+# 7.4 Create Household Projections by RPA and Household Type
+# 7.4.1 For MAPC101
+# 7.4.2 For MAPC97
 
 ```{r}
 #===============================================================================
-# x.1.1 - Household Projections by RPA (MAPC101) and Household Type
+# 7.4.1 - Household Projections by RPA (MAPC101) and Household Type
 proj.hh.MAPC101_by.rpa.hhtype <- left_join(
   umdi.pop.MAPC101,
   headship_rates,
@@ -1785,7 +1845,7 @@ proj.hh.MAPC101_by.rpa.hhtype <- left_join(
   
 
 #===============================================================================
-# x.1.2 Household Projections by MPO (MAPC97) and Household Type
+# 7.4.2 Household Projections by MPO (MAPC97) and Household Type
 proj.hh.MAPC97_by.mpo.hhtype <- left_join(
   umdi.pop.MAPC97,
   headship_rates,
@@ -1835,22 +1895,24 @@ proj.hh.MAPC97_by.mpo.hhtype <- left_join(
 
 ```
 
-# Create Reweighter Template Files for Household Projections by RPA/MPO and Household Type
+# 7.5 Create Reweighter Template Files for Household Projections by RPA/MPO and Household Type
 
 ```{r}
 #Set list of decades to iterate through projections data.
 years <- c(2010, 2020, 2030, 2040, 2050)
 
 #===============================================================================
-#Iterate through household projections to create reweighter targeting files for households
+# Iterate through household projections to create reweighter targeting files for households
 # MAPC101/RPA Versions
 for (i in years) {
+  #Filter the projected households dataframe by year i
   tmp <- proj.hh.MAPC101_by.rpa.hhtype |> 
     filter(
       year == i
     ) |> 
     select(-c(year))
   
+  #Join the projected households by year to the baseline file.
   target.file <- left_join(
     hhtype_baseline,
     tmp,
@@ -1860,26 +1922,31 @@ for (i in years) {
       TARGET = hh
     )
   
+  #Write the reweighter targeting file to .csv by year i.
   write.csv(
     target.file,
     paste0(output_path, "hhtype.MAPC101.targetfile.",i,".csv"),
     row.names = FALSE
   )
   
+  #Remove files that will be re-written in each loop.
   rm(tmp, target.file)
   
+  #Record when the process has finished for each year in the year list.
   print(paste0("MAPC101 Reweighter Target File for ",i," has been generated."))
 }
 
 #===============================================================================
 # MAPC97/MPO Versions
 for (i in years) {
+  #Filter the projected households dataframe by year i
   tmp <- proj.hh.MAPC97_by.mpo.hhtype |> 
     filter(
       year == i
     ) |> 
     select(-c(year))
   
+  #Join the projected households by year to the baseline file.
   target.file <- left_join(
     hhtype_baseline,
     tmp,
@@ -1889,14 +1956,17 @@ for (i in years) {
       TARGET = hh
     )
   
+  #Write the reweighter targeting file to .csv by year i.
   write.csv(
     target.file,
     paste0(output_path, "hhtype.MAPC97.targetfile.",i,".csv"),
     row.names = FALSE
   )
   
+  #Remove files that will be re-written in each loop.
   rm(tmp, target.file)
   
+  #Record when the process has finished for each year in the year list.
   print(paste0("MAPC97 Reweighter Target File for ",i," has been generated."))
 }
 

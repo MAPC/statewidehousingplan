@@ -62,6 +62,7 @@ var.list  <- c('RT',
                'HHLDRAGEP',
                'HHLDRRAC1P',
                'HHT',
+               'HHT2',
                'HINCP',
                'HUGCL',
                'HUPAC',
@@ -168,4 +169,4 @@ pums_2021 <- merge(pums_2021_raw,pums_2021_raw_b,by='uniq_obs')
 
 
 # 6 export
-write_csv(pums_2021, paste0(exp_path,"/pums_raw_vars_2021.csv"))
+write_csv(pums_2021, paste0(exp_path,"/pums_raw_data_2021.csv"))

@@ -8,26 +8,32 @@ library(dplyr)
 library(stringr)
 library(mapcdatakeys)
 
-# High Income Mortgage Denial
+# High Income Mortgage Denials by Race for years BEGINNING 2018
 
 # Data Source ----
 
-# Pre 2017
-# https://www.consumerfinance.gov/data-research/hmda/historic-data/?geo=ma&records=all-records&field_descriptions=labels
 
 # Latest: post 2017
-# https://ffiec.cfpb.gov/data-publication/aggregate-reports
+# https://ffiec.cfpb.gov/data-browser/data/2018?category=states
+
+
+# HMDA Dataset Filtering
+# select Data Year, Step One: Geography = State, MASSACHUSETTS
+# Step Two, Financial Institution (no selection) Step Three, Filter Variables (no selection)
+# download the file, for example: state_MA.csv
+# change filename to syntax:  hmda_ma_yyyy.csv, like hmda_ma_2018.csv
+# move file to input folder: K:/DataServices/Datasets/Housing/HMDA/Data/Raw/Tabular/yyyy/ 
 
 # muni version draft for Statewide Housing Plan request
 # the main functions were pulled from the script by Aseem Deodhar: hmda_processing_ct_ma_aggr.R
 # note: if else checks for corrections of ct_id (for example 2020 use ct10_id!)
-# lberman 2024-06-25 rev 2014-07-30
+# lberman 2024-06-25 rev 2014-08-13
 
 # -------------------------------------------------------------------------
 
 
 ## 0. set variables
-hmda_yr <- 2021
+hmda_yr <- 2023
 
 
 # 0.2 derive year for keys
@@ -73,10 +79,10 @@ keys <- if(hmda_yr < 2022) { #hmda data uses 2010 census tracts through 2021
 
 dist_keys <- if(hmda_yr < 2022) {
   distinct(keys, ct10_id, .keep_all = TRUE) %>% 
-  mutate(cosub_id = ct10_id)
+    mutate(cosub_id = ct10_id)
 } else {
   distinct(keys, ct20_id, .keep_all = TRUE) %>% 
-  mutate(cosub_id = ct20_id)
+    mutate(cosub_id = ct20_id)
 } 
 
 # note there are only 1619 ct20_id rows in keys
@@ -96,11 +102,12 @@ join_keys <- if(hmda_yr < 2022) {
               by = c('census_tract' = 'ct20_id')) 
 } 
 
-
-## 2.4 rm rows with blank muni_id (which had blank or incorrect ct id)
+## 2.4 rm rows with blank muni_id (which had blank or incorrect ct id) (fix trailing -1)
 keys_import <- join_keys %>% 
-  filter(!is.na(muni_id))
-
+  filter(!is.na(muni_id)) %>% 
+  mutate(applicant_ethnicity = `applicant_ethnicity-1`) %>% 
+  mutate(applicant_race = `applicant_race-1`)
+  
 # 2.5  check rows to be dropped 
 missing_muni_id <- join_keys %>% 
   filter(is.na(muni_id))
@@ -110,7 +117,7 @@ x <- distinct(missing_muni_id, census_tract, .keep_all = TRUE)
 
 
 # 2.7 export for research
-write_csv(x, paste0(test_path,"/",hmda_yr,"_non_join_census_tracts.csv"))
+#write_csv(x, paste0(test_path,"/",hmda_yr,"_non_join_census_tracts.csv"))
 
 rm(missing_muni_id,x)
 
@@ -118,72 +125,206 @@ rm(missing_muni_id,x)
 
 # 3.1 clean up names found in derived_ethnicity and derived_race into column race_ethnicity
 #  expand with new lines to account for errors in the data, eg "joint" "Free From Text Only" 
+
+# note from 2018 the applicant-ethnicity-1 and applicant_race-1 values were augmented with new items
+# compare pre-2018: https://files.consumerfinance.gov/hmda-historic-data-dictionaries/lar_record_codes.pdf
+# to 2018 on: https://ffiec.cfpb.gov/documentation/publications/loan-level-datasets/lar-data-fields
+
 clean_import <- keys_import %>% 
-  mutate(race_ethnicity = case_when(derived_ethnicity == "Hispanic or Latino" & derived_race == "White" ~ "lat",
-                                    derived_ethnicity == "Hispanic or Latino" & derived_race == "Black or African American" ~ "lat",
-                                    derived_ethnicity == "Hispanic or Latino" & derived_race == "Asian" ~ "lat",
-                                    derived_ethnicity == "Hispanic or Latino" & derived_race == "Native Hawaiian or Other Pacific Islander" ~ "lat",
-                                    derived_ethnicity == "Hispanic or Latino" & derived_race == "American Indian or Alaska Native" ~ "lat",
-                                    derived_ethnicity == "Hispanic or Latino" & derived_race == "Race Not Available" ~ "lat",
-                                    derived_ethnicity == "Hispanic or Latino" & derived_race == "2 or more minority races" ~ "lat",
-                                    derived_ethnicity == "Hispanic or Latino" & derived_race == "Free Form Text Only" ~ "lat",
-                                    derived_ethnicity == "Hispanic or Latino" & derived_race == "joint" ~ "lat",
-                                    derived_ethnicity == "Hispanic or Latino" & derived_race == "Joint" ~ "lat",
+  mutate(race_ethnicity = case_when(applicant_ethnicity == 1 & applicant_race == 1 ~ "lat", #eth hispanic = 1
+                                    applicant_ethnicity == 1 & applicant_race == 2 ~ "lat",
+                                    applicant_ethnicity == 1 & applicant_race == 21 ~ "lat",
+                                    applicant_ethnicity == 1 & applicant_race == 22 ~ "lat",
+                                    applicant_ethnicity == 1 & applicant_race == 23 ~ "lat",
+                                    applicant_ethnicity == 1 & applicant_race == 24 ~ "lat",
+                                    applicant_ethnicity == 1 & applicant_race == 25 ~ "lat",
+                                    applicant_ethnicity == 1 & applicant_race == 26 ~ "lat",
+                                    applicant_ethnicity == 1 & applicant_race == 27 ~ "lat",
+                                    applicant_ethnicity == 1 & applicant_race == 3 ~ "lat",
+                                    applicant_ethnicity == 1 & applicant_race == 4 ~ "lat",
+                                    applicant_ethnicity == 1 & applicant_race == 41 ~ "lat",
+                                    applicant_ethnicity == 1 & applicant_race == 42 ~ "lat",
+                                    applicant_ethnicity == 1 & applicant_race == 43 ~ "lat",
+                                    applicant_ethnicity == 1 & applicant_race == 44 ~ "lat",
+                                    applicant_ethnicity == 1 & applicant_race == 5 ~ "lat",
+                                    applicant_ethnicity == 1 & applicant_race == 6 ~ "lat",
+                                    applicant_ethnicity == 1 & applicant_race == 7 ~ "lat",
                                     
-                                    derived_ethnicity == "Not Hispanic or Latino" & derived_race == "White" ~ "whi",
-                                    derived_ethnicity == "Not Hispanic or Latino" & derived_race == "Black or African American" ~ "baa",
-                                    derived_ethnicity == "Not Hispanic or Latino" & derived_race == "Asian" ~ "asn",
-                                    derived_ethnicity == "Not Hispanic or Latino" & derived_race == "Native Hawaiian or Other Pacific Islander" ~ "nhp",
-                                    derived_ethnicity == "Not Hispanic or Latino" & derived_race == "American Indian or Alaska Native" ~ "nav",
-                                    derived_ethnicity == "Not Hispanic or Latino" & derived_race == "Joint" ~ "na",
-                                    derived_ethnicity == "Not Hispanic or Latino" & derived_race == "Race Not Available" ~ "na",
-                                    derived_ethnicity == "Not Hispanic or Latino" & derived_race == "2 or more minority races" ~ "mlt",
-                                    derived_ethnicity == "Not Hispanic or Latino" & derived_race == "Free Form Text Only" ~ "na",
+                                    applicant_ethnicity == 11 & applicant_race == 1 ~ "lat", #eth hispanic = 11 Mexican
+                                    applicant_ethnicity == 11 & applicant_race == 2 ~ "lat",
+                                    applicant_ethnicity == 11 & applicant_race == 21 ~ "lat",
+                                    applicant_ethnicity == 11 & applicant_race == 22 ~ "lat",
+                                    applicant_ethnicity == 11 & applicant_race == 23 ~ "lat",
+                                    applicant_ethnicity == 11 & applicant_race == 24 ~ "lat",
+                                    applicant_ethnicity == 11 & applicant_race == 25 ~ "lat",
+                                    applicant_ethnicity == 11 & applicant_race == 26 ~ "lat",
+                                    applicant_ethnicity == 11 & applicant_race == 27 ~ "lat",
+                                    applicant_ethnicity == 11 & applicant_race == 3 ~ "lat",
+                                    applicant_ethnicity == 11 & applicant_race == 4 ~ "lat",
+                                    applicant_ethnicity == 11 & applicant_race == 41 ~ "lat",
+                                    applicant_ethnicity == 11 & applicant_race == 42 ~ "lat",
+                                    applicant_ethnicity == 11 & applicant_race == 43 ~ "lat",
+                                    applicant_ethnicity == 11 & applicant_race == 44 ~ "lat",
+                                    applicant_ethnicity == 11 & applicant_race == 5 ~ "lat",
+                                    applicant_ethnicity == 11 & applicant_race == 6 ~ "lat",
+                                    applicant_ethnicity == 11 & applicant_race == 7 ~ "lat",
                                     
-                                    derived_ethnicity == "Ethnicity Not Available" & derived_race == "Race Not Available" ~ "na",
-                                    derived_ethnicity == "Ethnicity Not Available" & derived_race == "White" ~ "whi",
-                                    derived_ethnicity == "Ethnicity Not Available" & derived_race == "2 or more minority races" ~ "lat",
-                                    derived_ethnicity == "Ethnicity Not Available" & derived_race == "Black or African American" ~ "baa",
-                                    derived_ethnicity == "Ethnicity Not Available" & derived_race == "Asian" ~ "asn",
-                                    derived_ethnicity == "Ethnicity Not Available" & derived_race == "Native Hawaiian or Other Pacific Islander" ~ "nhp",
-                                    derived_ethnicity == "Ethnicity Not Available" & derived_race == "American Indian or Alaska Native" ~ "nav",
-                                    derived_ethnicity == "Ethnicity Not Available" & derived_race == "joint" ~ "na",
-                                    derived_ethnicity == "Ethnicity Not Available" & derived_race == "Joint" ~ "na",
-                                    derived_ethnicity == "Ethnicity Not Available" & derived_race == "Free Form Text Only" ~ "na",
+                                    applicant_ethnicity == 12 & applicant_race == 1 ~ "lat", #eth hispanic = 12 Puerto Rican
+                                    applicant_ethnicity == 12 & applicant_race == 2 ~ "lat",
+                                    applicant_ethnicity == 12 & applicant_race == 21 ~ "lat",
+                                    applicant_ethnicity == 12 & applicant_race == 22 ~ "lat",
+                                    applicant_ethnicity == 12 & applicant_race == 23 ~ "lat",
+                                    applicant_ethnicity == 12 & applicant_race == 24 ~ "lat",
+                                    applicant_ethnicity == 12 & applicant_race == 25 ~ "lat",
+                                    applicant_ethnicity == 12 & applicant_race == 26 ~ "lat",
+                                    applicant_ethnicity == 12 & applicant_race == 27 ~ "lat",
+                                    applicant_ethnicity == 12 & applicant_race == 3 ~ "lat",
+                                    applicant_ethnicity == 12 & applicant_race == 4 ~ "lat",
+                                    applicant_ethnicity == 12 & applicant_race == 41 ~ "lat",
+                                    applicant_ethnicity == 12 & applicant_race == 42 ~ "lat",
+                                    applicant_ethnicity == 12 & applicant_race == 43 ~ "lat",
+                                    applicant_ethnicity == 12 & applicant_race == 44 ~ "lat",
+                                    applicant_ethnicity == 12 & applicant_race == 5 ~ "lat",
+                                    applicant_ethnicity == 12 & applicant_race == 6 ~ "lat",
+                                    applicant_ethnicity == 12 & applicant_race == 7 ~ "lat",
+                                    
+                                    applicant_ethnicity == 13 & applicant_race == 1 ~ "lat", #eth hispanic = 13 Cuban
+                                    applicant_ethnicity == 13 & applicant_race == 2 ~ "lat",
+                                    applicant_ethnicity == 13 & applicant_race == 21 ~ "lat",
+                                    applicant_ethnicity == 13 & applicant_race == 22 ~ "lat",
+                                    applicant_ethnicity == 13 & applicant_race == 23 ~ "lat",
+                                    applicant_ethnicity == 13 & applicant_race == 24 ~ "lat",
+                                    applicant_ethnicity == 13 & applicant_race == 25 ~ "lat",
+                                    applicant_ethnicity == 13 & applicant_race == 26 ~ "lat",
+                                    applicant_ethnicity == 13 & applicant_race == 27 ~ "lat",
+                                    applicant_ethnicity == 13 & applicant_race == 3 ~ "lat",
+                                    applicant_ethnicity == 13 & applicant_race == 4 ~ "lat",
+                                    applicant_ethnicity == 13 & applicant_race == 41 ~ "lat",
+                                    applicant_ethnicity == 13 & applicant_race == 42 ~ "lat",
+                                    applicant_ethnicity == 13 & applicant_race == 43 ~ "lat",
+                                    applicant_ethnicity == 13 & applicant_race == 44 ~ "lat",
+                                    applicant_ethnicity == 13 & applicant_race == 5 ~ "lat",
+                                    applicant_ethnicity == 13 & applicant_race == 6 ~ "lat",
+                                    applicant_ethnicity == 13 & applicant_race == 7 ~ "lat",
+                                    
+                                    applicant_ethnicity == 14 & applicant_race == 1 ~ "lat", #eth hispanic = 14 other hispanic or latino
+                                    applicant_ethnicity == 14 & applicant_race == 2 ~ "lat",
+                                    applicant_ethnicity == 14 & applicant_race == 21 ~ "lat",
+                                    applicant_ethnicity == 14 & applicant_race == 22 ~ "lat",
+                                    applicant_ethnicity == 14 & applicant_race == 23 ~ "lat",
+                                    applicant_ethnicity == 14 & applicant_race == 24 ~ "lat",
+                                    applicant_ethnicity == 14 & applicant_race == 25 ~ "lat",
+                                    applicant_ethnicity == 14 & applicant_race == 26 ~ "lat",
+                                    applicant_ethnicity == 14 & applicant_race == 27 ~ "lat",
+                                    applicant_ethnicity == 14 & applicant_race == 3 ~ "lat",
+                                    applicant_ethnicity == 14 & applicant_race == 4 ~ "lat",
+                                    applicant_ethnicity == 14 & applicant_race == 41 ~ "lat",
+                                    applicant_ethnicity == 14 & applicant_race == 42 ~ "lat",
+                                    applicant_ethnicity == 14 & applicant_race == 43 ~ "lat",
+                                    applicant_ethnicity == 14 & applicant_race == 44 ~ "lat",
+                                    applicant_ethnicity == 14 & applicant_race == 5 ~ "lat",
+                                    applicant_ethnicity == 14 & applicant_race == 6 ~ "lat",
+                                    applicant_ethnicity == 14 & applicant_race == 7 ~ "lat",
+                                    
+                                    applicant_ethnicity == 2 & applicant_race == 1 ~ "nav", #eth hispanic = 2 not hispanic or latino
+                                    applicant_ethnicity == 2 & applicant_race == 2 ~ "asn",
+                                    applicant_ethnicity == 2 & applicant_race == 21 ~ "asn",
+                                    applicant_ethnicity == 2 & applicant_race == 22 ~ "asn",
+                                    applicant_ethnicity == 2 & applicant_race == 23 ~ "asn",
+                                    applicant_ethnicity == 2 & applicant_race == 24 ~ "asn",
+                                    applicant_ethnicity == 2 & applicant_race == 25 ~ "asn",
+                                    applicant_ethnicity == 2 & applicant_race == 26 ~ "asn",
+                                    applicant_ethnicity == 2 & applicant_race == 27 ~ "asn",
+                                    applicant_ethnicity == 2 & applicant_race == 3 ~ "baa",
+                                    applicant_ethnicity == 2 & applicant_race == 4 ~ "nhp",
+                                    applicant_ethnicity == 2 & applicant_race == 41 ~ "nhp",
+                                    applicant_ethnicity == 2 & applicant_race == 42 ~ "nhp",
+                                    applicant_ethnicity == 2 & applicant_race == 43 ~ "nhp",
+                                    applicant_ethnicity == 2 & applicant_race == 44 ~ "nhp",
+                                    applicant_ethnicity == 2 & applicant_race == 5 ~ "whi",
+                                    applicant_ethnicity == 2 & applicant_race == 6 ~ "na",
+                                    applicant_ethnicity == 2 & applicant_race == 7 ~ "na",
                                     
                                     
-                                    derived_ethnicity == "White" & derived_race == "Joint" ~ "whi",
+                                    applicant_ethnicity == 3 & applicant_race == 1 ~ "nav", #eth hispanic = 3 info not provided
+                                    applicant_ethnicity == 3 & applicant_race == 2 ~ "asn",
+                                    applicant_ethnicity == 3 & applicant_race == 21 ~ "asn",
+                                    applicant_ethnicity == 3 & applicant_race == 22 ~ "asn",
+                                    applicant_ethnicity == 3 & applicant_race == 23 ~ "asn",
+                                    applicant_ethnicity == 3 & applicant_race == 24 ~ "asn",
+                                    applicant_ethnicity == 3 & applicant_race == 25 ~ "asn",
+                                    applicant_ethnicity == 3 & applicant_race == 26 ~ "asn",
+                                    applicant_ethnicity == 3 & applicant_race == 27 ~ "asn",
+                                    applicant_ethnicity == 3 & applicant_race == 3 ~ "baa",
+                                    applicant_ethnicity == 3 & applicant_race == 4 ~ "nhp",
+                                    applicant_ethnicity == 3 & applicant_race == 41 ~ "nhp",
+                                    applicant_ethnicity == 3 & applicant_race == 42 ~ "nhp",
+                                    applicant_ethnicity == 3 & applicant_race == 43 ~ "nhp",
+                                    applicant_ethnicity == 3 & applicant_race == 44 ~ "nhp",
+                                    applicant_ethnicity == 3 & applicant_race == 5 ~ "whi",
+                                    applicant_ethnicity == 3 & applicant_race == 6 ~ "na",
+                                    applicant_ethnicity == 3 & applicant_race == 7 ~ "na",
                                     
-                                    derived_ethnicity == "Joint" & derived_race == "White" ~ "whi",
-                                    derived_ethnicity == "Joint" & derived_race == "Black or African American" ~ "baa",
-                                    derived_ethnicity == "Joint" & derived_race == "Asian" ~ "asn",
-                                    derived_ethnicity == "Joint" & derived_race == "Native Hawaiian or Other Pacific Islander" ~ "nhp",
-                                    derived_ethnicity == "Joint" & derived_race == "American Indian or Alaska Native" ~ "nav",
-                                    derived_ethnicity == "Joint" & derived_race == "Race Not Available" ~ "na",
-                                    derived_ethnicity == "Joint" & derived_race == "Joint" ~ "na",                                 
-                                    derived_ethnicity == "Joint" & derived_race == "2 or more minority races" ~ "mlt",                                
-                                    derived_ethnicity == "Joint" & derived_race == "Free Form Text Only" ~ "na",
+                                    applicant_ethnicity == 4 & applicant_race == 1 ~ "nav", #eth hispanic = 4 not applicable
+                                    applicant_ethnicity == 4 & applicant_race == 2 ~ "asn",
+                                    applicant_ethnicity == 4 & applicant_race == 21 ~ "asn",
+                                    applicant_ethnicity == 4 & applicant_race == 22 ~ "asn",
+                                    applicant_ethnicity == 4 & applicant_race == 23 ~ "asn",
+                                    applicant_ethnicity == 4 & applicant_race == 24 ~ "asn",
+                                    applicant_ethnicity == 4 & applicant_race == 25 ~ "asn",
+                                    applicant_ethnicity == 4 & applicant_race == 26 ~ "asn",
+                                    applicant_ethnicity == 4 & applicant_race == 27 ~ "asn",
+                                    applicant_ethnicity == 4 & applicant_race == 3 ~ "baa",
+                                    applicant_ethnicity == 4 & applicant_race == 4 ~ "nhp",
+                                    applicant_ethnicity == 4 & applicant_race == 41 ~ "nhp",
+                                    applicant_ethnicity == 4 & applicant_race == 42 ~ "nhp",
+                                    applicant_ethnicity == 4 & applicant_race == 43 ~ "nhp",
+                                    applicant_ethnicity == 4 & applicant_race == 44 ~ "nhp",
+                                    applicant_ethnicity == 4 & applicant_race == 5 ~ "whi",
+                                    applicant_ethnicity == 4 & applicant_race == 6 ~ "na",
+                                    applicant_ethnicity == 4 & applicant_race == 7 ~ "na",
                                     
-                                    derived_ethnicity == "Free Form Text Only" & derived_race == "White" ~ "whi",
-                                    derived_ethnicity == "Free Form Text Only" & derived_race == "Black or African American" ~ "baa",
-                                    derived_ethnicity == "Free Form Text Only" & derived_race == "Asian" ~ "asn",
-                                    derived_ethnicity == "Free Form Text Only" & derived_race == "Native Hawaiian or Other Pacific Islander" ~ "nhp",
-                                    derived_ethnicity == "Free Form Text Only" & derived_race == "American Indian or Alaska Native" ~ "nav",
-                                    derived_ethnicity == "Free Form Text Only" & derived_race == "Race Not Available" ~ "na",
-                                    derived_ethnicity == "Free Form Text Only" & derived_race == "Free Form Text Only" ~ "na",
-                                    derived_ethnicity == "Free Form Text Only" & derived_race == "joint" ~ "na",  
-                                    derived_ethnicity == "Free Form Text Only" & derived_race == "Joint" ~ "na",  
-                                    derived_ethnicity == "Free Form Text Only" & derived_race == "2 or more minority races" ~ "mlt"),                                      
+                                    is.na(applicant_ethnicity) & applicant_race == 1 ~ "nav", #eth hispanic = NA not applicable
+                                    is.na(applicant_ethnicity) & applicant_race == 2 ~ "asn",
+                                    is.na(applicant_ethnicity) & applicant_race == 21 ~ "asn",
+                                    is.na(applicant_ethnicity) & applicant_race == 22 ~ "asn",
+                                    is.na(applicant_ethnicity) & applicant_race == 23 ~ "asn",
+                                    is.na(applicant_ethnicity) & applicant_race == 24 ~ "asn",
+                                    is.na(applicant_ethnicity) & applicant_race == 25 ~ "asn",
+                                    is.na(applicant_ethnicity) & applicant_race == 26 ~ "asn",
+                                    is.na(applicant_ethnicity) & applicant_race == 27 ~ "asn",
+                                    is.na(applicant_ethnicity) & applicant_race == 3 ~ "baa",
+                                    is.na(applicant_ethnicity) & applicant_race == 4 ~ "nhp",
+                                    is.na(applicant_ethnicity) & applicant_race == 41 ~ "nhp",
+                                    is.na(applicant_ethnicity) & applicant_race == 42 ~ "nhp",
+                                    is.na(applicant_ethnicity) & applicant_race == 43 ~ "nhp",
+                                    is.na(applicant_ethnicity) & applicant_race == 44 ~ "nhp",
+                                    is.na(applicant_ethnicity) & applicant_race == 5 ~ "whi",
+                                    is.na(applicant_ethnicity) & applicant_race == 6 ~ "na",
+                                    is.na(applicant_ethnicity) & applicant_race == 7 ~ "na",
+
+                                    applicant_ethnicity == 1 & is.na(applicant_race) ~ "lat", #eth hispanic = 1,11,12,13 and race NA
+                                    applicant_ethnicity == 11 & is.na(applicant_race) ~ "lat",
+                                    applicant_ethnicity == 12 & is.na(applicant_race) ~ "lat",                                    applicant_ethnicity == 12 & is.na(applicant_race) ~ "lat",
+                                    applicant_ethnicity == 13 & is.na(applicant_race) ~ "lat",
+                                    applicant_ethnicity == 14 & is.na(applicant_race) ~ "lat"),
+         
          
          income = income*1000 
-         ) 
+  )
+  
 
 # 3.2  ck removal of error in previous step  (note, categories added for "na" and "mlt")
 ck_muni <- clean_import %>%
   filter(is.na(race_ethnicity))
 
-#note: when step 3.2 returns zero rows, then proceed
+#note: when step 3.2 returns only rows with applicant_ethnicity = 2 or NA, and applicant_race = NA, then proceed
 rm(ck_muni)
+
+# 3.3 filter out any remaining rows with is.na(race_ethnicity)
+clean_import <- clean_import %>%
+  filter(!is.na(race_ethnicity))
+
 
 
 # 4. get HUD Income limits 
@@ -201,7 +342,7 @@ mfi_import <- clean_import %>%
   left_join(.,
             inc_lim %>% select(hud_muni_id,hud_muni_nm,hud_median),
             by = c('muni_id' = 'hud_muni_id')) %>% 
-            select(-c(hud_muni_nm))        
+  select(-c(hud_muni_nm))        
 
 #rm(inc_lim,keys_import,raw_import,keys,join_keys)
 
@@ -226,7 +367,7 @@ hmda_mu_func_1821 <- function(hmda_yr){
            hud_median) %>%
     
     # removed left_join to tidycensus table B19113
-
+    
     mutate(
       #calculate median income percent value
       med_inc_pc = (income/hud_median)*100,
@@ -272,8 +413,8 @@ hmda_mu_aggr_func_1821 <- function(hmda_yr, grp_id, grp_name){
            income,
            hud_median,
            cosub_id
-           ) %>% 
-  
+    ) %>% 
+    
     mutate(
       #calculate median income percent value
       med_inc_pc = (income/hud_median)*100,
@@ -349,7 +490,7 @@ hmda_mortgage_denials_by_race_120pct_aggr <-
 
 ## 8.1 keeping the na and mlt columns (not part of orig db schema)
 hmda_mortgage_denials_by_race_120pct <- hmda_mortgage_denials_by_race_120pct_m %>%
-   bind_rows(., hmda_mortgage_denials_by_race_120pct_aggr)
+  bind_rows(., hmda_mortgage_denials_by_race_120pct_aggr)
 
 ## 9 decimals fix rates before export
 df <- hmda_mortgage_denials_by_race_120pct 
@@ -362,9 +503,8 @@ df <- df %>%
   mutate(nav_rate = round(nav_rate, 2)) %>% 
   mutate(nhp_rate = round(nhp_rate, 2)) %>% 
   mutate(whi_rate = round(whi_rate, 2)) %>%  
-  mutate(mlt_rate = round(mlt_rate, 2)) %>% 
   mutate(na_rate = round(na_rate, 2))
-  
+
 ## 10. export to csv
 write_csv(df, paste0(exp_path,"/",hmda_yr,"/hmda_mortgage_denials_by_race_120pct.csv"))
 

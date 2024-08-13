@@ -13,15 +13,467 @@ Quarto enables you to weave together content and executable code into a finished
 
 When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
 
+# 0.0 - Environment Set-up
+# 0.1 - Set package dependencies, set up data keys, set input and output paths
 ```{r}
-1 + 1
+library(tidycensus)
+library(tidyverse)
+library(data.table)
+library(mapcdatakeys)
+library(janitor)
+library(readxl)
+
+##get rid of scientific notation
+options(scipen = 999)
+#Set random seed
+set.seed(351)
+
+#County GEOIDs for 2010 Decennial Census
+GEOID.cn.10 <- mapcdatakeys::all_muni_data_keys |>  
+  mutate(
+    GEOID = as.character(str_sub(cosub_cn10, 1, 5))
+  ) |> 
+  select(county_id, GEOID) |> 
+  distinct(
+    GEOID,
+    .keep_all = TRUE
+  )
+
+#County GEOIDs for 2020 Decennial Census
+GEOID.cn.20 <- mapcdatakeys::all_muni_data_keys |>  
+  mutate(
+    GEOID = as.character(str_sub(cosub_cn20, 1, 5))
+  ) |> 
+  select(county_id, GEOID) |> 
+  distinct(
+    GEOID,
+    .keep_all = TRUE
+  )
+
+# Set input and output paths
+input_path <- ""
+
+output_path <- ""
+
 ```
 
-You can add options to executable code like this
-
+# 0.2 Census API Query Functions
 ```{r}
-#| echo: false
-2 * 2
+#Decennial Census API Query Function
+#Load 2010 Decennial variables for easier filtering
+vars.dec10 <- load_variables(2010, dataset = c("sf1"))
+
+#Load 2020 Decennial variables for easier filtering
+vars.dec20 <- load_variables(2020, dataset = c("dhc"))
+
+#decennial_call - Decennial Census Data API Query
+#decennial.var_name: list of variables to query the API
+#year: vintage of decennial census
+decennial_call <- function(decennial.var_name, geog, year){
+  if (year == 2010){
+    get_decennial(
+      variables = decennial.var_name,
+      geography = geog, #Specify the level of geography
+      state = "MA", #Only evaluating MA municipalities
+      year = year, #Set the year in the function call (either 2010 or 2020)
+      sumfile = "sf1" #Different summary files depending on year
+    )
+    
+  } else{
+    get_decennial(
+      variables = decennial.var_name,
+      geography = geog, #Specify the level of geography
+      state = "MA", #Only evaluating MA municipalities
+      year = year, #Set the year in the function call (either 2010 or 2020)
+      sumfile = "dhc" #Different summary files depending on year
+    )
+  }
+}
+
+#Decennial Data Cleaning Functions
+#dec.vars - loads a list of variables to pass to the decennial census query
+#vars: dataframe of all variables in decennial census. pick from vars.dec10 and vars.dec20
+#concept: string of the "concept" variable in the vars dataframe
+dec.vars <- function(vars, con){
+  vars |>  
+  filter(concept == con) |> 
+  select(name) |> 
+  mutate(
+    name = as.character(name)
+  ) |>  
+  pull(name) 
+}
+
+#dec.labels - Attaches relevant data labels to data pulled from the decennial census
+#by five-year age group
+#year: dataframe of all variables in decennial census. pick from vars.dec10 and vars.dec20
+#con: string of the "concept" variable in the vars dataframe
+dec.labels <- function(year, con){
+  if (year == "2010"){
+      vars.dec10 |>  
+      filter(concept == con) |> #Filter the data to the specific concept
+      select(name, label) |>  #Select relevant variables
+      filter(str_detect(label, "years")) |> #Removing overhead categories
+      #Mutate the text of the label variable to make easier cross-reference to ageCAT6
+      #age groups later on in the analysis
+      mutate( 
+        sex1 = str_extract(label, "Female"),
+        sex2 = str_extract(label, "Male"),
+        sex = coalesce(sex1,sex2),
+        label = gsub("Total!!Male!!","", label),
+        label = gsub("Total!!Female!!","", label),
+        label = gsub(" ", "_", label),
+        label = paste0("pop_", label)
+      ) |> 
+      #Remove superfluous variables used to coalesce
+      select(-c(sex1, sex2)) |>  
+      na.omit()
+    
+  } else{
+    vars.dec20 |>  
+      filter(concept == con) |> #Filter the data to the specific concept
+      select(name, label) |>  #Select relevant variables
+      filter(str_detect(label, "years")) |> #Removing overhead categories
+      #Mutate the text of the label variable to make easier cross-reference to ageCAT6
+      #age groups later on in the analysis
+      mutate(
+        sex1 = str_extract(label, "Female"),
+        sex2 = str_extract(label, "Male"),
+        sex = coalesce(sex1,sex2),
+        label = gsub("!!Total:!!Male:","", label),
+        label = gsub("!!Total:!!Female:","", label),
+        label = gsub(" ", "_", label),
+        label = sub("!!", "", label),
+        label = paste0("pop", label),
+      ) |> 
+      #Remove superfluous variables used to coalesce
+      select(-c(sex1, sex2)) |>  
+      na.omit()
+    
+  }
+}
+
+#Group Quarters Cleaning function
+gq.clean <- function(df){
+    df |> 
+    # Mutate the text of the label variable to make easier cross-reference to ageCAT6
+    # age groups later on in the analysis
+    mutate(
+      label = str_replace(label,"\\s*\\([^\\)]+\\)",""),
+      label = str_replace(label, "Total_!!Male!!",""),
+      label = str_replace(label, "Total_!!Female!!",""),
+      label = str_replace(label, "Total_:!!Male:!!",""),
+      label = str_replace(label, "Total_:!!Female:!!","")
+    )
+}
 ```
 
-The `echo: false` option disables the printing of code (only output is displayed).
+
+# 1.0 Query Census Group Quarters Data
+# 1.1 Overall Group Quarters Population by County by 5-year Age Group
+```{r}
+#===============================================================================
+#Group Quarters Population 2010
+#Creates a list of sex by age group quarters population variables to use in the API query
+gq.vars <- dec.vars(vars.dec10, "GROUP QUARTERS POPULATION BY SEX BY AGE")
+
+#Assigns appropriate labels to the Decennial Census variables
+gq.labels <- dec.labels("2010", "GROUP QUARTERS POPULATION BY SEX BY AGE") |> gq.clean()
+
+#Queries the Census API via {tidycensus} to retrieve data about the group 
+#quarters population
+gq.values <- decennial_call(gq.vars, geog = "county", 2010)
+
+#Clean the 2010 Group Quarters Population data
+gqpop.10 <- gq.values |> 
+  filter(GEOID %in% GEOID.cn.10$GEOID) |> 
+  right_join(
+    gq.labels,
+    by = c("variable" = "name")
+  )|> 
+  #Change the Census age category levels to match the ageCAT6 labels
+  mutate(
+    ageCAT6 = case_when(
+      label == 'pop_Under_5_years' ~ '1',
+      label == "pop_5_to_9_years" ~ '2',
+      label == "pop_10_to_14_years" ~ '3',
+      label == "pop_15_to_19_years" ~ '4',
+      label == "pop_20_to_24_years" ~ '5',
+      label == "pop_25_to_29_years" ~ '6',
+      label == "pop_30_to_34_years" ~ '7',
+      label == "pop_35_to_39_years" ~ '8',
+      label == "pop_40_to_44_years" ~ '9',
+      label == "pop_45_to_49_years" ~ '10',
+      label == "pop_50_to_54_years" ~ '11',
+      label == "pop_55_to_59_years" ~ '12',
+      label == "pop_60_to_64_years" ~ '13',
+      label == "pop_65_to_69_years" ~ '14',
+      label == "pop_70_to_74_years" ~ '15',
+      label == "pop_75_to_79_years" ~ '16',
+      label == "pop_80_to_84_years" ~ '17',
+      label == "pop_85_years_and_over" ~ '18'
+    )
+  ) |> 
+  filter(!is.na(ageCAT6)) |>  
+  right_join(
+    GEOID.cn.10,
+    by = c('GEOID')
+  ) |>  
+  mutate(
+    county_id = as.character(county_id)
+  ) |> 
+  dplyr::rename(
+    GQPopulation = value,
+    Sex = sex
+  ) |>  
+  select(county_id, Sex, ageCAT6, GQPopulation) |>  
+  group_by(
+    county_id,
+    Sex,
+    ageCAT6
+  ) |> 
+  summarise(
+    GQPopulation = sum(GQPopulation)
+  ) |>  
+  ungroup()
+  
+#Remove dataframes no longer needed in the process.
+rm(gq.labels, gq.values, gq.vars)
+
+#===============================================================================
+#Group Quarters Population 2020
+#Creates a list of sex by age group quarters population variables to use in the API query
+gq.vars <- dec.vars(vars.dec20, "GROUP QUARTERS POPULATION BY SEX BY AGE")
+
+#Assigns appropriate labels to the Decennial Census variables
+gq.labels <- dec.labels("2020", "GROUP QUARTERS POPULATION BY SEX BY AGE") |> gq.clean()
+
+#Queries the Census API via {tidycensus} to retrieve data about the group 
+#quarters population
+gq.values <- decennial_call(gq.vars, geog = "county", 2020)
+
+#Clean the 2020 Group Quarters Population data
+gqpop.20 <- gq.values |> 
+  filter(GEOID %in% GEOID.cn.20$GEOID) |> 
+  right_join(
+    gq.labels,
+    by = c("variable" = "name")
+  )|> 
+  #Change the Census age category levels to match the ageCAT6 labels
+  mutate(
+    ageCAT6 = case_when(
+      label == 'pop_Under_5_years' ~ '1',
+      label == "pop_5_to_9_years" ~ '2',
+      label == "pop_10_to_14_years" ~ '3',
+      label == "pop_15_to_19_years" ~ '4',
+      label == "pop_20_to_24_years" ~ '5',
+      label == "pop_25_to_29_years" ~ '6',
+      label == "pop_30_to_34_years" ~ '7',
+      label == "pop_35_to_39_years" ~ '8',
+      label == "pop_40_to_44_years" ~ '9',
+      label == "pop_45_to_49_years" ~ '10',
+      label == "pop_50_to_54_years" ~ '11',
+      label == "pop_55_to_59_years" ~ '12',
+      label == "pop_60_to_64_years" ~ '13',
+      label == "pop_65_to_69_years" ~ '14',
+      label == "pop_70_to_74_years" ~ '15',
+      label == "pop_75_to_79_years" ~ '16',
+      label == "pop_80_to_84_years" ~ '17',
+      label == "pop_85_years_and_over" ~ '18'
+    )
+  ) |> 
+  filter(!is.na(ageCAT6)) |>  
+  right_join(
+    GEOID.cn.20,
+    by = c('GEOID')
+  ) |>  
+  mutate(
+    county_id = as.character(county_id)
+  ) |> 
+  dplyr::rename(
+    GQPopulation = value,
+    Sex = sex
+  ) |>  
+  select(county_id, Sex, ageCAT6, GQPopulation) |>  
+  group_by(
+    county_id,
+    Sex,
+    ageCAT6
+  ) |> 
+  summarise(
+    GQPopulation = sum(GQPopulation)
+  ) |>  
+  ungroup()
+
+#Remove dataframes no longer needed in the process.
+rm(gq.labels, gq.values, gq.vars)
+gc()
+```
+
+# 1.2 Group Quarters Population in Nursing Homes by County by 5-year Age Group
+```{r}
+#===============================================================================
+#Group Quarters Population - College and University Student Housing 2020
+#Creates a list of sex by age group quarters population variables to use in the API query
+gq.vars <- dec.vars(vars.dec10, "GROUP QUARTERS POPULATION IN COLLEGE/UNIVERSITY STUDENT HOUSING BY SEX BY AGE")
+
+#Assigns appropriate labels to the Decennial Census variables
+gq.labels <- dec.labels("2010", "GROUP QUARTERS POPULATION IN COLLEGE/UNIVERSITY STUDENT HOUSING BY SEX BY AGE") |> gq.clean()
+
+#Queries the Census API via {tidycensus} to retrieve data about the group 
+#quarters population in college or university housing
+gq.values <- decennial_call(gq.vars, geog = "county", 2010)
+
+#Clean the 2020 Group Quarters Population data
+cu.gqpop.10 <- gq.values |> 
+  filter(GEOID %in% GEOID.cn.10$GEOID) |> 
+  right_join(
+    gq.labels,
+    by = c("variable" = "name")
+  )|> 
+  #Change the Census age category levels to match the ageCAT6 labels
+  mutate(
+    ageCAT6 = case_when(
+      label == 'pop_Under_5_years' ~ '1',
+      label == "pop_5_to_9_years" ~ '2',
+      label == "pop_10_to_14_years" ~ '3',
+      label == "pop_15_to_19_years" ~ '4',
+      label == "pop_20_to_24_years" ~ '5',
+      label == "pop_25_to_29_years" ~ '6',
+      label == "pop_30_to_34_years" ~ '7',
+      label == "pop_35_to_39_years" ~ '8',
+      label == "pop_40_to_44_years" ~ '9',
+      label == "pop_45_to_49_years" ~ '10',
+      label == "pop_50_to_54_years" ~ '11',
+      label == "pop_55_to_59_years" ~ '12',
+      label == "pop_60_to_64_years" ~ '13',
+      label == "pop_65_to_69_years" ~ '14',
+      label == "pop_70_to_74_years" ~ '15',
+      label == "pop_75_to_79_years" ~ '16',
+      label == "pop_80_to_84_years" ~ '17',
+      label == "pop_85_years_and_over" ~ '18'
+    )
+  ) |> 
+  filter(!is.na(ageCAT6)) |>  
+  right_join(
+    GEOID.cn.10,
+    by = c('GEOID')
+  ) |>  
+  mutate(
+    county_id = as.character(county_id)
+  ) |> 
+  dplyr::rename(
+    CU.GQPopulation = value,
+    Sex = sex
+  ) |>  
+  select(county_id, Sex, ageCAT6, CU.GQPopulation) |>  
+  group_by(
+    county_id,
+    Sex,
+    ageCAT6
+  ) |> 
+  summarise(
+    CU.GQPopulation = sum(CU.GQPopulation)
+  ) |>  
+  ungroup()
+
+#Remove dataframes no longer needed in the process.
+rm(gq.labels, gq.values, gq.vars)
+
+#===============================================================================
+#Group Quarters Population - College and University Student Housing 2020
+#Creates a list of sex by age group quarters population variables to use in the API query
+gq.vars <- dec.vars(vars.dec20, "GROUP QUARTERS POPULATION IN COLLEGE/UNIVERSITY STUDENT HOUSING BY SEX BY AGE")
+
+#Assigns appropriate labels to the Decennial Census variables
+gq.labels <- dec.labels("2020", "GROUP QUARTERS POPULATION IN COLLEGE/UNIVERSITY STUDENT HOUSING BY SEX BY AGE") |> gq.clean()
+
+#Queries the Census API via {tidycensus} to retrieve data about the group 
+#quarters population in college or university housing
+gq.values <- decennial_call(gq.vars, geog = "county", 2020)
+
+#Clean the 2020 Group Quarters Population data
+cu.gqpop.20 <- gq.values |> 
+  filter(GEOID %in% GEOID.cn.20$GEOID) |> 
+  right_join(
+    gq.labels,
+    by = c("variable" = "name")
+  )|> 
+  #Change the Census age category levels to match the ageCAT6 labels
+  mutate(
+    ageCAT6 = case_when(
+      label == "pop_Under_20_years" ~ '4',
+      label == "pop_20_to_24_years" ~ '5',
+      label == "pop_25_to_29_years" ~ '6',
+      label == "pop_30_to_34_years" ~ '7',
+      label == "pop_35_to_39_years" ~ '8',
+      label == "pop_40_to_44_years" ~ '9',
+      label == "pop_45_to_49_years" ~ '10',
+      label == "pop_50_to_54_years" ~ '11',
+      label == "pop_55_to_59_years" ~ '12',
+      label == "pop_60_to_64_years" ~ '13',
+      label == "pop_65_and_over" ~ '14'
+    )
+  ) |> 
+  filter(!is.na(ageCAT6)) |>  
+  right_join(
+    GEOID.cn.20,
+    by = c('GEOID')
+  ) |>  
+  mutate(
+    county_id = as.character(county_id)
+  ) |> 
+  dplyr::rename(
+    CU.GQPopulation = value,
+    Sex = sex
+  ) |>  
+  select(county_id, Sex, ageCAT6, CU.GQPopulation) |>  
+  group_by(
+    county_id,
+    Sex,
+    ageCAT6
+  ) |> 
+  summarise(
+    CU.GQPopulation = sum(CU.GQPopulation)
+  ) |>  
+  ungroup()
+
+#Remove dataframes no longer needed in the process.
+rm(gq.labels, gq.values, gq.vars)
+gc()
+```
+
+# 1.3 Calculate the percentage of the group quarters population living in Univerity/College Housing 
+```{r}
+#Join the total GQ Population and University/College GQ Population
+gqpop.df <- purrr::reduce(
+  list(gqpop.10, gqpop.20, cu.gqpop.10, cu.gqpop.20),
+  dplyr::left_join, by = c("county_id", "Sex", "ageCAT6")
+  ) |> 
+  mutate(across(everything(), ~ replace_na(., 0))) |> 
+  #Rename variables
+  dplyr::rename(
+    GQPopulation.10 = GQPopulation.x,
+    GQPopulation.20 = GQPopulation.y,
+    CU.GQPopulation.10 = CU.GQPopulation.x,
+    CU.GQPopulation.20 = CU.GQPopulation.y
+  ) |> 
+  rowwise() |> 
+  #Calculate the proportion of the gqpopulation living in university or college
+  #housing by age and sex for both 2010 and 2020
+  mutate(
+    pct_CU.GQPopulation.10 = CU.GQPopulation.10/GQPopulation.10,
+    pct_CU.GQPopulation.20 = CU.GQPopulation.20/GQPopulation.20
+  )
+
+#Write the comparison to .csv as an intermediate data product.
+write.csv(
+  gqpop.df,
+  paste0(output_path,"prop.College.Uni_to_Total.GQ.1020.csv"),
+  row.names = FALSE
+)
+
+#Remove intermediate dataframes
+rm(cu.gqpop.10, cu.gqpop.20)
+gc()
+```

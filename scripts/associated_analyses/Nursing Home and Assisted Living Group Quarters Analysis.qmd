@@ -310,22 +310,22 @@ rm(gq.labels, gq.values, gq.vars)
 gc()
 ```
 
-# 1.2 Group Quarters Population in Nursing Homes by County by 5-year Age Group
+# 1.2 Group Quarters Population in Nursing Facilities by County by 5-year Age Group
 ```{r}
 #===============================================================================
-#Group Quarters Population - College and University Student Housing 2020
+#Group Quarters Population - Nursing Facilities 2010
 #Creates a list of sex by age group quarters population variables to use in the API query
-gq.vars <- dec.vars(vars.dec10, "GROUP QUARTERS POPULATION IN COLLEGE/UNIVERSITY STUDENT HOUSING BY SEX BY AGE")
+gq.vars <- dec.vars(vars.dec10, "GROUP QUARTERS POPULATION IN NURSING FACILITIES/SKILLED-NURSING FACILITIES BY SEX BY AGE")
 
 #Assigns appropriate labels to the Decennial Census variables
-gq.labels <- dec.labels("2010", "GROUP QUARTERS POPULATION IN COLLEGE/UNIVERSITY STUDENT HOUSING BY SEX BY AGE") |> gq.clean()
+gq.labels <- dec.labels("2010", "GROUP QUARTERS POPULATION IN NURSING FACILITIES/SKILLED-NURSING FACILITIES BY SEX BY AGE") |> gq.clean()
 
 #Queries the Census API via {tidycensus} to retrieve data about the group 
-#quarters population in college or university housing
+#quarters population in nursing facilities
 gq.values <- decennial_call(gq.vars, geog = "county", 2010)
 
-#Clean the 2020 Group Quarters Population data
-cu.gqpop.10 <- gq.values |> 
+#Clean the 2010 Group Quarters Population data
+n.gqpop.10 <- gq.values |> 
   filter(GEOID %in% GEOID.cn.10$GEOID) |> 
   right_join(
     gq.labels,
@@ -363,17 +363,17 @@ cu.gqpop.10 <- gq.values |>
     county_id = as.character(county_id)
   ) |> 
   dplyr::rename(
-    CU.GQPopulation = value,
+    N.GQPopulation = value,
     Sex = sex
   ) |>  
-  select(county_id, Sex, ageCAT6, CU.GQPopulation) |>  
+  select(county_id, Sex, ageCAT6, N.GQPopulation) |>  
   group_by(
     county_id,
     Sex,
     ageCAT6
   ) |> 
   summarise(
-    CU.GQPopulation = sum(CU.GQPopulation)
+    N.GQPopulation = sum(N.GQPopulation)
   ) |>  
   ungroup()
 
@@ -381,19 +381,19 @@ cu.gqpop.10 <- gq.values |>
 rm(gq.labels, gq.values, gq.vars)
 
 #===============================================================================
-#Group Quarters Population - College and University Student Housing 2020
+#Group Quarters Population - Nursing Facilities 2020
 #Creates a list of sex by age group quarters population variables to use in the API query
-gq.vars <- dec.vars(vars.dec20, "GROUP QUARTERS POPULATION IN COLLEGE/UNIVERSITY STUDENT HOUSING BY SEX BY AGE")
+gq.vars <- dec.vars(vars.dec20, "GROUP QUARTERS POPULATION IN NURSING FACILITIES/SKILLED-NURSING FACILITIES BY SEX BY AGE")
 
 #Assigns appropriate labels to the Decennial Census variables
-gq.labels <- dec.labels("2020", "GROUP QUARTERS POPULATION IN COLLEGE/UNIVERSITY STUDENT HOUSING BY SEX BY AGE") |> gq.clean()
+gq.labels <- dec.labels("2020", "GROUP QUARTERS POPULATION IN NURSING FACILITIES/SKILLED-NURSING FACILITIES BY SEX BY AGE") |> gq.clean()
 
 #Queries the Census API via {tidycensus} to retrieve data about the group 
-#quarters population in college or university housing
+#quarters population in nursing facilities
 gq.values <- decennial_call(gq.vars, geog = "county", 2020)
 
 #Clean the 2020 Group Quarters Population data
-cu.gqpop.20 <- gq.values |> 
+n.gqpop.20 <- gq.values |> 
   filter(GEOID %in% GEOID.cn.20$GEOID) |> 
   right_join(
     gq.labels,
@@ -424,17 +424,17 @@ cu.gqpop.20 <- gq.values |>
     county_id = as.character(county_id)
   ) |> 
   dplyr::rename(
-    CU.GQPopulation = value,
+    N.GQPopulation = value,
     Sex = sex
   ) |>  
-  select(county_id, Sex, ageCAT6, CU.GQPopulation) |>  
+  select(county_id, Sex, ageCAT6, N.GQPopulation) |>  
   group_by(
     county_id,
     Sex,
     ageCAT6
   ) |> 
   summarise(
-    CU.GQPopulation = sum(CU.GQPopulation)
+    N.GQPopulation = sum(N.GQPopulation)
   ) |>  
   ungroup()
 
@@ -447,7 +447,7 @@ gc()
 ```{r}
 #Join the total GQ Population and University/College GQ Population
 gqpop.df <- purrr::reduce(
-  list(gqpop.10, gqpop.20, cu.gqpop.10, cu.gqpop.20),
+  list(gqpop.10, gqpop.20, n.gqpop.10, n.gqpop.20),
   dplyr::left_join, by = c("county_id", "Sex", "ageCAT6")
   ) |> 
   mutate(across(everything(), ~ replace_na(., 0))) |> 
@@ -455,25 +455,25 @@ gqpop.df <- purrr::reduce(
   dplyr::rename(
     GQPopulation.10 = GQPopulation.x,
     GQPopulation.20 = GQPopulation.y,
-    CU.GQPopulation.10 = CU.GQPopulation.x,
-    CU.GQPopulation.20 = CU.GQPopulation.y
+    N.GQPopulation.10 = N.GQPopulation.x,
+    N.GQPopulation.20 = N.GQPopulation.y
   ) |> 
   rowwise() |> 
-  #Calculate the proportion of the gqpopulation living in university or college
+  #Calculate the proportion of the gqpopulation living in nursing facilities
   #housing by age and sex for both 2010 and 2020
   mutate(
-    pct_CU.GQPopulation.10 = CU.GQPopulation.10/GQPopulation.10,
-    pct_CU.GQPopulation.20 = CU.GQPopulation.20/GQPopulation.20
+    pct_N.GQPopulation.10 = N.GQPopulation.10/GQPopulation.10,
+    pct_N.GQPopulation.20 = N.GQPopulation.20/GQPopulation.20
   )
 
 #Write the comparison to .csv as an intermediate data product.
 write.csv(
   gqpop.df,
-  paste0(output_path,"prop.College.Uni_to_Total.GQ.1020.csv"),
+  paste0(output_path,"prop.Nursing_to_Total.GQ.1020.csv"),
   row.names = FALSE
 )
 
 #Remove intermediate dataframes
-rm(cu.gqpop.10, cu.gqpop.20)
+rm(n.gqpop.10, n.gqpop.20)
 gc()
 ```

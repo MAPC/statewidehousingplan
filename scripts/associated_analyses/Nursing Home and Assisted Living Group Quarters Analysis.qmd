@@ -159,7 +159,7 @@ gq.clean <- function(df){
     # Mutate the text of the label variable to make easier cross-reference to ageCAT6
     # age groups later on in the analysis
     mutate(
-      label = str_replace(label,"\\s*\\([^\\)]+\\)",""),
+      label = str_replace(label,"//s*//([^//)]+//)",""),
       label = str_replace(label, "Total_!!Male!!",""),
       label = str_replace(label, "Total_!!Female!!",""),
       label = str_replace(label, "Total_:!!Male:!!",""),
@@ -402,8 +402,7 @@ n.gqpop.20 <- gq.values |>
   #Change the Census age category levels to match the ageCAT6 labels
   mutate(
     ageCAT6 = case_when(
-      label == "pop_Under_20_years" ~ '4',
-      label == "pop_20_to_24_years" ~ '5',
+      label == "pop_Under_25_years" ~ '5',
       label == "pop_25_to_29_years" ~ '6',
       label == "pop_30_to_34_years" ~ '7',
       label == "pop_35_to_39_years" ~ '8',
@@ -412,7 +411,11 @@ n.gqpop.20 <- gq.values |>
       label == "pop_50_to_54_years" ~ '11',
       label == "pop_55_to_59_years" ~ '12',
       label == "pop_60_to_64_years" ~ '13',
-      label == "pop_65_and_over" ~ '14'
+      label == "pop_65_to_69_years" ~ '14',
+      label == "pop_70_to_74_years" ~ '15',
+      label == "pop_75_to_79_years" ~ '16',
+      label == "pop_80_to_84_years" ~ '17',
+      label == "pop_85_years_and_over" ~ '18',
     )
   ) |> 
   filter(!is.na(ageCAT6)) |>  
@@ -474,6 +477,27 @@ write.csv(
 )
 
 #Remove intermediate dataframes
-rm(n.gqpop.10, n.gqpop.20)
-gc()
+#rm(n.gqpop.10, n.gqpop.20)
+#gc()
+
+# Visualizations
+
+```
+
+# 1.4 - Age Cohort Comparison
+```{r}
+cohort.gqpop.20 <- gqpop.20 |> 
+  mutate(
+    cohort = case_when(
+      
+      .default = "0"
+    )
+  )
+cohort.n.gqpop.20
+```
+
+2.0 Census County Business Pattern Survey
+2.1 Load the CBP Data
+```{r}
+test <- read.csv("K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Raw/CBP/cbp22co.txt")
 ```

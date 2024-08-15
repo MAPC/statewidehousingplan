@@ -20,7 +20,7 @@ options(scipen = 999)
 
 # set output path
 exp_path = "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS"
-exp_path ="C:/Users/lberman/Downloads"
+#exp_path ="C:/Users/lberman/Downloads"
 
 # Housing units are uniquely identified by the SERIALNO variable
 # Persons are uniquely identified by the combination of SERIALNO and SPORDER.

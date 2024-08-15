@@ -167,6 +167,45 @@ pums_2021_raw_b <- pums_2021_raw_b %>%
 
 pums_2021 <- merge(pums_2021_raw,pums_2021_raw_b,by='uniq_obs')
 
+# 5.1 fix some duplicate cols from the join
+
+pums_2021 <- pums_2021 %>% 
+  mutate(SPORDER = SPORDER.x) %>% 
+  mutate(SERIALNO = SERIALNO.x) %>% 
+  mutate(ST = ST.x) %>% 
+  mutate(WGTP = WGTP.x) %>% 
+  mutate(PWGTP = PWGTP.x) %>% 
+  select(-c(SPORDER.x,SPORDER.y,SERIALNO.x,SERIALNO.y,ST.x,ST.y,WGTP.x,WGTP.y,PWGTP.x,PWGTP.y))
+
 
 # 6 export
 write_csv(pums_2021, paste0(exp_path,"/pums_raw_data_2021.csv"))
+
+
+#7 SUBSET OVERCROWDING
+
+pums_overcrowding_2021 <- pums_2021 %>% 
+  select(c(RT, SERIALNO, SPORDER, PUMA, ST, ADJHSG, ADJINC, WGTP, PWGTP, NP))
+
+# 7.1 export OVERCROWDING
+write_csv(pums_overcrowding_2021, paste0(exp_path,"/pums_overcrowding_2021.csv"))
+
+# 7.2 export VARS for OVERCROWDING
+
+over_list <- c('SERIALNO',
+               'SPORDER',
+               'RT',
+               'PUMA',
+               'ST',
+               'ADJHSG',
+               'ADJINC',
+               'WGTP',
+               'PWGTP',
+               'NP')
+  
+  
+  
+over_vars <- uniq_vars %>%
+  filter(var_code %in% over_list)
+
+write_csv(over_vars, paste0(exp_path,"/pums_overcrowding_variables_2021.csv"))

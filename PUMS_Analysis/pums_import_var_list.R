@@ -47,7 +47,8 @@ pums_vars_2021 %>%
 # note:  do not explicitly call the defaults
 # default will always return SERIALNO, SPORDER, WGTP, PWGTP, and ST.
 
-var.list  <- c('RT',
+var.list  <- c('TYPEHUGQ',
+               'RT',
                'PUMA',
                'ADJHSG',
                'ADJINC',

@@ -89,7 +89,37 @@ gc()
 1.0 PUMS Analysis
 1.1 
 ```{r}
-# Finding the number of people 
+# Finding the number of people and bedrooms in each housing unit
+p.per.bed <- vars |> 
+  filter(TYPEHUGQ == 1) |> 
+  select(SERIALNO, PUMA, WGTP, BDSP, NP) |> 
+  mutate(
+    #Create a "Studio/Non-Defined Bedroom" variable to denote where households do
+    #not have a bedroom number.
+    studio_flag = case_when(
+      BDSP == 0 ~ "Studio/No Defined Bedroom",
+      BDSP != 0 ~ "Defined Bedroom",
+      .default = "Unknown"
+    ),
+    #Redefine BDSP to label studios/non-defined bedroom units as One-Bedrooms
+    #For purpose of calculating the number of people per bedrooms.
+    BDSP = if_else(BDSP == 0, 1, BDSP)
+  ) |> 
+  group_by(
+    PUMA,
+    SERIALNO,
+    BDSP,
+    NP
+  ) |> 
+  summarise(
+    households = sum(WGTP)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    People.per.Bedroom = NP/BDSP
+  )
+  
+
 
 ```
 

@@ -18,8 +18,6 @@ library(janitor)
 #Remove scientific notation
 options(scipen = 999)
 
-api_key <- "766973dcdc26460a63ee43b8bfed1d1c4692486a"
-
 # set output path
 exp_path = "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS"
 #exp_path ="C:/Users/lberman/Downloads"

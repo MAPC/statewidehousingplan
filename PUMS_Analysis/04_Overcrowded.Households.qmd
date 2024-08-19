@@ -84,6 +84,13 @@ xw <- bind_rows(xw, mvc, npedc)
 #Remove intermediate dataframes.
 rm(matrix, col_names, mvc, npedc)
 gc()
+
+#Joing the PUMA to RPA crosswalk to the PUMS data.
+pums <- left_join(
+  pums,
+  xw,
+  by = c("PUMA")
+)
 ```
 
 1.0 PUMS Analysis

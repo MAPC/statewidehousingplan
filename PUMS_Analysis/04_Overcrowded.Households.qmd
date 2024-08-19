@@ -4,23 +4,28 @@ format: html
 editor: visual
 ---
 
-## Quarto
+# 0.0 Setup - Define helper functions, set knitr path, load necessary packages, set muni data keys
 
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+#0.1 - Set knitr path + root for inputs
+```{r, setup, include=FALSE}
+#Use when Rproject is open
+#root <- '../../../../Data/Working/Regional_Control_Totals/'
 
-## Running Code
+#General K drive filepath
+pums_path <- "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS/"
 
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+#Set output filepath
+output_path <- "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS/outputs/"
 
-```{r}
-1 + 1
+#Set knitr path
+knitr::opts_knit$set(root.dir = root)
 ```
 
-You can add options to executable code like this
-
+# 0.2 - Set package dependencies, set environment, set up data keys
 ```{r}
-#| echo: false
-2 * 2
+#Load Libraries for PUMS Analysis and PUMS API query functions
+#sets seed and removes scientific notation
+source("C:/Project_Work/statewidehousingplan/PUMS_Analysis/PUMS_Helper_Functions.R")
+
 ```
 
-The `echo: false` option disables the printing of code (only output is displayed).

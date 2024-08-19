@@ -486,14 +486,61 @@ write.csv(
 
 # 1.4 - Age Cohort Comparison
 ```{r}
+#Convert age groups into cohorts to demonstrate how many people have aged into
+#an age group from the previous decennial data. (As opposed to people newly entering the population
+#from a separate designation (living in a household, for example)).
+
+#Cohort variable generation for overall group quarters population.
 cohort.gqpop.20 <- gqpop.20 |> 
   mutate(
     cohort = case_when(
-      
+      ageCAT6 == "1" ~ "5",
+      ageCAT6 == "2" ~ "5",
+      ageCAT6 == "3" ~ "5",
+      ageCAT6 == "4" ~ "6",
+      ageCAT6 == "5" ~ "7",
+      ageCAT6 == "6" ~ "8",
+      ageCAT6 == "7" ~ "9",
+      ageCAT6 == "8" ~ "10",
+      ageCAT6 == "9" ~ "11",
+      ageCAT6 == "10" ~ "12",
+      ageCAT6 == "11" ~ "13",
+      ageCAT6 == "12" ~ "14",
+      ageCAT6 == "13" ~ "15",
+      ageCAT6 == "14" ~ "16",
+      ageCAT6 == "15" ~ "17",
+      ageCAT6 == "16" ~ "18",
+      ageCAT6 == "17" ~ "18",
+      ageCAT6 == "18" ~ "18",
       .default = "0"
     )
   )
-cohort.n.gqpop.20
+
+#Cohort variable generation for nursing home group quarters population.
+cohort.n.gqpop.20 <- n.gqpop.20 |> 
+  mutate(
+    cohort = case_when(
+      ageCAT6 == "1" ~ "5",
+      ageCAT6 == "2" ~ "5",
+      ageCAT6 == "3" ~ "5",
+      ageCAT6 == "4" ~ "6",
+      ageCAT6 == "5" ~ "7",
+      ageCAT6 == "6" ~ "8",
+      ageCAT6 == "7" ~ "9",
+      ageCAT6 == "8" ~ "10",
+      ageCAT6 == "9" ~ "11",
+      ageCAT6 == "10" ~ "12",
+      ageCAT6 == "11" ~ "13",
+      ageCAT6 == "12" ~ "14",
+      ageCAT6 == "13" ~ "15",
+      ageCAT6 == "14" ~ "16",
+      ageCAT6 == "15" ~ "17",
+      ageCAT6 == "16" ~ "18",
+      ageCAT6 == "17" ~ "18",
+      ageCAT6 == "18" ~ "18",
+      .default = "0"
+    )
+  )
 ```
 
 2.0 Census County Business Pattern Survey

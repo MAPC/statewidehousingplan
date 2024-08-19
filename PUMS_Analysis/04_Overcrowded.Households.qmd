@@ -118,8 +118,26 @@ p.per.bed <- vars |>
   mutate(
     People.per.Bedroom = NP/BDSP
   )
-  
 
+```
+```{r}
+#Number of people per room in the housing unit
+p.per.room <- vars |> 
+  filter(TYPEHUGQ == 1) |> 
+  select(SERIALNO, PUMA, WGTP, RMSP, NP) |> 
+  group_by(
+    PUMA,
+    SERIALNO,
+    RMSP,
+    NP
+  ) |> 
+  summarise(
+    households = sum(WGTP)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    People.per.Room = NP/RMSP
+  )
 
 ```
 

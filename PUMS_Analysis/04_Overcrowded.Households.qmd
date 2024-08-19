@@ -12,13 +12,16 @@ editor: visual
 #root <- '../../../../Data/Working/Regional_Control_Totals/'
 
 #General K drive filepath
+root <-"K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/"
+
+#PUMS K drive filepath
 pums_path <- "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS/"
 
 #Set output filepath
 output_path <- "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS/outputs/"
 
 #Set knitr path
-knitr::opts_knit$set(root.dir = root)
+knitr::opts_knit$set(root.dir = pums_path)
 ```
 
 # 0.2 - Set package dependencies, set environment, set up data keys
@@ -26,6 +29,67 @@ knitr::opts_knit$set(root.dir = root)
 #Load Libraries for PUMS Analysis and PUMS API query functions
 #sets seed and removes scientific notation
 source("C:/Project_Work/statewidehousingplan/PUMS_Analysis/PUMS_Helper_Functions.R")
+
+#Load PUMS variables
+vars <- read.csv(paste0(pums_path,"pums_overcrowding_2021_V_2024-08-15.csv"))
+
+```
+
+0.3 PUMA to RPA Crosswalk
+```{r}
+#Set up datakeys for future joins.
+mkeys <- mapcdatakeys::all_muni_data_keys |>  select(muni_id,rpa_acr,mpo)
+
+#Load in the municipality to PUMA crosswalk.
+psf <- fread(paste0(root,'ma_muni_puma10_join.csv')) |>
+  dplyr::rename(
+    muni_id=TOWN_ID,
+    PUMA = PUMACE10
+  ) |>
+  left_join(
+    mkeys,
+    by = c('muni_id')
+  ) |>
+  setDT()
+
+#Generate RPA to PUMA crosswalk.
+lsf <- psf[,lapply(.SD,sum,na.rm=T),.(rpa_acr,PUMA),.SDcols='Shape_Area']
+lsf[,mx:=max(Shape_Area),PUMA]
+xw <- lsf[Shape_Area==mx, .(rpa_acr,PUMA)]
+xw[,PUMA:=sprintf("%05d",PUMA)]
+
+#Manufacturing MVC and NPEDC RPAs manually
+#Create an empty matrix with 2x1 dimenstions
+matrix <- matrix(nrow = 1, ncol = 2)
+#Set the column names to match the PUMA to RPA/MPO crosswalk
+col_names <- c("rpa_acr", "PUMA")
+
+#Create dataframes with matrix dimensions for both RPAs
+mvc <- data.frame(matrix = matrix)
+npedc <- data.frame(matrix = matrix)
+
+#Assign column names to the dataframes
+colnames(mvc) <- col_names
+colnames(npedc) <- col_names
+
+#Populate data into the MVC and MPEDC dataframes
+mvc[[1]] <- "MVC"
+mvc[[2]] <- "04800"
+npedc[[1]] <- "NPEDC"
+npedc[[2]] <- "04800"
+
+#Append MVC and NPEDC data to PUMA to RPA/MPO crosswalk
+xw <- bind_rows(xw, mvc, npedc)
+
+#Remove intermediate dataframes.
+rm(matrix, col_names, mvc, npedc)
+gc()
+```
+
+1.0 PUMS Analysis
+1.1 
+```{r}
+# Finding the number of people 
 
 ```
 

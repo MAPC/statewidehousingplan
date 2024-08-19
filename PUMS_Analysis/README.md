@@ -1,5 +1,3 @@
-README.md
-
 ### PUMS Analysis for Statewide Housing
 
 #### 2024
@@ -27,6 +25,10 @@ each unique household has a serial number (SERIALNO)
 each member of the household has a unique person ID (SPORDER)
 
 unique_obs = SERIALNO + SPORDER 
+
+note: for household table the SPORDER column was added with value = _0.
+
+order by column [unique_obs] to see the household rows in order, with the hh preceding the persons in hh.
 
 
 __5. output folder__: 

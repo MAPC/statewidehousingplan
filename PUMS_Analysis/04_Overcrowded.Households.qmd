@@ -31,7 +31,7 @@ knitr::opts_knit$set(root.dir = pums_path)
 source("C:/Project_Work/statewidehousingplan/PUMS_Analysis/PUMS_Helper_Functions.R")
 
 #Load PUMS variables
-vars <- read.csv(paste0(pums_path,"pums_overcrowding_2021_V_2024-08-15.csv"))
+pums <- read.csv(paste0(pums_path,"pums_overcrowding_2021_V_2024-08-19.csv"))
 
 ```
 
@@ -87,10 +87,10 @@ gc()
 ```
 
 1.0 PUMS Analysis
-1.1 
+1.1 Number of People per Bedroom
 ```{r}
 # Finding the number of people and bedrooms in each housing unit
-p.per.bed <- vars |> 
+p.per.bed <- pums |> 
   filter(TYPEHUGQ == 1) |> 
   select(SERIALNO, PUMA, WGTP, BDSP, NP) |> 
   mutate(
@@ -108,6 +108,7 @@ p.per.bed <- vars |>
   group_by(
     PUMA,
     SERIALNO,
+    studio_flag,
     BDSP,
     NP
   ) |> 
@@ -116,13 +117,20 @@ p.per.bed <- vars |>
   ) |> 
   ungroup() |> 
   mutate(
-    People.per.Bedroom = NP/BDSP
+    #Calculate the number of people per bedroom in a housing unit.
+    PPB = NP/BDSP,
+    #Categorize each housing unit as overcrowded or not based on PPB.
+    overcrowded.ppb = case_when(
+      PPB > 2.0 ~ "1",
+      PPB <= 2.0 ~ "0"
+    )
   )
 
 ```
+1.2 Number of People per Room in a Housing Unit
 ```{r}
 #Number of people per room in the housing unit
-p.per.room <- vars |> 
+p.per.room <- pums |> 
   filter(TYPEHUGQ == 1) |> 
   select(SERIALNO, PUMA, WGTP, RMSP, NP) |> 
   group_by(
@@ -136,7 +144,13 @@ p.per.room <- vars |>
   ) |> 
   ungroup() |> 
   mutate(
-    People.per.Room = NP/RMSP
+    #Calculate the number of people per room in a housing unit.
+    PPR = NP/RMSP,
+    #Categorize each housing unit as overcrowded or not (based on PPR).
+    overcrowded.ppr = case_when(
+     PPR > 1.5 ~ "1",
+     PPR <= 1.5 ~ "0"
+    )
   )
 
 ```

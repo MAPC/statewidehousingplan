@@ -18,6 +18,8 @@ library(janitor)
 #Remove scientific notation
 options(scipen = 999)
 
+api_key <- "766973dcdc26460a63ee43b8bfed1d1c4692486a"
+
 # set output path
 exp_path = "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS"
 #exp_path ="C:/Users/lberman/Downloads"
@@ -394,8 +396,8 @@ write_csv(pums_all_2021, paste0(exp_path,"/pums_raw_data_2021_V_",dateAsText,".c
 
 
 #14 SUBSET OVERCROWDING 
-pums_overcrowding_2021 <- pums_2021 %>% 
-  select(c(uniq_obs, SPORDER, SERIALNO, ST, WGTP, PWGTP, RT, PUMA, ADJHSG, ADJINC, NP, BDSP, RMSP, CPLT, HHLDRAGEP, HHLDRRAC1P, HHLDRHISP, HHT, HHT2, HINCP, HUGCL, HUPAC, HUPAOC, HUPARC, LNGI, MULTG, NPF, NPP, NR, NRC, PARTNER, PSF, R18, AGEP, RELSHIPP, RAC1P, OC, SFN, SFR))
+pums_overcrowding_2021 <- pums_all_2021 %>% 
+  select(c(uniq_obs, SPORDER, SERIALNO, ST, WGTP, PWGTP, RT, PUMA, ADJHSG, ADJINC, NP, TYPEHUGQ, BDSP, RMSP, CPLT, HHLDRAGEP, HHLDRRAC1P, HHLDRHISP, HHT, HHT2, HINCP, HUGCL, HUPAC, HUPAOC, HUPARC, LNGI, MULTG, NPF, NPP, NR, NRC, PARTNER, PSF, R18, AGEP, RELSHIPP, RAC1P, OC, SFN, SFR))
 
 # 14.1 export OVERCROWDING
 write_csv(pums_overcrowding_2021, paste0(exp_path,"/pums_overcrowding_2021_V_",dateAsText,".csv"))
@@ -406,6 +408,7 @@ over_list <- c('RT',
                'ADJHSG',
                'ADJINC',
                'NP',
+               'TYPEHUGQ',
                'BDSP',
                'RMSP',
                'CPLT',
@@ -439,3 +442,255 @@ over_vars <- uniq_vars %>%
   filter(var_code %in% over_list)
 
 write_csv(over_vars, paste0(exp_path,"/pums_overcrowding_variables_2021.csv"))
+
+
+# 15 SUBSET MULTIPLE ADULT HOUSING (columns from Sheet 1)
+
+# dropped from previous subset for Overcrowding: BDSP, RMSP, HINCP, LNGI
+
+pums_multiadult_2021 <- pums_all_2021 %>% 
+  select(c(uniq_obs, SPORDER, SERIALNO, ST, WGTP, PWGTP, RT, PUMA, ADJHSG, ADJINC, NP, TYPEHUGQ, CPLT, HHLDRAGEP, HHLDRRAC1P, HHLDRHISP, HHT, HHT2, HUGCL, HUPAC, HUPAOC, HUPARC, MULTG, NPF, NPP, NR, NRC, PARTNER, PSF, R18, AGEP, RELSHIPP, RAC1P, OC, SFN, SFR))
+
+# 15.2 export VARS for MULTIPLE ADULT HOUSING
+multiadult_list <- c('RT',
+               'PUMA',
+               'ADJHSG',
+               'ADJINC',
+               'NP',
+               'TYPEHUGQ',
+               'CPLT',
+               'HHLDRAGEP',
+               'HHLDRRAC1P',
+               'HHLDRHISP',
+               'HHT',
+               'HHT2',
+               'HUGCL',
+               'HUPAC',
+               'HUPAOC',
+               'HUPARC',
+               'MULTG',
+               'NPF',
+               'NPP',
+               'NR',
+               'NRC',
+               'PARTNER',
+               'PSF',
+               'R18',
+               'AGEP',
+               'RELSHIPP',
+               'RAC1P',
+               'OC',
+               'SFN',
+               'SFR')
+
+# 15.1 export MULTIADULT
+write_csv(pums_multiadult_2021, paste0(exp_path,"/pums_multiadult_2021_V_",dateAsText,".csv"))
+
+
+multiadult_vars <- uniq_vars %>%
+  filter(var_code %in% multiadult_list)
+
+write_csv(over_vars, paste0(exp_path,"/pums_multiadult_variables_2021.csv"))
+
+
+
+# 16 SUBSET FAMILY SIZE UNITS (columns from Sheet 1)
+
+pums_familysize_2021 <- pums_all_2021 %>% 
+  select(c(uniq_obs, RT, SERIALNO, PUMA, ST, ADJHSG, WGTP, NP, HHT, HHT2, HUGCL, HUPAC, HUPAOC, HUPARC, MULTG, NPF, NPP, NR, NRC, PARTNER, PSF, R18, PWGTP, AGEP, RELSHIPP, SEX, RAC1P, OC, SFN, SFR, TYPEHUGQ, BDSP, BLD, RMSP, TEN, VACS, YRBLT, GRNTP, GRPIP, MV, SRNT, SVAL))
+
+# 16.1 export VARS for FAMILY SIZE
+familysize_list <- c('uniq_obs',
+                     'SERIALNO',
+                     'PUMA',
+                     'ST',
+                     'ADJHSG',
+                     'WGTP',
+                     'NP',
+                     'HHT',
+                     'HHT2',
+                     'HUGCL',
+                     'HUPAC',
+                     'HUPAOC',
+                     'HUPARC',
+                     'MULTG',
+                     'NPF',
+                     'NPP',
+                     'NR',
+                     'NRC',
+                     'PARTNER',
+                     'PSF',
+                     'R18',
+                     'PWGTP',
+                     'AGEP',
+                     'RELSHIPP',
+                     'SEX',
+                     'RAC1P',
+                     'OC',
+                     'SFN',
+                     'SFR',
+                     'TYPEHUGQ',
+                     'BDSP',
+                     'BLD',
+                     'RMSP',
+                     'TEN',
+                     'VACS',
+                     'YRBLT',
+                     'GRNTP',
+                     'GRPIP',
+                     'MV',
+                     'SRNTSVAL')
+
+# 16.2 export familysize
+write_csv(pums_familysize_2021, paste0(exp_path,"/pums_familysize_2021_V_",dateAsText,".csv"))
+
+familysize_vars <- uniq_vars %>%
+  filter(var_code %in% familysize_list)
+
+write_csv(familysize_vars, paste0(exp_path,"/pums_familysize_variables_2021.csv"))
+
+
+
+# 17 SUBSET  UNITS BUILT SINCE 2010 (columns from Sheet 1)
+
+pums_unitsbuilt_2021 <- pums_all_2021 %>% 
+  select(c(uniq_obs, RT, SERIALNO, PUMA, ST, ADJHSG, WGTP, NP, TYPEHUGQ, BDSP, BLD, RMSP, TEN, VACS, YRBLT, GRNTP, GRPIP, MV, SRNT, SVAL, OCPIP, SMOCP))
+
+# 17.1 export VARS for UNITS BUILT SINCE 2010
+unitsbuilt_list <- c('uniq_obs',
+                     'RT',
+                     'SERIALNO',
+                     'PUMA',
+                     'ST',
+                     'ADJHSG',
+                     'WGTP',
+                     'NP',
+                     'TYPEHUGQ',
+                     'BDSP',
+                     'BLD',
+                     'RMSP',
+                     'TEN',
+                     'VACOTH',
+                     'VACS',
+                     'YRBLT',
+                     'GRNTP',
+                     'GRPIP',
+                     'MV',
+                     'SRNT',
+                     'SVAL',
+                     'OCPIP',
+                     'SMOCP')
+
+# 17.2 export built since 2010
+write_csv(pums_unitsbuilt_2021, paste0(exp_path,"/pums_unitsbuilt_2021_V_",dateAsText,".csv"))
+
+unitsbuilt_vars <- uniq_vars %>%
+  filter(var_code %in% unitsbuilt_list)
+
+write_csv(unitsbuilt_vars, paste0(exp_path,"/pums_unitsbuilt_variables_2021.csv"))
+
+
+
+
+# 18 SUBSET  IMMIGRANT HOUSEHOLDS (columns from Sheet 1)
+
+pums_immig_hh_2021 <- pums_all_2021 %>% 
+  select(c(uniq_obs,RT, SERIALNO, PUMA, ST, ADJHSG, WGTP, NP, TYPEHUGQ, MV, HHT, HHT2, HUGCL, HUPAC, HUPAOC, HUPARC, MULTG, NPF, NPP, NR, NRC, PARTNER, PSF, R18, PWGTP, AGEP, RELSHIPP, SEX, RAC1P, OC, SFN, SFR, ADJINC, HHLDRAGEP, HHLDRRAC1P, HHLDRHISP, LNGI, ENG, LANX, YOEP, HISP, NATIVITY, POBP, RAC2P, WAOB))
+
+# 18.1 export VARS for IMMIGRANT HOUSEHOLDS
+immig_hh_list <- c('uniq_obs',
+                   'RT',
+                   'SERIALNO',
+                   'PUMA',
+                   'ST',
+                   'ADJHSG',
+                   'WGTP',
+                   'NP',
+                   'TYPEHUGQ',
+                   'MV',
+                   'HHT',
+                   'HHT2',
+                   'HUGCL',
+                   'HUPAC',
+                   'HUPAOC',
+                   'HUPARC',
+                   'MULTG',
+                   'NPF',
+                   'NPP',
+                   'NR',
+                   'NRC',
+                   'PARTNER',
+                   'PSF',
+                   'R18',
+                   'PWGTP',
+                   'AGEP',
+                   'RELSHIPP',
+                   'SEX',
+                   'RAC1P',
+                   'OC',
+                   'SFN',
+                   'SFR',
+                   'ADJINC',
+                   'HHLDRAGEP',
+                   'HHLDRRAC1P',
+                   'HHLDRHISP',
+                   'LNGI',
+                   'ENG',
+                   'LANX',
+                   'YOEP',
+                   'HISP',
+                   'NATIVITY',
+                   'POBP',
+                   'RAC2P',
+                   'WAOB')
+
+# 18.2 export IMMIGRANT HOUSEHOLDS
+write_csv(pums_immig_hh_2021, paste0(exp_path,"/pums_immig_hh_2021_V_",dateAsText,".csv"))
+
+immig_hh_vars <- uniq_vars %>%
+  filter(var_code %in% immig_hh_list)
+
+write_csv(immig_hh_vars, paste0(exp_path,"/pums_immig_hh_variables_2021.csv"))
+
+
+
+# 19 SUBSET PERSONS W DISABILITY HOUSEHOLDS (columns from Sheet 1)
+
+pums_disab_hh_2021 <- pums_all_2021 %>% 
+  select(c(uniq_obs, RT, SERIALNO, PUMA, ST, ADJHSG, WGTP, NP, TYPEHUGQ,NPP, PARTNER, PSF, PWGTP, AGEP, RELSHIPP, SEX, RAC1P, OC, SFN, SFR, ADJINC, HHLDRAGEP, HHLDRRAC1P, HHLDRHISP, HISP, DIS))
+
+# 19.1 export VARS for PERSONS W DISABILITY HOUSEHOLDS
+disab_hh_list <- c('uniq_obs',
+                   'RT',
+                   'SERIALNO',
+                   'PUMA',
+                   'ST',
+                   'ADJHSG',
+                   'WGTP',
+                   'NP',
+                   'TYPEHUGQ',
+                   'NPP',
+                   'PARTNER',
+                   'PSF',
+                   'PWGTP',
+                   'AGEP',
+                   'RELSHIPP',
+                   'SEX',
+                   'RAC1P',
+                   'OC',
+                   'SFN',
+                   'SFR',
+                   'ADJINC',
+                   'HHLDRAGEP',
+                   'HHLDRRAC1P',
+                   'HHLDRHISP',
+                   'HISP',
+                   'DIS')
+
+# 19.2 export PERSONS W DISABILITY HOUSEHOLDS
+write_csv(pums_disab_hh_2021, paste0(exp_path,"/pums_disab_hh_2021_V_",dateAsText,".csv"))
+
+disab_hh_vars <- uniq_vars %>%
+  filter(var_code %in% disab_hh_list)
+
+write_csv(disab_hh_vars, paste0(exp_path,"/pums_disab_hh_variables_2021.csv"))

@@ -1,11 +1,5 @@
 #Set up libraries for the analysis
-library(tidycensus)
-library(tidyverse)
-library(survey)
-library(srvyr)
-library(data.table)
-library(mapcdatakeys)
-library(janitor)
+
 library(RODBC)
 
 # lberman 2024-08-20

@@ -31,7 +31,10 @@ knitr::opts_knit$set(root.dir = pums_path)
 source("C:/Project_Work/statewidehousingplan/PUMS_Analysis/PUMS_Helper_Functions.R")
 
 #Load PUMS variables
-pums <- read.csv(paste0(pums_path,"pums_overcrowding_2021_V_2024-08-19.csv"))
+pums <- read.csv(paste0(pums_path,"pums_overcrowding_2021_V_2024-08-19.csv")) |> 
+  mutate(
+    PUMA = as.character(str_pad(PUMA, width = 5, side = "left", pad = 0))
+  )
 
 ```
 
@@ -93,13 +96,34 @@ pums <- left_join(
 )
 ```
 
-1.0 PUMS Analysis
-1.1 Number of People per Bedroom
+# 1.0 PUMS Analysis
+# 1.1.1 Total Households by RPA
+```{r}
+#Calculate the total number of households across the state
+tot.hh <- pums |> 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
+  summarise(
+    hh = sum(WGTP)
+  )
+
+#Calculate the total number of households in each RPA
+tot.hh.rpa <- pums |> 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
+  group_by(
+    rpa_acr
+  ) |> 
+  summarise(
+    hh = sum(WGTP)
+  ) |> 
+  ungroup()
+```
+
+# 1.2.1 Number of People per Bedroom
 ```{r}
 # Finding the number of people and bedrooms in each housing unit
-p.per.bed <- pums |> 
-  filter(TYPEHUGQ == 1) |> 
-  select(SERIALNO, PUMA, WGTP, BDSP, NP) |> 
+PPB <- pums |> 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
+  select(SERIALNO, rpa_acr, WGTP, BDSP, NP) |> 
   mutate(
     #Create a "Studio/Non-Defined Bedroom" variable to denote where households do
     #not have a bedroom number.
@@ -113,7 +137,7 @@ p.per.bed <- pums |>
     BDSP = if_else(BDSP == 0, 1, BDSP)
   ) |> 
   group_by(
-    PUMA,
+    rpa_acr,
     SERIALNO,
     studio_flag,
     BDSP,
@@ -134,14 +158,22 @@ p.per.bed <- pums |>
   )
 
 ```
-1.2 Number of People per Room in a Housing Unit
+# 1.2.2 Overcrowding (PPB) at the State-level
+```{r}
+```
+
+# 1.2.3 Overcrowding (PPB) at the RPA-level
+```{r}
+```
+
+# 1.3.1 Number of People per Room in a Housing Unit
 ```{r}
 #Number of people per room in the housing unit
-p.per.room <- pums |> 
-  filter(TYPEHUGQ == 1) |> 
-  select(SERIALNO, PUMA, WGTP, RMSP, NP) |> 
+PPR <- pums |> 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
+  select(SERIALNO, rpa_acr, WGTP, RMSP, NP) |> 
   group_by(
-    PUMA,
+    rpa_acr,
     SERIALNO,
     RMSP,
     NP
@@ -160,5 +192,48 @@ p.per.room <- pums |>
     )
   )
 
+```
+
+# 1.3.2 Overcrowding (PPR) at the State-level
+```{r}
+```
+
+# 1.3.3 Overcrowding (PPR) at the RPA-level
+```{r}
+#Overcrowding by RPA
+OC.RPA.PPR <- PPR |> 
+  group_by(
+    rpa_acr,
+    overcrowded.ppr
+  ) |> 
+  summarise(
+    oc.hh = sum(households)
+  ) |> 
+  ungroup() |> 
+  left_join(
+    tot.hh.rpa,
+    by = c("rpa_acr")
+  ) |> 
+  rowwise() |> 
+  mutate(
+    pct = oc.hh/hh
+  ) |> 
+  select(
+    -c(hh)
+  )
+
+print(sum(OC.RPA.PPR$households))
+
+#Overcrowding by Number of Rooms in Housing Units
+OC.RPA.RMSP.PPR <- PPR |> 
+  group_by(
+    rpa_acr,
+    RMSP,
+    overcrowded.ppr
+  ) |> 
+  summarise(
+    oc.hh = sum(households)
+  ) |> 
+  ungroup()
 ```
 

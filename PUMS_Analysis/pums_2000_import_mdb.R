@@ -1,6 +1,7 @@
 #Set up libraries for the analysis
 
 library(RODBC)
+library(dplyr)
 
 # lberman 2024-08-20
 
@@ -37,14 +38,52 @@ pums_2000_per <- sqlFetch(conn, "PUMS_5%_MA_2000_Persons")
 
 close(conn)
 
-
 # notes on datasets
 
 # Households are uniquely identified by the SERIALNO variable
 # Persons are uniquely identified by the combination of SERIALNO and SPORDER.
 
-# hh table contains a subset (115 cols) of the person table (165 cols) ?
+# hh table contains a (115 cols) the person table (165 cols) 
+
+# these two tables have three vars in common: ID, RECTYPE, SERIALNO
 
 # person table column PNUM also contains line for hh (where PNUM = 52)  
 # person table order number of persons begins with 2 (not 1) cf SPORDER 2021 (begins with 1)
 # person table age for hh default is = 99
+
+
+# 2 compare variables in two tables
+rm(hh_list,hh_vars)
+# 2.1  hh vars
+hh_list <- names(pums_2000_hh)
+hh_vars <- as.data.frame(hh_list)
+
+hh_vars <- hh_vars  %>% 
+  mutate(join_vars = hh_list)
+
+# 2.2 pers vars
+pers_list <- names(pums_2000_per)
+pers_vars <- as.data.frame(pers_list)
+
+# 2.3 join the two lists
+join_hh_pers_vars <- pers_vars %>% 
+  left_join(.,
+            hh_vars,
+            by = c('pers_list' = 'join_vars')) 
+
+# 2.4 filter the vars to show which are missing from hh 
+missing_vars <- join_hh_pers_vars %>% 
+  filter(is.na(hh_list))
+
+
+# 3  join on SERIALNO
+
+# 3.1  filter to hh rows only
+hh_only <- pums_2000_hh %>% 
+  filter(RECTYPE %in% "H")
+
+# 3.2
+join_pums_2000 <- pums_2000_per %>% 
+  left_join(.,
+            hh_only,
+            by = c('SERIALNO' = 'SERIALNO'))

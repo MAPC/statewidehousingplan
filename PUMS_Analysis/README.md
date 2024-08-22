@@ -34,3 +34,28 @@ order by column [unique_obs] to see the household rows in order, with the hh pre
 __5. output folder__: 
 
 K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS
+
+
+__6. 2005-09 PUMS__
+
+see crosswalk complete table of 2021 variables: pums_vars_from_data_2005-09.ods
+
+online data dictionary: https://usa.ipums.org/usa/resources/codebooks/DataDict0509.pdf
+
+__columns:__
+
+*over_vars:*  corresponding variables for "Overcrowding" analysis
+
+*pers_vars:*  2009 variables in Person table
+
+*hous_vars:*  2009 variables in Households table
+
+*web_vars_list:*  2009 variables shown on Census PUMS download webpage 
+https://data.census.gov/mdat/#/search?ds=ACSPUMS5Y2009
+
+*Label:* 2009 variable description
+
+*Number of Values:*  count of all possible items in controlled vocabulary
+
+*Type:* Estimate or Recodes
+

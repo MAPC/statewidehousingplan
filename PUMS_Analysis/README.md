@@ -38,10 +38,11 @@ K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analys
 
 __6. 2005-09 PUMS__
 
-see crosswalk complete table of PUMS 5yr 2009 variables: *pums_vars_from_data_2005-09.ods*
-online data dictionary: https://usa.ipums.org/usa/resources/codebooks/DataDict0509.pdf
+6.1 see crosswalk complete table of PUMS 5yr 2009 variables: *pums_vars_from_data_2005-09.ods*
 
-__columns:__
+6.2 online data dictionary: https://usa.ipums.org/usa/resources/codebooks/DataDict0509.pdf
+
+6.3 __columns:__
 
 *over_vars:*  corresponding variables for "Overcrowding" analysis
 

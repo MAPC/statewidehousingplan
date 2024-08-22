@@ -524,7 +524,7 @@ trim_pums_2009_hh <- pums_2009_hh_raw[as.character(cols_uniq_to_hh$hou_list)]
 pums_2009_person <- trim_pums_2009_per %>% 
   mutate(uniq_obs = paste0(SERIALNO,"_",SPORDER))
 
-pums_2009_hh <- pums_2009_hh_raw %>% 
+pums_2009_hh <- trim_pums_2009_hh %>% 
   mutate(uniq_obs = paste0(SERIALNO,"_",SPORDER))
 
 

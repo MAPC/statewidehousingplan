@@ -38,8 +38,7 @@ K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analys
 
 __6. 2005-09 PUMS__
 
-see crosswalk complete table of 2021 variables: pums_vars_from_data_2005-09.ods
-
+see crosswalk complete table of PUMS 5yr 2009 variables: *pums_vars_from_data_2005-09.ods*
 online data dictionary: https://usa.ipums.org/usa/resources/codebooks/DataDict0509.pdf
 
 __columns:__

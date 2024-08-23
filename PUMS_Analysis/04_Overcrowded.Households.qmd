@@ -88,12 +88,58 @@ xw <- bind_rows(xw, mvc, npedc)
 rm(matrix, col_names, mvc, npedc)
 gc()
 
+
+```
+
+# 0.4 PUMS Data Cleaning
+```{r}
 #Joing the PUMA to RPA crosswalk to the PUMS data.
 pums <- left_join(
   pums,
   xw,
   by = c("PUMA")
 )
+
+#General Data Cleaning
+pums <- pums |> 
+  mutate(
+    child = case_when(
+      AGEP < 18 ~ 1,
+      AGEP >= 18 ~ 0,
+      .default = 0
+    )
+  ) |> 
+  group_by(
+    SERIALNO
+  ) |> 
+  mutate(
+    child_count = sum(child),
+  ) |> 
+  ungroup() |> 
+  mutate(
+    FAMILY_flag = case_when(
+      child_count > 0 ~ "1",
+      child_count == 0 ~ "0",
+      .default = "0"
+    ),
+     #Create a "Studio/Non-Defined Bedroom" variable to denote where households do
+    #not have a bedroom number.
+    studio_flag = case_when(
+      BDSP == 0 ~ "Studio/No Defined Bedroom",
+      BDSP != 0 ~ "Defined Bedroom",
+      .default = "Unknown"
+    ),
+    #Redefine BDSP to label studios/non-defined bedroom units as One-Bedrooms
+    #For purpose of calculating the number of people per bedrooms.
+    BDSP = if_else(BDSP == 0, 1, BDSP),
+    #Calculate the number of people per bedroom in a housing unit.
+    PPB = NP/BDSP,
+    #Categorize each housing unit as overcrowded or not based on PPB.
+    overcrowded.ppb = case_when(
+      PPB > 2.0 ~ "1",
+      PPB <= 2.0 ~ "0"
+    )
+  )
 ```
 
 # 1.0 PUMS Analysis
@@ -116,92 +162,174 @@ tot.hh.rpa <- pums |>
     hh = sum(WGTP)
   ) |> 
   ungroup()
-```
 
-# 1.2.1 Number of People per Bedroom
-```{r}
-# Finding the number of people and bedrooms in each housing unit
-PPB <- pums |> 
+#Calculate total family households
+tot.hh.family <- pums |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
-  select(SERIALNO, rpa_acr, WGTP, BDSP, NP) |> 
-  mutate(
-    #Create a "Studio/Non-Defined Bedroom" variable to denote where households do
-    #not have a bedroom number.
-    studio_flag = case_when(
-      BDSP == 0 ~ "Studio/No Defined Bedroom",
-      BDSP != 0 ~ "Defined Bedroom",
-      .default = "Unknown"
-    ),
-    #Redefine BDSP to label studios/non-defined bedroom units as One-Bedrooms
-    #For purpose of calculating the number of people per bedrooms.
-    BDSP = if_else(BDSP == 0, 1, BDSP)
-  ) |> 
   group_by(
-    rpa_acr,
-    SERIALNO,
-    studio_flag,
-    BDSP,
-    NP
+    FAMILY_flag
   ) |> 
   summarise(
-    households = sum(WGTP)
+    hh = sum(WGTP)
+  ) |> 
+  ungroup()
+  
+```
+
+# 1.2.1 Overcrowding (PPB) at the State-level
+```{r}
+#Overcrowding at the State-level
+OC.PPB <- pums |> 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
+  group_by(
+    overcrowded.ppb
+  ) |> 
+  summarise(
+    oc.hh = sum(households)
+  ) |> 
+  ungroup() |> 
+  bind_cols(tot.hh) |>  
+  rowwise() |> 
+  mutate(
+    pct = oc.hh/hh
+  ) |> 
+  select(
+    -c(hh)
+  )
+
+#Write the output to csv
+write.csv(
+  OC.PPB,
+  paste0(output_path,"04_Overcrowding/overcrowding.PPB.StateLevel.csv"),
+  row.names = FALSE
+)
+
+#Overcrowding by Family Status at the State-Level
+OC.FAMILY.PPB <- pums |> 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
+  group_by(
+    FAMILY_flag,
+    overcrowded.ppb
+  ) |> 
+  summarise(
+    oc.hh = sum(WGTP)
+  ) |> 
+  ungroup() |> 
+  left_join(
+    tot.hh.family,
+    by = c("FAMILY_flag")
+  ) |> 
+  mutate(
+    pct = oc.hh/hh
+  )
+
+#Write the output to csv
+write.csv(
+  OC.FAMILY.PPB,
+  paste0(output_path, "04_Overcrowding/overcrowding.FAMILY.PPB.StateLevel.csv"),
+  row.names = FALSE
+)
+  
+```
+
+# 1.2.2 Overcrowding (PPB) at the RPA-level
+```{r}
+#Overcrowding by RPA
+OC.RPA.PPB <- pums |> 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
+  group_by(
+    rpa_acr,
+    overcrowded.ppb
+  ) |> 
+  summarise(
+    oc.hh = sum(households)
+  ) |> 
+  ungroup() |> 
+  left_join(
+    tot.hh.rpa,
+    by = c("rpa_acr")
+  ) |> 
+  rowwise() |> 
+  mutate(
+    pct = oc.hh/hh
+  ) |> 
+  select(
+    -c(hh)
+  )
+
+#Write output to csv
+write.csv(
+  OC.RPA.PPB,
+  paste0(output_path,"04_Overcrowding/overcrowding.PPB.RPALevel.csv"),
+  row.names = FALSE
+)
+
+#Overcrowding by RPA and family households
+OC.FAMILY.RPA.PPB <- pums |> 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
+  group_by(
+    rpa_acr,
+    FAMILY_flag,
+    overcrowded.ppb
+  ) |> 
+  summarise(
+    oc.hh = sum(WGTP)
+  ) |> 
+  ungroup() |>
+  group_by(
+    rpa_acr,
+    FAMILY_flag
+  ) |> 
+  mutate(
+    hh = sum(oc.hh)
   ) |> 
   ungroup() |> 
   mutate(
-    #Calculate the number of people per bedroom in a housing unit.
-    PPB = NP/BDSP,
-    #Categorize each housing unit as overcrowded or not based on PPB.
-    overcrowded.ppb = case_when(
-      PPB > 2.0 ~ "1",
-      PPB <= 2.0 ~ "0"
-    )
+    pct = oc.hh/hh
   )
 
-```
-# 1.2.2 Overcrowding (PPB) at the State-level
-```{r}
+#Write output to csv
+write.csv(
+  OC.FAMILY.RPA.PPB,
+  paste0(output_path, "04_Overcrowding/overcrowding.FAMILY.PPB.RPALevel.csv"),
+  row.names = FALSE
+)
+
 ```
 
-# 1.2.3 Overcrowding (PPB) at the RPA-level
+# 1.3.1 Overcrowding (PPR) at the State-level
 ```{r}
-```
-
-# 1.3.1 Number of People per Room in a Housing Unit
-```{r}
-#Number of people per room in the housing unit
-PPR <- pums |> 
+#Overcrowding at the State-level
+OC.PPR <-  pums |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
-  select(SERIALNO, rpa_acr, WGTP, RMSP, NP) |> 
   group_by(
-    rpa_acr,
-    SERIALNO,
-    RMSP,
-    NP
+    overcrowded.ppr
   ) |> 
   summarise(
-    households = sum(WGTP)
+    oc.hh = sum(households)
   ) |> 
   ungroup() |> 
+  bind_cols(tot.hh) |>  
+  rowwise() |> 
   mutate(
-    #Calculate the number of people per room in a housing unit.
-    PPR = NP/RMSP,
-    #Categorize each housing unit as overcrowded or not (based on PPR).
-    overcrowded.ppr = case_when(
-     PPR > 1.5 ~ "1",
-     PPR <= 1.5 ~ "0"
-    )
+    pct = oc.hh/hh
+  ) |> 
+  select(
+    -c(hh)
   )
 
-```
-
-# 1.3.2 Overcrowding (PPR) at the State-level
-```{r}
+write.csv(
+  OC.PPR,
+  paste0(output_path,"overcrowding.PPR.StateLevel.csv"),
+  row.names = FALSE
+)
 ```
 
 # 1.3.3 Overcrowding (PPR) at the RPA-level
 ```{r}
 #Overcrowding by RPA
-OC.RPA.PPR <- PPR |> 
+OC.RPA.PPR <-  pums |> 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   group_by(
     rpa_acr,
     overcrowded.ppr
@@ -222,10 +350,16 @@ OC.RPA.PPR <- PPR |>
     -c(hh)
   )
 
-print(sum(OC.RPA.PPR$households))
+#Write output to csv
+write.csv(
+  OC.RPA.PPR,
+  paste0(output_path,"overcrowding.PPR.RPALevel.csv"),
+  row.names = FALSE
+)
 
 #Overcrowding by Number of Rooms in Housing Units
-OC.RPA.RMSP.PPR <- PPR |> 
+OC.RPA.RMSP.PPR <-  pums |> 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   group_by(
     rpa_acr,
     RMSP,

@@ -229,7 +229,30 @@ write.csv(
   paste0(output_path, "04_Overcrowding/overcrowding.FAMILY.PPB.StateLevel.csv"),
   row.names = FALSE
 )
-  
+
+#Overcrowding by Number of Bedrooms
+OC.BDRMS.PPB <- pums |> 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
+  group_by(
+    BDSP,
+    studio_flag,
+    overcrowded.ppb
+  ) |> 
+  summarise(
+    oc.hh = sum(WGTP)
+  ) |> 
+  ungroup() |> 
+  group_by(
+    BDSP,
+    studio_flag
+  ) |> 
+  mutate(
+    hh = sum(oc.hh)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    pct = oc.hh/hh
+  )
 ```
 
 # 1.2.2 Overcrowding (PPB) at the RPA-level
@@ -294,6 +317,32 @@ write.csv(
   paste0(output_path, "04_Overcrowding/overcrowding.FAMILY.PPB.RPALevel.csv"),
   row.names = FALSE
 )
+
+#Overcrowding by Number of Bedrooms and RPA
+OC.BDRMS.RPA.PPB <- pums |> 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
+  group_by(
+    rpa_acr,
+    BDSP,
+    studio_flag,
+    overcrowded.ppb
+  ) |> 
+  summarise(
+    oc.hh = sum(WGTP)
+  ) |> 
+  ungroup() |> 
+  group_by(
+    rpa_acr,
+    BDSP,
+    studio_flag
+  ) |> 
+  mutate(
+    hh = sum(oc.hh)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    pct = oc.hh/hh
+  )
 
 ```
 

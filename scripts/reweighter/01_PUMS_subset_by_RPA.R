@@ -22,7 +22,7 @@ setwd(inputDIR)
 mpos <- unlist(c(mapcdatakeys::all_muni_data_keys %>% select(mpo) %>% unique()))
 
 # PUMA crosswalk
-mxw <- fread('../ma_muni_puma10_join.csv')
+mxw <- fread('../PUMS_data/ma_muni_puma10_join.csv')
 mxw <- mxw[, .(TOWN_ID, PUMACE10)]
 setnames(mxw, c('muni_id', 'PUMA'))
 mxw <- mxw[, .(muni_id, PUMA)]
@@ -36,7 +36,7 @@ swm.pumas <- axw[mpo != 'MAPC', .(mpo, PUMA)] %>% unique()
 mkeys <- mapcdatakeys::all_muni_data_keys |>  select(muni_id,rpa_acr,mpo)
 
 #Load in the municipality to PUMA crosswalk.
-psf <- fread('../pums_muni_inter.csv') %>% 
+psf <- fread('../PUMS_data/pums_muni_inter.csv') %>% 
   select(TOWN_ID,PUMACE10,Shape_Area) %>% 
   # psf <- fread('../ma_muni_puma10_join.csv') |>
   dplyr::rename(

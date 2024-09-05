@@ -7,6 +7,7 @@ editor: visual
 # 0.0 Setup - Define helper functions, set knitr path, load necessary packages, set muni data keys
 
 #0.1 - Set knitr path + root for inputs
+
 ```{r, setup, include=FALSE}
 #Use when Rproject is open
 #root <- '../../../../Data/Working/Regional_Control_Totals/'
@@ -25,6 +26,7 @@ knitr::opts_knit$set(root.dir = pums_path)
 ```
 
 # 0.2 - Set package dependencies, set environment, set up data keys
+
 ```{r}
 #Load Libraries for PUMS Analysis and PUMS API query functions
 #sets seed and removes scientific notation
@@ -39,6 +41,7 @@ pums <- read.csv(paste0(pums_path,"pums_overcrowding_2021_V_2024-08-19.csv")) |>
 ```
 
 0.3 PUMA to RPA Crosswalk
+
 ```{r}
 #Set up datakeys for future joins.
 mkeys <- mapcdatakeys::all_muni_data_keys |>  select(muni_id,rpa_acr,mpo)
@@ -92,6 +95,7 @@ gc()
 ```
 
 # 0.4 PUMS Data Cleaning
+
 ```{r}
 #Joing the PUMA to RPA crosswalk to the PUMS data.
 pums <- left_join(
@@ -138,12 +142,27 @@ pums <- pums |>
     overcrowded.ppb = case_when(
       PPB > 2.0 ~ "1",
       PPB <= 2.0 ~ "0"
-    )
+    ),
+    #Convert SFN into a numeric column. Introduces NAs for people not in subfamilies
+    SFN = as.numeric(SFN),
+    #Replace the NA for non-subfamily members with 0.
+    SFN = replace_na(SFN, 0)
+  ) |>
+  group_by(SERIALNO) |> 
+  mutate(
+    #Create a column which denotes the presence of subfamilies for a household.
+    SFN.num = max(SFN)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    SFN.flag = if_else(SFN.num > 0, 1, 0)
   )
 ```
 
 # 1.0 PUMS Analysis
+
 # 1.1.1 Total Households by RPA
+
 ```{r}
 #Calculate the total number of households across the state
 tot.hh <- pums |> 
@@ -177,6 +196,7 @@ tot.hh.family <- pums |>
 ```
 
 # 1.2.1 Overcrowding (PPB) at the State-level
+
 ```{r}
 #Overcrowding at the State-level
 OC.PPB <- pums |> 
@@ -185,7 +205,7 @@ OC.PPB <- pums |>
     overcrowded.ppb
   ) |> 
   summarise(
-    oc.hh = sum(households)
+    oc.hh = sum(WGTP)
   ) |> 
   ungroup() |> 
   bind_cols(tot.hh) |>  
@@ -256,6 +276,7 @@ OC.BDRMS.PPB <- pums |>
 ```
 
 # 1.2.2 Overcrowding (PPB) at the RPA-level
+
 ```{r}
 #Overcrowding by RPA
 OC.RPA.PPB <- pums |> 
@@ -347,32 +368,20 @@ OC.BDRMS.RPA.PPB <- pums |>
 ```
 
 # 2.0 Subfamilies Analysis
+
 # 2.1 Creating a household indicator for presense of subfamily
+
 ```{r}
-pums <- pums |> 
-  mutate(
-    #Convert SFN into a numeric column. Introduces NAs for people not in subfamilies
-    SFN = as.numeric(SFN),
-    #Replace the NA for non-subfamily members with 0.
-    SFN = replace_na(SFN, 0)
-  ) |> 
-  group_by(
-    SERIALNO
-  ) |> 
-  mutate(
-    #Create a column which denotes the presence of subfamilies for a household.
-    SFN.num = max(SFN)
-  ) |> 
-  ungroup() |> 
-  mutate(
-    SFN.flag = if_else(SFN.num > 0, 1, 0)
-  )
+pums <- pums
 ```
+
 # 2.2 Looking at Composition of Subfamilies to determine if they make sense
+
 ```{r}
 ```
 
 # 2.3 Overcrowded Households by Presense of Subfamilies
+
 ```{r}
 #Overcrowding by Presence of a Subfamily
 OC.SF.PPB <- pums |> 
@@ -400,8 +409,14 @@ OC.SF.PPB <- pums |>
     -c(hh)
   )
 
-#Overcrowding by Number of a Subfamilies
-OC.SF.PPB <- pums |> 
+write.csv(
+  OC.SF.PPB,
+  paste0(output_path, "04_Overcrowding/overcrowding.SF.PPB.csv"),
+  row.names = FALSE
+)
+
+#Overcrowding by Number of Subfamilies
+OC.NumSF.PPB <- pums |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
     SFN.num,
@@ -425,6 +440,12 @@ OC.SF.PPB <- pums |>
   select(
     -c(hh)
   )
+
+write.csv(
+  OC.NumSF.PPB,
+  paste0(output_path, "04_Overcrowding/overcrowding.NumSF.PPB.csv"),
+  row.names = FALSE
+)
 
 #Overcrowding by RPA and Presence of a Subfamily
 OC.SF.RPA.PPB <- pums |> 
@@ -454,8 +475,14 @@ OC.SF.RPA.PPB <- pums |>
     -c(hh)
   )
 
+write.csv(
+  OC.SF.RPA.PPB,
+  paste0(output_path, "04_Overcrowding/overcrowding.SF.PPB.RPAlevel.csv"),
+  row.names = FALSE
+)
+
 #Overcrowding by RPA and Number of Subfamilies
-OC.SF.RPA.PPB <- pums |> 
+OC.NumSF.RPA.PPB <- pums |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
     rpa_acr,
@@ -482,12 +509,20 @@ OC.SF.RPA.PPB <- pums |>
     -c(hh)
   )
 
+write.csv(
+  OC.NumSF.RPA.PPB,
+  paste0(output_path, "04_Overcrowding/overcrowding.NumSF.PPB.RPAlevel.csv"),
+  row.names = FALSE
+)
+
 #Analysis:
 
 ```
 
 # 3.0 Multigenerational Household Analysis
+
 # 3.1 Redefining Multigenerational households
+
 ```{r}
 pums <- pums |> 
   mutate(
@@ -501,6 +536,7 @@ pums <- pums |>
 ```
 
 # 3.2 Overcrowding by Presence of Multiple Generations in a Household
+
 ```{r}
 #U.S. Census defines "multigenerational" households as those with three or more generations
 #present in the household.
@@ -512,10 +548,10 @@ pums <- pums |>
 #grandchildren are present would be a four generation household.
 
 #Overcrowding by Multigenerational Households (Census Definition)
-OC.SF.PPB <- pums |> 
+OC.MULTG.PPB <- pums |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
-    MULTIG,
+    MULTG,
     overcrowded.ppb
   ) |> 
   summarise(
@@ -523,7 +559,7 @@ OC.SF.PPB <- pums |>
   ) |> 
   ungroup() |>
   group_by(
-    MULTIG
+    MULTG
   ) |> 
   mutate(
     hh = sum(oc.hh)
@@ -537,12 +573,18 @@ OC.SF.PPB <- pums |>
     -c(hh)
   )
 
+write.csv(
+  OC.MULTG.PPB,
+  paste0(output_path, "04_Overcrowding/overcrowding.MULTG.PPB.csv"),
+  row.names = FALSE
+)
+
 #Overcrowding by RPA and Multigenerational Households (Census Definitions)
-OC.SF.RPA.PPB <- pums |> 
+OC.MULTG.RPA.PPB <- pums |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
     rpa_acr,
-    MULTIG,
+    MULTG,
     overcrowded.ppb
   ) |> 
   summarise(
@@ -551,7 +593,7 @@ OC.SF.RPA.PPB <- pums |>
   ungroup() |>
   group_by(
     rpa_acr,
-    MULTIG
+    MULTG
   ) |> 
   mutate(
     hh = sum(oc.hh)
@@ -564,7 +606,11 @@ OC.SF.RPA.PPB <- pums |>
   select(
     -c(hh)
   )
+write.csv(
+  OC.MULTG.RPA.PPB,
+  paste0(output_path, "04_Overcrowding/overcrowding.MULTG.PPB.RPAlevel.csv"),
+  row.names = FALSE
+)
 
 # Analysis:
 ```
-

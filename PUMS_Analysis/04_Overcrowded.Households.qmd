@@ -361,11 +361,11 @@ pums <- pums |>
   ) |> 
   mutate(
     #Create a column which denotes the presence of subfamilies for a household.
-    SFN.flag = sum(SFN)
+    SFN.num = max(SFN)
   ) |> 
   ungroup() |> 
   mutate(
-    SFN.flag = if_else(SFN.flag > 0, 1, 0)
+    SFN.flag = if_else(SFN.num > 0, 1, 0)
   )
 ```
 # 2.2 Looking at Composition of Subfamilies to determine if they make sense
@@ -374,7 +374,7 @@ pums <- pums |>
 
 # 2.3 Overcrowded Households by Presense of Subfamilies
 ```{r}
-#Overcrowding by Presense of a Subfamily
+#Overcrowding by Presence of a Subfamily
 OC.SF.PPB <- pums |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
@@ -387,6 +387,32 @@ OC.SF.PPB <- pums |>
   ungroup() |>
   group_by(
     SFN.flag
+  ) |> 
+  mutate(
+    hh = sum(oc.hh)
+  ) |> 
+  ungroup() |> 
+  rowwise() |> 
+  mutate(
+    pct = oc.hh/hh
+  ) |> 
+  select(
+    -c(hh)
+  )
+
+#Overcrowding by Number of a Subfamilies
+OC.SF.PPB <- pums |> 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
+  group_by(
+    SFN.num,
+    overcrowded.ppb
+  ) |> 
+  summarise(
+    oc.hh = sum(WGTP)
+  ) |> 
+  ungroup() |>
+  group_by(
+    SFN.num
   ) |> 
   mutate(
     hh = sum(oc.hh)
@@ -428,6 +454,34 @@ OC.SF.RPA.PPB <- pums |>
     -c(hh)
   )
 
+#Overcrowding by RPA and Number of Subfamilies
+OC.SF.RPA.PPB <- pums |> 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
+  group_by(
+    rpa_acr,
+    SFN.num,
+    overcrowded.ppb
+  ) |> 
+  summarise(
+    oc.hh = sum(WGTP)
+  ) |> 
+  ungroup() |>
+  group_by(
+    rpa_acr,
+    SFN.num
+  ) |> 
+  mutate(
+    hh = sum(oc.hh)
+  ) |> 
+  ungroup() |> 
+  rowwise() |> 
+  mutate(
+    pct = oc.hh/hh
+  ) |> 
+  select(
+    -c(hh)
+  )
+
 #Analysis:
 
 ```
@@ -443,7 +497,60 @@ pums <- pums |>
   )
 ```
 
-# 3.2 Overcrowding by Presense of Multiple Generations in a Household
+# 3.2 Overcrowding by Presence of Multiple Generations in a Household
 ```{r}
+#Overcrowding by Multigenerational Households (Census Definition)
+OC.SF.PPB <- pums |> 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
+  group_by(
+    MULTIG,
+    overcrowded.ppb
+  ) |> 
+  summarise(
+    oc.hh = sum(WGTP)
+  ) |> 
+  ungroup() |>
+  group_by(
+    MULTIG
+  ) |> 
+  mutate(
+    hh = sum(oc.hh)
+  ) |> 
+  ungroup() |> 
+  rowwise() |> 
+  mutate(
+    pct = oc.hh/hh
+  ) |> 
+  select(
+    -c(hh)
+  )
+
+#Overcrowding by RPA and Multigenerational Households (Census Definitions)
+OC.SF.RPA.PPB <- pums |> 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
+  group_by(
+    rpa_acr,
+    MULTIG,
+    overcrowded.ppb
+  ) |> 
+  summarise(
+    oc.hh = sum(WGTP)
+  ) |> 
+  ungroup() |>
+  group_by(
+    rpa_acr,
+    MULTIG
+  ) |> 
+  mutate(
+    hh = sum(oc.hh)
+  ) |> 
+  ungroup() |> 
+  rowwise() |> 
+  mutate(
+    pct = oc.hh/hh
+  ) |> 
+  select(
+    -c(hh)
+  )
 ```
 

@@ -491,7 +491,10 @@ OC.SF.RPA.PPB <- pums |>
 ```{r}
 pums <- pums |> 
   mutate(
-    RELATE = case_when(
+    #Create a variable that categorizes people into "generations" by their relationship
+    #to the householder
+    GEN = case_when(
+      #
       
     )
   )
@@ -499,6 +502,15 @@ pums <- pums |>
 
 # 3.2 Overcrowding by Presence of Multiple Generations in a Household
 ```{r}
+#U.S. Census defines "multigenerational" households as those with three or more generations
+#present in the household.
+
+#A second definition is more expansive, one which IPUMS has coded into their 
+#microdata sample. They record the number of generations present among people in the household
+#relative to the householder. A household where the parents of the householder live 
+#with them would be a two generation household. One where the grandparents, children, and 
+#grandchildren are present would be a four generation household.
+
 #Overcrowding by Multigenerational Households (Census Definition)
 OC.SF.PPB <- pums |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
@@ -552,5 +564,7 @@ OC.SF.RPA.PPB <- pums |>
   select(
     -c(hh)
   )
+
+# Analysis:
 ```
 

@@ -359,6 +359,7 @@ write.csv(
 # 2.0 Subfamilies Analysis
 
 A subfamily is defined as either 1) a married couple without children or a 2) single parent with unmarried children under the age of 18. Does not differentiate between whether members of a subfamily are related to the householder. The "RELSHIP" variable contains information about the relatedness of people in a household to the householder.
+(Source: https://www.census.gov/programs-surveys/cps/technical-documentation/subject-definitions.html#subfamily)
 
 # 2.1 Looking at Composition of Subfamilies to determine if they make sense
 
@@ -506,6 +507,16 @@ write.csv(
 
 # 3.0 Multigenerational Household Analysis
 
+U.S. Census defines "multigenerational" households as those with three or more generations
+present in the household.
+
+A second definition is more expansive, one which IPUMS has coded into their 
+microdata sample. They record the number of generations present among people in the household
+relative to the householder. A household where the parents of the householder live 
+with them would be a two generation household. One where the grandparents, children, and 
+grandchildren are present would be a four generation household.
+(Source that refers to this definition: https://www2.census.gov/library/publications/2012/acs/acsbr11-03.pdf)
+
 # 3.1 Redefining Multigenerational households
 
 ```{r}
@@ -523,15 +534,6 @@ pums <- pums |>
 # 3.2 Overcrowding by Presence of Multiple Generations in a Household
 
 ```{r}
-#U.S. Census defines "multigenerational" households as those with three or more generations
-#present in the household.
-
-#A second definition is more expansive, one which IPUMS has coded into their 
-#microdata sample. They record the number of generations present among people in the household
-#relative to the householder. A household where the parents of the householder live 
-#with them would be a two generation household. One where the grandparents, children, and 
-#grandchildren are present would be a four generation household.
-
 #Overcrowding by Multigenerational Households (Census Definition)
 OC.MULTG.PPB <- pums |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  

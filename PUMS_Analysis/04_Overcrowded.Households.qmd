@@ -6,7 +6,7 @@ editor: visual
 
 # 0.0 Setup - Define helper functions, set knitr path, load necessary packages, set muni data keys
 
-#0.1 - Set knitr path + root for inputs
+# 0.1 - Set knitr path + root for inputs
 
 ```{r, setup, include=FALSE}
 #Use when Rproject is open
@@ -40,7 +40,7 @@ pums <- read.csv(paste0(pums_path,"pums_overcrowding_2021_V_2024-08-19.csv")) |>
 
 ```
 
-0.3 PUMA to RPA Crosswalk
+# 0.3 PUMA to RPA Crosswalk
 
 ```{r}
 #Set up datakeys for future joins.
@@ -160,43 +160,7 @@ pums <- pums |>
 ```
 
 # 1.0 PUMS Analysis
-
-# 1.1.1 Total Households by RPA
-
-```{r}
-#Calculate the total number of households across the state
-tot.hh <- pums |> 
-  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
-  summarise(
-    hh = sum(WGTP)
-  )
-
-#Calculate the total number of households in each RPA
-tot.hh.rpa <- pums |> 
-  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
-  group_by(
-    rpa_acr
-  ) |> 
-  summarise(
-    hh = sum(WGTP)
-  ) |> 
-  ungroup()
-
-#Calculate total family households
-tot.hh.family <- pums |> 
-  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
-  group_by(
-    FAMILY_flag
-  ) |> 
-  summarise(
-    hh = sum(WGTP)
-  ) |> 
-  ungroup()
-  
-```
-
-# 1.2.1 Overcrowding (PPB) at the State-level
-
+# 1.1 Overcrowding (PPB) at the State-level and for Family households and by Number of Bedrooms
 ```{r}
 #Overcrowding at the State-level
 OC.PPB <- pums |> 
@@ -208,13 +172,8 @@ OC.PPB <- pums |>
     oc.hh = sum(WGTP)
   ) |> 
   ungroup() |> 
-  bind_cols(tot.hh) |>  
-  rowwise() |> 
   mutate(
-    pct = oc.hh/hh
-  ) |> 
-  select(
-    -c(hh)
+    pct = oc.hh/sum(oc.hh)
   )
 
 #Write the output to csv
@@ -235,12 +194,18 @@ OC.FAMILY.PPB <- pums |>
     oc.hh = sum(WGTP)
   ) |> 
   ungroup() |> 
-  left_join(
-    tot.hh.family,
-    by = c("FAMILY_flag")
+  group_by(
+    FAMILY_flag
   ) |> 
   mutate(
+    hh = sum(oc.hh)
+  ) |> 
+  ungroup() |> 
+  mutate(
     pct = oc.hh/hh
+  ) |>
+  select(
+    -c(hh)
   )
 
 #Write the output to csv
@@ -272,11 +237,20 @@ OC.BDRMS.PPB <- pums |>
   ungroup() |> 
   mutate(
     pct = oc.hh/hh
+  ) |> 
+  select(
+    -c(hh)
   )
+
+#Write the output to csv
+write.csv(
+  OC.BDRMS.PPB,
+  paste0(output_path, "04_Overcrowding/overcrowding.BDRMS.PPB.StateLevel.csv"),
+  row.names = FALSE
+)
 ```
 
-# 1.2.2 Overcrowding (PPB) at the RPA-level
-
+# 1.2 Overcrowding (PPB) at the RPA-level and for Family households and by Number of Bedrooms
 ```{r}
 #Overcrowding by RPA
 OC.RPA.PPB <- pums |> 
@@ -286,14 +260,16 @@ OC.RPA.PPB <- pums |>
     overcrowded.ppb
   ) |> 
   summarise(
-    oc.hh = sum(households)
+    oc.hh = sum(WGTP)
   ) |> 
   ungroup() |> 
-  left_join(
-    tot.hh.rpa,
-    by = c("rpa_acr")
+  group_by(
+    rpa_acr
   ) |> 
-  rowwise() |> 
+  mutate(
+    hh = sum(oc.hh)
+  ) |> 
+  ungroup() |> 
   mutate(
     pct = oc.hh/hh
   ) |> 
@@ -330,6 +306,9 @@ OC.FAMILY.RPA.PPB <- pums |>
   ungroup() |> 
   mutate(
     pct = oc.hh/hh
+  ) |> 
+  select(
+    -c(hh)
   )
 
 #Write output to csv
@@ -363,17 +342,31 @@ OC.BDRMS.RPA.PPB <- pums |>
   ungroup() |> 
   mutate(
     pct = oc.hh/hh
+  ) |> 
+  select(
+    -c(hh)
   )
+
+#Write output to csv
+write.csv(
+  OC.BDRMS.RPA.PPB,
+  paste0(output_path, "04_Overcrowding/overcrowding.BDRMS.PPB.RPALevel.csv"),
+  row.names = FALSE
+)
 
 ```
 
 # 2.0 Subfamilies Analysis
+
+A subfamily is defined as either 1) a married couple without children or a 2) single parent with unmarried children under the age of 18. Does not differentiate between whether members of a subfamily are related to the householder. The "RELSHIP" variable contains information about the relatedness of people in a household to the householder.
+
 # 2.1 Looking at Composition of Subfamilies to determine if they make sense
 
 ```{r}
 ```
 
 # 2.2 Overcrowded Households by Presense of Subfamilies
+
 ```{r}
 #Overcrowding by Presence of a Subfamily
 OC.SF.PPB <- pums |> 
@@ -512,7 +505,9 @@ write.csv(
 ```
 
 # 3.0 Multigenerational Household Analysis
+
 # 3.1 Redefining Multigenerational households
+
 ```{r}
 pums <- pums |> 
   mutate(
@@ -606,7 +601,9 @@ write.csv(
 ```
 
 # 4.0 Cross-Tabulations
+
 # 4.1 Multigenerational Households and Presense of Subfamilies
+
 ```{r}
 #Overcrowding by Multigenerational Households (Census Definition) and Presence of Subfamily
 OC.MULTG.SF.PPB <- pums |> 
@@ -677,6 +674,5 @@ write.csv(
   paste0(output_path, "04_Overcrowding/overcrowding.MULTG.SF.PPB.RPAlevel.csv"),
   row.names = FALSE
 )
-
 
 ```

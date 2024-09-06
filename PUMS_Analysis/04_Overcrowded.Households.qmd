@@ -368,20 +368,12 @@ OC.BDRMS.RPA.PPB <- pums |>
 ```
 
 # 2.0 Subfamilies Analysis
-
-# 2.1 Creating a household indicator for presense of subfamily
-
-```{r}
-pums <- pums
-```
-
-# 2.2 Looking at Composition of Subfamilies to determine if they make sense
+# 2.1 Looking at Composition of Subfamilies to determine if they make sense
 
 ```{r}
 ```
 
-# 2.3 Overcrowded Households by Presense of Subfamilies
-
+# 2.2 Overcrowded Households by Presense of Subfamilies
 ```{r}
 #Overcrowding by Presence of a Subfamily
 OC.SF.PPB <- pums |> 
@@ -520,9 +512,7 @@ write.csv(
 ```
 
 # 3.0 Multigenerational Household Analysis
-
 # 3.1 Redefining Multigenerational households
-
 ```{r}
 pums <- pums |> 
   mutate(
@@ -613,4 +603,80 @@ write.csv(
 )
 
 # Analysis:
+```
+
+# 4.0 Cross-Tabulations
+# 4.1 Multigenerational Households and Presense of Subfamilies
+```{r}
+#Overcrowding by Multigenerational Households (Census Definition) and Presence of Subfamily
+OC.MULTG.SF.PPB <- pums |> 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
+  group_by(
+    MULTG,
+    SFN.flag,
+    overcrowded.ppb
+  ) |> 
+  summarise(
+    oc.hh = sum(WGTP)
+  ) |> 
+  ungroup() |>
+  group_by(
+    MULTG,
+    SFN.flag
+  ) |> 
+  mutate(
+    hh = sum(oc.hh)
+  ) |> 
+  ungroup() |> 
+  rowwise() |> 
+  mutate(
+    pct = oc.hh/hh
+  ) |> 
+  select(
+    -c(hh)
+  )
+
+write.csv(
+  OC.MULTG.SF.PPB,
+  paste0(output_path, "04_Overcrowding/overcrowding.MULTG.SF.PPB.csv"),
+  row.names = FALSE
+)
+
+#Overcrowding by RPA and Multigenerational Households (Census Definitions) and Presence of Subfamily
+OC.MULTG.SF.RPA.PPB <- pums |> 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
+  group_by(
+    rpa_acr,
+    MULTG,
+    SFN.flag,
+    overcrowded.ppb
+  ) |> 
+  summarise(
+    oc.hh = sum(WGTP)
+  ) |> 
+  ungroup() |>
+  group_by(
+    rpa_acr,
+    MULTG,
+    SFN.flag
+  ) |> 
+  mutate(
+    hh = sum(oc.hh)
+  ) |> 
+  ungroup() |> 
+  rowwise() |> 
+  mutate(
+    pct = oc.hh/hh
+  ) |> 
+  select(
+    -c(hh)
+  )
+
+write.csv(
+  OC.MULTG.SF.RPA.PPB,
+  paste0(output_path, "04_Overcrowding/overcrowding.MULTG.SF.PPB.RPAlevel.csv"),
+  row.names = FALSE
+)
+
+
 ```

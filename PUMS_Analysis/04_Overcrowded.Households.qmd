@@ -59,6 +59,7 @@ psf <- fread(paste0(root,'ma_muni_puma10_join.csv')) |>
   setDT()
 
 #Generate RPA to PUMA crosswalk.
+#This assigns a PUMA to the RPA with which it has the most areal overlap.
 lsf <- psf[,lapply(.SD,sum,na.rm=T),.(rpa_acr,PUMA),.SDcols='Shape_Area']
 lsf[,mx:=max(Shape_Area),PUMA]
 xw <- lsf[Shape_Area==mx, .(rpa_acr,PUMA)]
@@ -106,6 +107,7 @@ pums <- left_join(
 
 #General Data Cleaning
 pums <- pums |> 
+  #Create a household flag for whether there is a child in a household.
   mutate(
     child = case_when(
       AGEP < 18 ~ 1,
@@ -116,11 +118,14 @@ pums <- pums |>
   group_by(
     SERIALNO
   ) |> 
+  #Create a variable which is the sum of the number of children in a household
   mutate(
     child_count = sum(child),
   ) |> 
   ungroup() |> 
   mutate(
+    #Create a variable that is a household flag for whether or not a household has 
+    #Children. 
     FAMILY_flag = case_when(
       child_count > 0 ~ "1",
       child_count == 0 ~ "0",
@@ -155,14 +160,16 @@ pums <- pums |>
   ) |> 
   ungroup() |> 
   mutate(
+    # Create a household flag for whether or not the household contains a subfamily.
     SFN.flag = if_else(SFN.num > 0, 1, 0)
   )
 ```
 
 # 1.0 PUMS Analysis
-# 1.1 Overcrowding (PPB) at the State-level and for Family households and by Number of Bedrooms
+# 1.1 Overcrowding (PPB) at the State-level and for family households and by number of bedrooms
 ```{r}
-#Overcrowding at the State-level
+#===============================================================================
+# 1.1.1 Overcrowding in general at the State-level
 OC.PPB <- pums |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
@@ -183,7 +190,8 @@ write.csv(
   row.names = FALSE
 )
 
-#Overcrowding by Family Status at the State-Level
+#===============================================================================
+#1.1.2 Overcrowding by Family Status at the State-Level
 OC.FAMILY.PPB <- pums |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   group_by(
@@ -215,7 +223,8 @@ write.csv(
   row.names = FALSE
 )
 
-#Overcrowding by Number of Bedrooms
+#===============================================================================
+# 1.1.3 Overcrowding by Number of Bedrooms
 OC.BDRMS.PPB <- pums |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   group_by(
@@ -252,7 +261,8 @@ write.csv(
 
 # 1.2 Overcrowding (PPB) at the RPA-level and for Family households and by Number of Bedrooms
 ```{r}
-#Overcrowding by RPA
+#===============================================================================
+# 1.2.1 Overcrowding by RPA
 OC.RPA.PPB <- pums |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
@@ -284,7 +294,8 @@ write.csv(
   row.names = FALSE
 )
 
-#Overcrowding by RPA and family households
+#===============================================================================
+# 1.2.2 Overcrowding by RPA and family households
 OC.FAMILY.RPA.PPB <- pums |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   group_by(
@@ -318,7 +329,8 @@ write.csv(
   row.names = FALSE
 )
 
-#Overcrowding by Number of Bedrooms and RPA
+#===============================================================================
+# 1.2.3 Overcrowding by Number of Bedrooms and RPA
 OC.BDRMS.RPA.PPB <- pums |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   group_by(
@@ -369,7 +381,8 @@ A subfamily is defined as either 1) a married couple without children or a 2) si
 # 2.2 Overcrowded Households by Presense of Subfamilies
 
 ```{r}
-#Overcrowding by Presence of a Subfamily
+#===============================================================================
+# 2.2.1 Overcrowding by Presence of a Subfamily
 OC.SF.PPB <- pums |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
@@ -401,7 +414,8 @@ write.csv(
   row.names = FALSE
 )
 
-#Overcrowding by Number of Subfamilies
+#===============================================================================
+# 2.2.2 Overcrowding by Number of Subfamilies
 OC.NumSF.PPB <- pums |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
@@ -433,7 +447,8 @@ write.csv(
   row.names = FALSE
 )
 
-#Overcrowding by RPA and Presence of a Subfamily
+#===============================================================================
+# 2.2.3 Overcrowding by RPA and Presence of a Subfamily
 OC.SF.RPA.PPB <- pums |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
@@ -467,7 +482,8 @@ write.csv(
   row.names = FALSE
 )
 
-#Overcrowding by RPA and Number of Subfamilies
+#===============================================================================
+# 2.2.4 Overcrowding by RPA and Number of Subfamilies
 OC.NumSF.RPA.PPB <- pums |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
@@ -501,9 +517,11 @@ write.csv(
   row.names = FALSE
 )
 
-#Analysis:
-
 ```
+
+# 2.3 Subfamily Analysis
+
+blah
 
 # 3.0 Multigenerational Household Analysis
 
@@ -531,10 +549,11 @@ pums <- pums |>
   )
 ```
 
-# 3.2 Overcrowding by Presence of Multiple Generations in a Household
+# 3.2 Overcrowding by Presence of Multiple Generations in a Household (Census Definition)
 
 ```{r}
-#Overcrowding by Multigenerational Households (Census Definition)
+#===============================================================================
+# 3.2.1 Overcrowding by Multigenerational Households (Census Definition)
 OC.MULTG.PPB <- pums |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
@@ -566,7 +585,8 @@ write.csv(
   row.names = FALSE
 )
 
-#Overcrowding by RPA and Multigenerational Households (Census Definitions)
+#===============================================================================
+# 3.2.2 Overcrowding by RPA and Multigenerational Households (Census Definitions)
 OC.MULTG.RPA.PPB <- pums |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
@@ -602,12 +622,17 @@ write.csv(
 # Analysis:
 ```
 
+# 3.3 Analysis:
+
+
+
 # 4.0 Cross-Tabulations
 
 # 4.1 Multigenerational Households and Presense of Subfamilies
 
 ```{r}
-#Overcrowding by Multigenerational Households (Census Definition) and Presence of Subfamily
+#===============================================================================
+# 4.1.1 Overcrowding by Multigenerational Households (Census Definition) and Presence of Subfamily
 OC.MULTG.SF.PPB <- pums |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
@@ -641,7 +666,8 @@ write.csv(
   row.names = FALSE
 )
 
-#Overcrowding by RPA and Multigenerational Households (Census Definitions) and Presence of Subfamily
+#===============================================================================
+# 4.1.2 Overcrowding by RPA and Multigenerational Households (Census Definitions) and Presence of Subfamily
 OC.MULTG.SF.RPA.PPB <- pums |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
@@ -678,3 +704,6 @@ write.csv(
 )
 
 ```
+# 4.2 Analysis:
+
+At the state level

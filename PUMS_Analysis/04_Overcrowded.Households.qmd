@@ -368,6 +368,13 @@ write.csv(
 
 ```
 
+# 1.3 General Analysis
+
+About 1.8 percent of households across the state are overcrowded, which is classified as having more than two persons per bedroom in a given household. Family households (households with a child under 18 years old) have a higher proportion of households which are overcrowded - 5.4 percent. Regarding overcrowding by the number of bedrooms in a household, I expect the proportion of overcrowded households to decrease as the number of bedrooms increases. This is confirmed by the data. 4.9 percent and 5.1 percent of one bedrooms and studios, respectively, are overcrowded. The proportion of overcrowded households drops to 2.4 percent for two bedroom households and further to 0.8 percent for households with three bedrooms.The trend follows for households with more bedrooms. A point to delve further on is the incidence of overcrowding in one bedroom and studio units. The Census doesn't singularly define studio units, I've classified them as units where the number of rooms equals one and the number of bedrooms is zero (as opposed to a one bedroom unit where there is one bedroom and at least one room).
+
+When looking at the proportion of overcrowded households by RPA clear differences arise across the state. The Berkshires, Cape Code, Martha's Vineyard and Nantucket all have less than one percent of their households be overcrowded. MAPC has the highest percentage of overcrowded households across all RPA regions with 2.1 percent of households being overcrowded. The other RPAs fall closer to the statewide proportion.
+
+
 # 2.0 Subfamilies Analysis
 
 A subfamily is defined as either 1) a married couple without children or a 2) single parent with unmarried children under the age of 18. Does not differentiate between whether members of a subfamily are related to the householder. The "RELSHIP" variable contains information about the relatedness of people in a household to the householder.
@@ -521,7 +528,7 @@ write.csv(
 
 # 2.3 Subfamily Analysis
 
-blah
+Presence of a subfamily (see definition) is associated with a greater proportion of households being over crowded. Only 1.5 percent of households without a subfamily are overcrowded compared to 10.2 percent of households with a subfamily present. One would expect as the *number* of subfamilies in a household increases (a proxy for number of people since at least two people constitute a subfamily) the proportion of households which are overcrowded would also increase. Our expectation is validated in the data -- nine percent (9%) of households with one subfamily are overcrowded, 47% of households with two subfamilies are overcrowded, and *all* households with three subfamilies are overcrowded. This is consistent across RPA regions.
 
 # 3.0 Multigenerational Household Analysis
 
@@ -624,7 +631,7 @@ write.csv(
 
 # 3.3 Analysis:
 
-
+A far greater proportion of households formed of people from multiple generations are overcrowded (9.9%) than non-multigenerational households (1.4%). The latter group is more similar to the statewide proportion of overcrowded households (1.57%). This is consistent across each of the 13 RPA regions.
 
 # 4.0 Cross-Tabulations
 
@@ -707,3 +714,11 @@ write.csv(
 # 4.2 Analysis:
 
 At the state level
+
+Households that are not multigenerational but contain a subfamily have the highest rate of overcrowding at 11.0% There is nearly no difference in the rate of overcrowding between multigenerational households that contain subfamilies and those that do not (in both sets of households the rate of overcrowding is 9.9%).
+
+What is a reasonable rate of overcrowding? And by that I mean - what is the number of households and the percentage of households that are overcrowded that represent a state where the choice to cohabit with other people, despite having less room, more desirable than living separately. Can we parse out who would rather be living separately from other people in their household if they could choose to do so?
+
+Reasonable rate
+
+From there

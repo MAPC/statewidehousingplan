@@ -710,6 +710,78 @@ write.csv(
   row.names = FALSE
 )
 
+# 4.1.3 Overcrowding by RPA and Multigenerational Households (Census Definitions) and Presence of Subfamily and Presence of Children
+OC.MULTG.SF.FAMILY.PPB <- pums |> 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
+  group_by(
+    MULTG,
+    SFN.flag,
+    FAMILY_flag,
+    overcrowded.ppb
+  ) |> 
+  summarise(
+    oc.hh = sum(WGTP)
+  ) |> 
+  ungroup() |>
+  group_by(
+    MULTG,
+    SFN.flag,
+    FAMILY_flag
+  ) |> 
+  mutate(
+    hh = sum(oc.hh)
+  ) |> 
+  ungroup() |> 
+  rowwise() |> 
+  mutate(
+    pct = oc.hh/hh
+  ) |> 
+  select(
+    -c(hh)
+  )
+
+write.csv(
+  OC.MULTG.SF.FAMILY.PPB,
+  paste0(output_path, "04_Overcrowding/overcrowding.MULTG.SF.FAMILY.PPB.RPAlevel.csv"),
+  row.names = FALSE
+)
+
+#===============================================================================
+# 4.1.4 Overcrowding by RPA and Multigenerational Households (Census Definitions) and Number of Subfamilies
+OC.MULTG.NumSF.PPB <- pums |> 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
+  group_by(
+    MULTG,
+    SFN.num,
+    overcrowded.ppb
+  ) |> 
+  summarise(
+    oc.hh = sum(WGTP)
+  ) |> 
+  ungroup() |>
+  group_by(
+    MULTG,
+    SFN.num
+  ) |> 
+  mutate(
+    hh = sum(oc.hh)
+  ) |> 
+  ungroup() |> 
+  rowwise() |> 
+  mutate(
+    pct = oc.hh/hh
+  ) |> 
+  select(
+    -c(hh)
+  )
+
+write.csv(
+  OC.MULTG.NumSF.PPB,
+  paste0(output_path, "04_Overcrowding/overcrowding.MULTG.NumSF.PPB.csv"),
+  row.names = FALSE
+)
+
+
 ```
 # 4.2 Analysis:
 
@@ -720,5 +792,6 @@ Households that are not multigenerational but contain a subfamily have the highe
 What is a reasonable rate of overcrowding? And by that I mean - what is the number of households and the percentage of households that are overcrowded that represent a state where the choice to cohabit with other people, despite having less room, more desirable than living separately. Can we parse out who would rather be living separately from other people in their household if they could choose to do so?
 
 Reasonable rate
+Non-multigenerational households without the presence of subfamilies
 
 From there

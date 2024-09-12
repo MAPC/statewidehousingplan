@@ -22,14 +22,14 @@ library(janitor)
 # pums_vars_from_data_2005-09.ods
 
 # set output path
-exp_path = "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS"
-#exp_path ="C:/Users/lberman/Downloads"
+#exp_path = "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS"
+exp_path ="C:/Users/lberman/Downloads"
 
-
+options(scipen=999)
 
 # PUMS metadata from tidycensus (only from 2017-2021)
 # 1. get pums vars
-# pums_vars_2009 <- pums_variables %>% 
+#pums_vars_2009 <- pums_variables %>% 
 #   filter(year == 2009, survey == "acs5")
 
 # 2  set up vars list to retrieve
@@ -42,6 +42,7 @@ exp_path = "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPl
 
 # 2.1  begin with all possible hh vars
 var.list.hh  <- c('SERIALNO',
+                  'SPORDER',
                   'ACR',
                   'ADJHSG',
                   'ADJINC',
@@ -473,6 +474,11 @@ pums_2009_per_raw <- get_pums(
 )
 
 
+# 3.1  note that 8242 obs of hh are missing SPORDER values
+hh_no_sporder <- pums_2009_hh_raw %>% 
+  filter(is.na(SPORDER))
+
+
 # 4 find housing cols to drop from person df 
 
 # 4.1 get the names of cols as df
@@ -540,14 +546,56 @@ pums_2009_join <- pums_2009_hh %>%
             by = c('uniq_obs' = 'uniq_obs'))
 
 
-# 9 WRITE TO CSV
+# 9 HOUSEHOLD: join additional columns from IPUMS direct download
+# https://usa.ipums.org/usa-action/variables/live_search
+
+# HH vars:  MULTGEN, MULTGEND, NSUBFAM, NCOUPLES, CBSERIAL 
+
+# 9.1  import raw .csv
+add_var <- read_csv(paste0(exp_path,"/addtl_vars_hh_multgen_20240912.csv")) %>% 
+  select(c(CBSERIAL, MULTGEN, MULTGEND, NSUBFAM, NCOUPLES)) %>% 
+  mutate(SERIAL_JOIN = as.character(CBSERIAL))
+
+# 9.2 (note CBSERIAL = SERIALNO for join)  Census Bureau Serial Number
+
+pums_2009_multgen <- pums_2009_join %>%
+  full_join(.,
+            add_var,
+            by = c('SERIALNO' = 'SERIAL_JOIN'))
+
+# 9.3  note that 8242 obs of hh are missing SPORDER values
+pums_no_multgen <- pums_2009_multgen %>% 
+  filter(is.na(CBSERIAL))
+# all rows of MULTGEN added variables joined
+
+
+# 10 PERSON: join additional columns from IPUMS direct download
+
+# 10.1  import raw .csv
+add_pers_var <- read_csv(paste0(exp_path,"/2005-09_ipums_overcrowding_person.csv")) %>% 
+  mutate(SPORDER = as.character(PERNUM)) %>% 
+  mutate(SERIALNO = as.character(CBSERIAL))
+  
+# 10.2 create uniq id for join person vars
+add_pers_join <- add_pers_var %>% 
+    mutate(uniq_obs = paste0(as.character(SERIALNO),"_",SPORDER)) %>% 
+    select(c(uniq_obs, SUBFAM, CBSUBFAM, CBSFTYPE, SFTYPE, SFRELATE, FAMUNIT, FAMSIZE))
+
+# 10.3 join person vars to the rest
+pums_2009_all <- pums_2009_multgen %>%
+  full_join(.,
+            add_pers_join,
+            by = c('uniq_obs' = 'uniq_obs'))
+
+
+# 11 WRITE TO CSV
 # export  version = V_yyyy-mm-dd
 currentDate <- Sys.Date()
 dateAsText <- format(currentDate, "%Y-%m-%d")
 write_csv(pums_2009_join, paste0(exp_path,"/pums_2009_all_vars_",dateAsText,".csv"))
 
 
-#10 SUBSET OVERCROWDING including only directly mappable variables between 2009 to 2021
+#12 SUBSET OVERCROWDING including only directly mappable variables between 2009 to 2021
 
 # could not be mapped:  CPLT,HHLDRAGEP,HHLDRRAC1P,HHT2,MULTG,RT
 # altered spelling:
@@ -557,12 +605,16 @@ write_csv(pums_2009_join, paste0(exp_path,"/pums_2009_all_vars_",dateAsText,".cs
 # RMSP = RMS 
 # TYPEHUGQ  =  TYPE
 
-pums_overcrowding_2009 <- pums_2009_join %>% 
-  select(c(uniq_obs, SPORDER, SERIALNO, ST, WGTP, PWGTP, PUMA, ADJHSG, ADJINC, NP, TYPE, BDS, RMS, HISP, HHT,  HINCP, HUGCL, HUPAC, HUPAOC, HUPARC, LNGI, NPF, NPP, NR, NRC, PARTNER, PSF, R18, AGEP, REL, RAC1P, OC, SFN, SFR))
+# added more HH variables from direct IPUMS download to csv (see section 9 above)
+# CBSERIAL, MULTGEN, MULTGEND, NSUBFAM, NCOUPLES
+
+# added more PERSON variables from direct IPUMS download to csv (see section 10 above)
+# SUBFAM, CBSUBFAM, CBSFTYPE, SFTYPE, SFRELATE, FAMUNIT, FAMSIZE
+
+
+pums_overcrowding_2009 <- pums_2009_all %>% 
+  select(c(uniq_obs, SPORDER, SERIALNO, ST, WGTP, PWGTP, PUMA, ADJHSG, ADJINC, NP, TYPE, BDS, RMS, HISP, HHT,  HINCP, HUGCL, HUPAC, HUPAOC, HUPARC, LNGI, NPF, NPP, NR, NRC, PARTNER, PSF, R18, AGEP, REL, RAC1P, OC, SFN, SFR,CBSERIAL, MULTGEN, MULTGEND, NSUBFAM, NCOUPLES, SUBFAM, CBSUBFAM, CBSFTYPE, SFTYPE, SFRELATE, FAMUNIT, FAMSIZE))
 
 
 # 11 export OVERCROWDING
 write_csv(pums_overcrowding_2009, paste0(exp_path,"/pums_overcrowding_2009_V_",dateAsText,".csv"))
-
-
-

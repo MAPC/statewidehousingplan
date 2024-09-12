@@ -3,9 +3,8 @@
 library(RODBC)
 library(dplyr)
 library(readr)
-library(ipumsr)
 
-# lberman 2024-08-20, 8-29
+# lberman 2024-08-20
 
 # from PUMS access.mdb located here:
 #  K:\DataServices\Datasets\U.S. Census and Demographics\PUMS\Archive\PUMS_5%_2000\2000_PUMS_MA.mdb 
@@ -13,30 +12,28 @@ library(ipumsr)
 #  households:  PUMS_5%_MA_2000_HousingUnits
 #  persons:   PUMS_5%_MA_2000_Persons
 
-# see also crosswalk from 2000 variables list to 2021
+# see crosswalk from 2000 variables list to 2021
 # K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS/pums_overcrowding_vars_2021_2000_xwalk.csv
 
-#------------------#
-# 0. set paths
-work_path = "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS/ipums_2000/"
 
-# 0.1 set date
-currentDate <- Sys.Date()
-dateAsText <- format(currentDate, "%Y-%m-%d")
+#Remove scientific notation
+options(scipen = 999)
 
-#------------------#
+
+# set output path
+exp_path = "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS"
+exp_path ="C:/Users/lberman/Downloads"
+
+
 ## 1 read hh and person tables directly from PUMS 2000 access db 
-# src file: K:/DataServices/Datasets/U.S. Census and Demographics/PUMS/Archive/PUMS_5%_2000/2000_PUMS_MA.mdb
+
+# this file: K:/DataServices/Datasets/U.S. Census and Demographics/PUMS/Archive/PUMS_5%_2000/2000_PUMS_MA.mdb
+# moved to C drive for speed
 
 require(RODBC)
-
-# 1.1 connect explicit path to MDB
-conn <- odbcConnectAccess2007('K:/DataServices/Datasets/U.S. Census and Demographics/PUMS/Archive/PUMS_5%_2000/2000_PUMS_MA.mdb')
-
-# 1.2 list all mdb contents
+conn <- odbcConnectAccess2007('C:/Users/lberman/Desktop/SWAP/other_projects/statewide_housing_plan/2000_PUMS_MA.mdb')
 subset(sqlTables(conn), TABLE_TYPE == "TABLE")
 
-# 1.3 get hh and person tables
 pums_2000_hh <- sqlFetch(conn, "PUMS_5%_MA_2000_HousingUnits")
 pums_2000_per <- sqlFetch(conn, "PUMS_5%_MA_2000_Persons")
 
@@ -55,7 +52,7 @@ close(conn)
 # person table order number of persons begins with 2 (not 1) cf SPORDER 2021 (begins with 1)
 # person table age for hh default is = 99
 
-#------------------#
+
 # 2 compare variables in two tables
 #rm(hh_list,hh_vars)
 # 2.1  hh vars
@@ -79,66 +76,70 @@ join_hh_pers_vars <- pers_vars %>%
 missing_vars <- join_hh_pers_vars %>% 
   filter(is.na(hh_list))
 
-# note only three vars in common: ID, RECTYPE, SERIALNO
 
-#------------------#
-# 3  join hh to person on SERIALNO
+# 3  join on SERIALNO
 
 # 3.1  filter to hh rows only
 hh_only <- pums_2000_hh %>% 
-  filter(RECTYPE %in% "H")
+  filter(RECTYPE %in% "H") %>% 
+  mutate(RECTYPEH = RECTYPE) %>% 
+  select(-c(RECTYPE)) 
+  
 
-# 3.2 prepare join by renaming ID and RECTYPE for hh
-
-hh_only <- hh_only %>% 
-  mutate(hh_ID = ID) %>% 
-  mutate(hh_RECTYPE = RECTYPE) %>% 
-  select(-c(ID,RECTYPE)) %>% 
-  select(hh_ID,hh_RECTYPE,everything())
-
-# 3.3
+# 3.2
 join_pums_2000 <- pums_2000_per %>% 
   left_join(.,
             hh_only,
             by = c('SERIALNO' = 'SERIALNO'))
 
-# note: join has redundant values for hh filled in for each person in hh
+# 3.3  get the names for comparison with other years
+rm(vars_00)
+list_00 <- names(join_pums_2000)
+vars_00 <- as.data.frame(list_00)
 
-# 3.4 export the joined dataset hh + person
-write_csv(join_pums_2000, paste0(work_path,"pums_2000_draft_",dateAsText,".csv"))
-
-
-#------------------#
-# 4 import IPUMS csv download SubFamily vars
-
-# file obtained by downloading 2000 vars as csv, filtered on characteristic STATEFIPS = 025
-#file.exists("K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS/ipums_2000/ipums_2000_subf_ma_2024-08-29.csv")
-
-# 4.2 import
-subf <- read_csv(paste0(imp_path,"ipums_2000_subf_ma_2024-08-29.csv"))
-
-# cannot join this tabular data to mdb output, the SERIAL != SERIALNO
+vars_00 <- vars_00  %>% 
+  mutate(vars_2000 = list_00)
 
 
 
-#------------------#
-# 5. attempt to use full "hierarchical" download available in .dat only
+# 4 import existing vars for 2009 to cross-check
 
-# 5.1 rqmt R snippet from ipums and ipumsr library
-# NOTE: To load data, you must download both the extract's data and the DDI
-# and also set the working directory to the folder with these files (or change the path below).
+get_2009 <- read_csv(paste0(exp_path,"/pums_overcrowding_2009_V_2024-09-12.csv")) 
 
-require(ipumsr)
-#if (!require("ipumsr")) stop("Reading IPUMS data into R requires the ipumsr package. It can be installed using the following command: install.packages('ipumsr')")
 
-# 5.2 path to data
+# 4.1 get names of vars as df
+list_09 <- names(get_2009)
+vars_09 <- as.data.frame(list_09)
+
+vars_09 <- vars_09  %>% 
+  mutate(join_vars = list_09)
+
+
+
+# 5  join with 2000 full set of vars to see what matches and is missing
+
+compare_00_09_vars <- vars_09 %>% 
+  left_join(.,
+            vars_00,
+            by = c('join_vars' = 'vars_2000'))
+
+# 5.1  the values in list_00 = NA are the ones to look up on IPUMS form
+
+vars_to_look_up <- compare_00_09_vars %>% 
+  filter(is.na(list_00))
+
+# 5.2  known matches:
+# SPORDER = PERNUM
+
+
+# 4 import additional Sub-Family variables from IPUMS
+
+# set import path
 imp_path = "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS/ipums_2000/"
 
-# 5.3 ingest the ddi metadata
-ddi <- read_ipums_ddi(paste0(imp_path,"usa_00004.xml"))
+file.exists("K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS/ipums_2000/ipums_2000_subf_ma_2024-08-29.csv")
 
-# 5.4 ingest the full hierarchical .dat format dataset
-data <- read_ipums_micro(ddi)
+file.exists("K:/DataServices/tmp/b25041_bedrooms_per_unit_m.csv")
 
-# same issue, the SERIAL != SERIALNO   
-# identical number of rows in .csv vs .dat versions 460748
+getwd()
+subf <- read_csv(paste0(imp_path,"ipums_2000_subf_ma_2024-08-29.csv"))

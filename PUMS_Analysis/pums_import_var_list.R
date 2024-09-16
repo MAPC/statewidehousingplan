@@ -12,6 +12,7 @@ library(janitor)
 # https://walker-data.com/tidycensus/articles/pums-data.html
 # https://walker-data.com/tidycensus/reference/get_pums.html
 
+census_api_key("d590f657a113f2f78b5a422462ea00745e79111c", install = TRUE)
 
 # hh from PUMS ftp https://www.census.gov/programs-surveys/acs/microdata/access.html
 
@@ -20,7 +21,7 @@ options(scipen = 999)
 
 # set output path
 exp_path = "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS"
-#exp_path ="C:/Users/lberman/Downloads"
+exp_path ="C:/Users/lberman/Downloads"
 
 # Housing units are uniquely identified by the SERIALNO variable
 # Persons are uniquely identified by the combination of SERIALNO and SPORDER.
@@ -30,12 +31,12 @@ pums_vars_2021 <- pums_variables %>%
   filter(year == 2021, survey == "acs5")
 
 # 1.1 see person vars
-pums_vars_2021 %>% 
+pvars <- pums_vars_2021 %>% 
   distinct(var_code, var_label, data_type, level) %>% 
   filter(level == "person")
 
 # 1.2 see housing vars
-pums_vars_2021 %>% 
+hvars <- pums_vars_2021 %>% 
   distinct(var_code, var_label, data_type, level) %>% 
   filter(level == "housing")
 
@@ -47,69 +48,70 @@ pums_vars_2021 %>%
 # note:  do not explicitly call the defaults
 # default will always return SERIALNO, SPORDER, WGTP, PWGTP, and ST.
 
-var.list  <- c('TYPEHUGQ',
-               'RT',
-               'PUMA',
-               'ADJHSG',
-               'ADJINC',
-               'NP',
-               'TYPEHUGQ',
-               'BDSP',
-               'BLD',
-               'RMSP',
-               'TEN',
-               'VACS',
-               'VEH',
-               'YRBLT',
-               'CPLT',
-               'GRNTP',
-               'GRPIP',
-               'HHLDRAGEP',
-               'HHLDRRAC1P',
-               'HHLDRHISP',
-               'HHT',
-               'HHT2',
-               'HINCP',
-               'HUGCL',
-               'HUPAC',
-               'HUPAOC',
-               'HUPARC',
-               'LNGI',
-               'MULTG',
-               'MV',
-               'NPF',
-               'NPP',
-               'NR',
-               'NRC',
-               'OCPIP',
-               'PARTNER')
+# person vars
+var.list  <- c('AGEP',
+               'DIS',
+               'ENG',
+               'HISP',
+               'LANX',
+               'NATIVITY',
+               'OC',
+               'POBP',
+               'RAC1P',
+               'RAC2P',
+               'RELSHIPP',
+               'SCH',
+               'SCHG',
+               'SCHL',
+               'SEX',
+               'SFN',
+               'SFR',
+               'WAOB',
+               'YOEP')
 
-var.list.b  <- c('PSF',
+# hh vars
+var.list.b  <- c('ADJHSG',
+                 'ADJINC',
+                 'BDSP',
+                 'BLD',
+                 'CPLT',
+                 'GRNTP',
+                 'GRPIP',
+                 'HHLDRAGEP',
+                 'HHLDRHISP',
+                 'HHLDRRAC1P',
+                 'HHT',
+                 'HHT2',
+                 'HINCP',
+                 'HUGCL',
+                 'HUPAC',
+                 'HUPAOC',
+                 'HUPARC',
+                 'LNGI',
+                 'MULTG',
+                 'MV',
+                 'NP',
+                 'NPF',
+                 'NPP',
+                 'NR',
+                 'NRC',
+                 'OCPIP',
+                 'PARTNER',
+                 'PSF',
                  'R18',
                  'R60',
                  'R65',
+                 'RMSP',
+                 'RT',
                  'SMOCP',
                  'SRNT',
                  'SVAL',
-                 'AGEP',
-                 'ENG',
-                 'LANX',
-                 'RELSHIPP',
-                 'SCH',
-                 'SCHG',
-                 'SCHL',
-                 'SEX',
-                 'YOEP',
-                 'DIS',
-                 'RAC1P',
-                 'HISP',
-                 'NATIVITY',
-                 'OC',
-                 'POBP',
-                 'RAC2P',
-                 'SFN',
-                 'SFR',
-                 'WAOB')
+                 'TEN',
+                 'TYPEHUGQ',
+                 'VACS',
+                 'VEH',
+                 'YRBLT',
+                 'PUMA')
 
 # 2.1 filter to the requested var.lists
 
@@ -396,7 +398,7 @@ write_csv(pums_all_2021, paste0(exp_path,"/pums_raw_data_2021_V_",dateAsText,".c
 
 #14 SUBSET OVERCROWDING 
 pums_overcrowding_2021 <- pums_all_2021 %>% 
-  select(c(uniq_obs, SPORDER, SERIALNO, ST, WGTP, PWGTP, RT, PUMA, ADJHSG, ADJINC, NP, TYPEHUGQ, BDSP, RMSP, CPLT, HHLDRAGEP, HHLDRRAC1P, HHLDRHISP, HHT, HHT2, HINCP, HUGCL, HUPAC, HUPAOC, HUPARC, LNGI, MULTG, NPF, NPP, NR, NRC, PARTNER, PSF, R18, AGEP, RELSHIPP, RAC1P, OC, SFN, SFR))
+  select(c(uniq_obs, SPORDER, SERIALNO, ST, WGTP, PWGTP, RT, PUMA, ADJHSG, ADJINC, NP, TYPEHUGQ, BDSP, RMSP, CPLT, HHLDRAGEP, HHLDRRAC1P, HHLDRHISP, HHT, HHT2, HINCP, HUGCL, HUPAC, HUPAOC, HUPARC, LNGI, MULTG, NPF, NPP, NR, NRC, PARTNER, PSF, R18, AGEP, RELSHIPP, RAC1P, OC, SFN, SFR,TEN))
 
 # 14.1 export OVERCROWDING
 write_csv(pums_overcrowding_2021, paste0(exp_path,"/pums_overcrowding_2021_V_",dateAsText,".csv"))
@@ -435,7 +437,8 @@ over_list <- c('RT',
                'RAC1P',
                'OC',
                'SFN',
-               'SFR')
+               'SFR',
+               'TEN')
   
 over_vars <- uniq_vars %>%
   filter(var_code %in% over_list)
@@ -448,7 +451,7 @@ write_csv(over_vars, paste0(exp_path,"/pums_overcrowding_variables_2021.csv"))
 # dropped from previous subset for Overcrowding: BDSP, RMSP, HINCP, LNGI
 
 pums_multiadult_2021 <- pums_all_2021 %>% 
-  select(c(uniq_obs, SPORDER, SERIALNO, ST, WGTP, PWGTP, RT, PUMA, ADJHSG, ADJINC, NP, TYPEHUGQ, CPLT, HHLDRAGEP, HHLDRRAC1P, HHLDRHISP, HHT, HHT2, HUGCL, HUPAC, HUPAOC, HUPARC, MULTG, NPF, NPP, NR, NRC, PARTNER, PSF, R18, AGEP, RELSHIPP, RAC1P, OC, SFN, SFR))
+  select(c(uniq_obs, SPORDER, SERIALNO, ST, WGTP, PWGTP, RT, PUMA, ADJHSG, ADJINC, NP, TYPEHUGQ, CPLT, HHLDRAGEP, HHLDRRAC1P, HHLDRHISP, HHT, HHT2, HUGCL, HUPAC, HUPAOC, HUPARC, MULTG, NPF, NPP, NR, NRC, PARTNER, PSF, R18, AGEP, RELSHIPP, RAC1P, OC, SFN, SFR,TEN))
 
 # 15.2 export VARS for MULTIPLE ADULT HOUSING
 multiadult_list <- c('RT',
@@ -480,7 +483,8 @@ multiadult_list <- c('RT',
                'RAC1P',
                'OC',
                'SFN',
-               'SFR')
+               'SFR',
+               'TEN')
 
 # 15.1 export MULTIADULT
 write_csv(pums_multiadult_2021, paste0(exp_path,"/pums_multiadult_2021_V_",dateAsText,".csv"))

@@ -7,6 +7,7 @@ editor: visual
 # 0.0 Setup - Define helper functions, set knitr path, load necessary packages, set muni data keys
 
 #0.1 - Set knitr path + root for inputs
+
 ```{r, setup, include=FALSE}
 #Use when Rproject is open
 #root <- '../../../../Data/Working/Regional_Control_Totals/'
@@ -22,6 +23,7 @@ knitr::opts_knit$set(root.dir = root)
 ```
 
 # 0.2 - Set package dependencies, set environment, set up data keys
+
 ```{r}
 library(tidycensus)
 library(tidyverse)
@@ -98,6 +100,7 @@ GEOID.cn.20 <- mapcdatakeys::all_muni_data_keys |>
 ```
 
 # 0.3 - Define Helper Functions
+
 ```{r}
 sun <- function(x){
   sort(unique(x))}
@@ -280,7 +283,8 @@ rm(umdi_pop)
 ```
 
 # 2.0 Querying and Processing Census Population Data
-# 2.1 Total Population by Age by Sex from 2010 and 2020 Decennial Censuses 
+
+# 2.1 Total Population by Age by Sex from 2010 and 2020 Decennial Censuses
 
 ```{r}
 #===============================================================================
@@ -419,6 +423,7 @@ pop.20 <- pop.values |>
 rm(pop.labels, pop.values, pop.vars)
 gc()
 ```
+
 # 2.2 Query Census Household Population data for 2010 and 2020
 
 ```{r}
@@ -559,7 +564,9 @@ hhpop.20 <- pa.values |>
 rm(pa.labels, pa.values, pa.vars)
 gc()
 ```
-# 2.3 Join 2010 and 2020 Population and Household Population data 
+
+# 2.3 Join 2010 and 2020 Population and Household Population data
+
 ```{r}
 #Join Census Population and Household Population 
 population.df <- purrr::reduce(
@@ -582,8 +589,10 @@ population.df <- purrr::reduce(
 
 ```
 
-# 3.0 Group Quarters 
+# 3.0 Group Quarters
+
 # 3.1 Group Quarters Population - Total
+
 ```{r}
 #===============================================================================
 #Group Quarters Population 2010
@@ -724,6 +733,7 @@ gc()
 ```
 
 # 3.2 Group Quarters Population - University/College Students
+
 ```{r}
 #===============================================================================
 #Group Quarters Population - College and University Student Housing 2020
@@ -856,7 +866,7 @@ rm(gq.labels, gq.values, gq.vars)
 gc()
 ```
 
-# 3.3 Calculate the percentage of the group quarters population living in Univerity/College Housing 
+# 3.3 Calculate the percentage of the group quarters population living in Univerity/College Housing
 
 ```{r}
 #Join the total GQ Population and University/College GQ Population
@@ -893,6 +903,7 @@ gc()
 ```
 
 # 3.4 QC Check - Compare the calculated GQ Population to the GQ Population at the county level (by age by sex)
+
 ```{r}
 #Create a municipality to county crosswalk with {mapcdatakeys}
 muni_county.xw <- mapcdatakeys::all_muni_data_keys |> 
@@ -954,6 +965,7 @@ if(sum(qc.population.df$gq.check.20 > 0)){
 ```
 
 # 4.0 QC Check - Compare Census Population by Age by Sex to Projected Population data
+
 ```{r}
 #Projections 
 proj.pop.10 <- umdi.pop.MAPC101 |> 
@@ -1274,9 +1286,7 @@ gc()
 
 ```
 
-
-#6.0 - Load and process PUMS Data
-#6.1 - Create PUMA to RPA/MPO Crosswalk for 2010 PUMAs
+#6.0 - Load and process PUMS Data #6.1 - Create PUMA to RPA/MPO Crosswalk for 2010 PUMAs
 
 ```{r}
 #Set up datakeys for future joins.
@@ -1328,6 +1338,7 @@ rm(matrix, col_names, mvc, npedc)
 gc()
 
 ```
+
 # 6.2 Query 2017-2021 ACS 5-year PUMS data + categorize data
 
 ```{r}
@@ -1479,6 +1490,7 @@ if (length(unique(pums_data$rpa_acr)) != 13){
 ```
 
 # 7.0 Generating reweighter target files
+
 # 7.1 - Generate the ACS 2017-2021 PUMS Baseline data for each of our categories
 
 ```{r}
@@ -1746,6 +1758,7 @@ rm(hr_check)
 ```
 
 # 7.3 Create Laborforce Participation rates for ACS 2017-2021 PUMS
+
 ```{r}
 lfpr <- pums_data |> 
   #Takes only observations that are in housing units and in the labor force.
@@ -1790,7 +1803,9 @@ lfpr <- pums_data |>
 ```
 
 # 7.4 Create Household Projections by RPA and Household Type
+
 # 7.4.1 For MAPC101
+
 # 7.4.2 For MAPC97
 
 ```{r}

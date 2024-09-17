@@ -8,7 +8,9 @@ editor: visual
 
 #0.1 - Set knitr path + root for inputs
 
-```{# Set Scenario Names}
+```{r}
+
+# Set Scenario Names
 
 #Population Scenario
 scen <- 'Baseline'
@@ -1705,7 +1707,7 @@ write.csv(
 
 ```
 
-# 7.2 Create Headship rates for ACS 2017-2021 PUMS
+# 7.2 Create Headship rates from this PUMS vintage
 
 ```{r}
 #Generating headship rates by RPA and 5-year age group for the ACS 2017-2022 PUMS
@@ -1998,6 +2000,7 @@ for (i in yrs) {
 
 ```
 
+# Old Code
 ```{r}
 ################################################################################
 # 5. Generate BASELINE data for the reweighter targeting files

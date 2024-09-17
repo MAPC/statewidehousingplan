@@ -1,81 +1,67 @@
 library(tidyverse)
-library(tidycensus)
 library(data.table)
 
-##get rid of scientific notation
-options(scipen = 999)
-
-sun <- function(x){sort(unique(x))}
 
 root <- 'S:/Network Shares/K Drive/DataServices/Projects/'
 # root <- 'K:/DataServices/Projects/'
-# root <- '//data-001/public/DataServices/Projects/'
 
-scenario <- 'Baseline'
+setwd(paste0(root, 'Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Reweighter/Headship_rates'))
 
-inputDIR <-
-  paste0(root,
-         'Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Reweighter/',scenario,'/')
-setwd(inputDIR)
 
-# List of RPA names
-mpos <- unlist(c(mapcdatakeys::all_muni_data_keys %>% select(mpo) %>% unique()))
+acs21 <- fread('headship_rates.1721.csv') %>% 
+  rename(hhtype = var,
+         rate1721 = freq,
+         rpa = rpa_acr) 
 
-# PUMA crosswalk
-mxw <- fread('../PUMS_data/ma_muni_puma10_join.csv')
-mxw <- mxw[, .(TOWN_ID, PUMACE10)]
-setnames(mxw, c('muni_id', 'PUMA'))
-mxw <- mxw[, .(muni_id, PUMA)]
-axw <-
-  mapcdatakeys::all_muni_data_keys %>% select(muni_id, rpa_acr, mpo) %>% left_join(mxw, by = 'muni_id') %>% select(-muni_id) %>% unique() %>% setDT()
-axw[,PUMA:=sprintf("%05d",PUMA)]
-mapc.pumas <- axw[rpa_acr == 'MAPC', unique(PUMA)]
-swm.pumas <- axw[mpo != 'MAPC', .(mpo, PUMA)] %>% unique()
+t00 <- fread('hh_rates_hhtype_2000.csv') %>% 
+  pivot_longer(cols=names(.)[-1]) %>% 
+  rename(hhtype=name,
+         rate2000=value) %>% 
+  mutate(hhtype = gsub('2000','',hhtype))
 
-#Set up datakeys for future joins.
-mkeys <- mapcdatakeys::all_muni_data_keys |>  select(muni_id,rpa_acr,mpo)
+a00 <- fread('hh_rates_by_age_RPA_2000.csv') %>% 
+  pivot_longer(cols=names(.)[-1]) %>%
+  rename(rpa=name, 
+         rate2000=value) %>% 
+  mutate(rpa = gsub('_2000','',rpa))
 
-#Load in the municipality to PUMA crosswalk.
-psf <- fread('../PUMS_data/pums_muni_inter.csv') %>% 
-  select(TOWN_ID,PUMACE10,Shape_Area) %>% 
-  # psf <- fread('../ma_muni_puma10_join.csv') |>
-  dplyr::rename(
-    muni_id=TOWN_ID,
-    PUMA = PUMACE10
-  ) %>% 
-  left_join(
-    mkeys,
-    by = c('muni_id')
-  ) %>% 
-  setDT()
 
-#Generate RPA to PUMA crosswalk.
-lsf <- psf[,lapply(.SD,sum,na.rm=T),.(rpa_acr,PUMA),.SDcols='Shape_Area']
-lsf[,mx:=max(Shape_Area),PUMA]
-xw <- lsf[Shape_Area==mx, .(rpa_acr,PUMA)]
-xw[,PUMA:=sprintf("%05d",PUMA)]
+hhcomp <- acs21 %>% 
+  left_join(t00, by = c('ageCAT6','hhtype')) %>% 
+  
+  
 
-# Manufacturing MVC and NPEDC RPAs manually
+# 1. Household pop by age and by RPA
+# 2. Headship by age and RPA
+# 3. HHtype by age and RPA (for 2000 use HHtype by age statewide fractions for each RPA)
 
-cc <- data.table(rpa_acr=c('MVC','NPEDC'), PUMA=c('04800','04800'))
 
-#Append MVC and NPEDC data to PUMA to RPA/MPO crosswalk
-xw <- rbind(xw, cc)
+#Set PUMS vintage final year for {tidycensus} API query.
+yr <- 2021
 
-# PUMS 2021 5-yr data
-yr <-  2021
+#List of all 2017-2021 ACS PUMS Variables
+allvars <- pums_variables |>  filter(year==yr) |>  select(var_code) |>  unique()
+
+#List of PUMS variables
 variable_list <- c("PUMA", "TYPEHUGQ", "SEX", "AGEP", "RAC1P", "HISP", "ESR",
                    "WKHP", "SCHL", "WAGP", "SEMP", "ADJINC", "SPORDER", "HINCP")
+#SEMP bottom coding has changed from $1 to $4 like WAGP
 
+#Query {tidycensus} for 2017-2021 5-Year PUMS data
 pums_data <- get_pums(
   state = "MA",
   survey = "acs5",
   year = yr,
   variables = variable_list
 ) |> 
+  #Join RPA to PUMA crosswalk to PUMS data
+  left_join(
+    xw,
+    by = c('PUMA')
+  ) |>  
   mutate(
     #Generate five-year age groupings to match UMDI population projections data.
-    AgeCat = cut(AGEP, breaks = c(-Inf, seq(4, 84, 5), Inf), labels = 1:18),
+    ageCAT6 = cut(AGEP, breaks = c(-Inf, seq(4, 84, 5), Inf), labels = 1:18),
     # Consolidated Age Category
     # NOTE: Levels are (0) 0-14; (4) 15 to 19; (5) 20 to 24; (6) 25 to 34; (7) 35 to 44; (8) 45 to 54; (9) 55 to 64 (10) 65 to 74 (11) 75+
     PAGEC2 = cut(AGEP, breaks = c(-Inf, 14, 19, 24, 34, 44, 54, 64, 74, 79, 84, Inf),
@@ -185,40 +171,51 @@ pums_data <- get_pums(
       Child_Total == 0 & Person_Total > 1 & HHder != 99 ~ 3,
       Child_Total == 0 & Person_Total > 1 & HHder == 99 ~ 4,
       Person_Total == 1 & HHder != 99 ~ 5
-    ),
-    # Adjust income for inflation/deflator
-    ADJINC = as.numeric(ADJINC),
-    HINCP = round((as.numeric(HINCP)*ADJINC)*(0.86), 0), #ADD INFLATION ADJUSTMENT
-    WAGPALLC_US =
-      cut(
-        HINCP,
-        breaks = c(-Inf, 35000, 75000, 125000, 225000, Inf),
-        labels = c("1","2","3","4","5")
-      )
-  ) %>% 
-  setDT()
+    )
+  )
 
-pums_data[,NP:=max(SPORDER),SERIALNO]
+#Generating headship rates by RPA and 5-year age group for the ACS 2017-2022 PUMS
+headship_rates <- pums_data |> 
+  #Inclues only observations for people in households (omits GQ)                       
+  filter(TYPEHUGQ == "1") |> 
+  #Groups by variables in the dataframe necessary to getting the granularity of
+  #data we're interested in.
+  group_by(rpa_acr, ageCAT6) |> 
+  #Computes the weighted sum of individuals in each HH type category by the groups
+  #assigned above.
+  count(var = HHtype, wt = WGTP) |>
+  #Recodes factor variables as the categories they represent.
+  #Converts numbers into frequencies.                       
+  mutate(
+    var = case_when(
+      var == 1 ~ "hhderchild",
+      var == 2 ~ "nothhderchild",
+      var == 3 ~ "hhdernochild",
+      var == 4 ~ "nothhdernochild",
+      var == 5 ~ "single"),
+    freq = (n/sum(n))) |> 
+  #Removes the level of aggregation set earlier by group_by()
+  ungroup() |> 
+  select(
+    -c(n)
+  )
 
-fwrite(pums_data,'../PUMS_data/PUMS2021_formatted.csv')
+#QC Check - determine if the frequencies in each RP, Age Group crosstab add to 1
+hr_check <- headship_rates |> 
+  group_by(
+    rpa_acr,
+    ageCAT6
+  ) |> 
+  summarise(
+    freq_check = sum(freq)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    flag = ifelse(freq_check != 1, 1, 0)
+  )
 
-
-# Make Input folders for reweighter by RPA
-for (m in unique(xw$rpa_acr)){
-  dir.create(paste0('./Input_Files/',m),showWarnings = F)
-}
-
-# MAPC 101 subset
-fwrite(pums_data[PUMA %in% mapc.pumas], paste0('Input_Files/MAPC/PUMS',yr,'_MAPC.csv'))
-message(paste0('MAPC 101 PUMS export complete'))
-
-
-# SWM join PUMA and export subsets
-for (m in unique(swm.pumas$mpo)) {
-  mp <- swm.pumas[mpo==m]
-  pums_data %>%
-    left_join(mp, by = 'PUMA') %>%
-    filter(mpo == m) %>%
-    fwrite(paste0('Input_Files/', m, '/PUMS',yr,'_', m, '.csv'))
-  message(paste0(m, ' PUMS export complete'))
+if (sum(hr_check$flag) > 0){
+  print("STOP! Check headship rate calculations!")
+} else{
+  print("Proceed!")
 }

@@ -1,25 +1,60 @@
-library(tidyverse)
+---
+title: "RPA_Reweighter"
+format: html
+editor: visual
+---
+
+## RPA Reweighter
+
+This set of scripts runs the household reweighter to produce reweighted PUMS data that satisfies household targets set by the user.
+
+#0.1 - Set Scenario Name, knitr path, and root directory
+
+```{r, setup, include=FALSE}
+
+scen <- 'Baseline'
+
+root <- 'S:/Network Shares/K Drive/DataServices/Projects/'
+# root <- 'K:/DataServices/Projects/'
+
+workpath <- paste0(root, 'Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Reweighter/')
+
+input_path <- paste0(workpath, scen, '/Input_Files') 
+output_path <- paste0(workpath, scen, '/Output_Files') 
+
+#Set knitr path
+knitr::opts_knit$set(root.dir = workpath)
+```
+
+# 0.2 - Set package dependencies, set environment, helper functions
+
+```{r}
 library(tidycensus)
+library(tidyverse)
+library(reticulate)
+library(mapcdatakeys)
+library(janitor)
+library(readxl)
 library(data.table)
 
 ##get rid of scientific notation
 options(scipen = 999)
 
+#Set random seed
+set.seed(351)
+
+# Helper function
 sun <- function(x){sort(unique(x))}
-
-root <- 'S:/Network Shares/K Drive/DataServices/Projects/'
-# root <- 'K:/DataServices/Projects/'
-# root <- '//data-001/public/DataServices/Projects/'
-
-scenario <- 'Baseline'
-
-inputDIR <-
-  paste0(root,
-         'Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Reweighter/',scenario,'/')
-setwd(inputDIR)
 
 # List of RPA names
 mpos <- unlist(c(mapcdatakeys::all_muni_data_keys %>% select(mpo) %>% unique()))
+
+
+```
+
+# 0.3 - Subset PUMS data for each RPA
+
+```{r}
 
 # PUMA crosswalk
 mxw <- fread('../PUMS_data/ma_muni_puma10_join.csv')
@@ -222,3 +257,61 @@ for (m in unique(swm.pumas$mpo)) {
     fwrite(paste0('Input_Files/', m, '/PUMS',yr,'_', m, '.csv'))
   message(paste0(m, ' PUMS export complete'))
 }
+
+```
+
+# 0.4 - Create RPA config JSON files for reweighter configuration
+
+```{r}
+
+inpath <- 
+filename='reweighting_config_2021.json'
+cfig = readLines(filename)
+cfig = gsub('disp', 'newvar', cfig)
+writeLines(cfig, path)
+
+
+```
+
+# 0.5 - Configure Reweighter for each RPA
+
+```{r}
+
+source('algo_hh.R')
+
+ms <-
+  mapcdatakeys::all_muni_data_keys %>% select(mpo) %>% unique()
+mpos <- sort(ms$mpo)
+
+scen <- 'Baseline'
+
+# Configuration Loop
+for (mid in mpos){
+  source(paste0('04a_read_config_RPA.R'))
+  message(paste0(mid,' configuration complete'))
+}
+```
+
+# Set targets and run reweighter
+
+```{r}
+
+  # Set Targets and run reweighter loop
+for (yr in c(2020,2030,2035,2040,2045,2050)){
+
+  for (mid in mpos) {
+    thh <- read.csv(paste0('Input_Files/',scen,'/AgeHHder_HHtype_', yr, '_', scen,'.csv')) %>% select(-BASELINE, -INTER)
+    
+    source(paste0(runDIR, '04b_set_targets_RPA.R'))
+    message(paste0('muni ', mid, ' targets set'))
+    
+    source(paste0(runDIR, '04c_Manage_Scenario_RPA.R'))
+    message(paste0('muni ', mid, ' reweighter complete'))
+    
+    mess <- data.table(txt = paste0(mid, ' reweighter complete'))
+    fwrite(mess,
+           paste0(runDIR, 'progress_logs/', mid, '_', yr, '_complete.txt'))
+  }
+}
+
+```

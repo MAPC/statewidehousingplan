@@ -1,6 +1,15 @@
 #
 # read_config_hh.R
 #
+# root <- 'S:/Network Shares/K Drive/DataServices/Projects/'
+# root <- 'K:/DataServices/Projects/'
+# root <- '//data-001/public/DataServices/Projects'
+
+setwd(paste0(root,'Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Reweighter/',scen,'Input_Files/',mid))
+
+# specify the config file name
+config_file <- paste0("reweighting_config_2021_",mid,".json")
+
 #
 print("Version 11/11/2022")
 #
@@ -14,19 +23,10 @@ suppressPackageStartupMessages(library(dplyr))
 suppressPackageStartupMessages(library(data.table))
 suppressPackageStartupMessages(library(bit64))
 
-# root <- 'S:/Network Shares/DS Projects/'
-# root <- 'K:/DataServices/Projects/'
-# root <- '//data-001/public/DataServices/Projects'
-setwd(paste0('G:/Input_Files/',mid))
-
-# setwd(paste0(root,"Current_Projects/Projections/Reweighter/Input_Files/",mid))
-
-# specify the config file name
-config_file <- paste0("reweighting_config_2019_",mid,".json")
-
 
 
 options(scipen=999)
+
 # define the generator function to check whether a single record belongs to a table cell
 generator <- function(condition){ # Need to do this because R.
     force(condition)

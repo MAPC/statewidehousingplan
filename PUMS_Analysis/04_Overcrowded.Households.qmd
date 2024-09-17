@@ -156,9 +156,7 @@ pums <- pums |>
       HINCP_adj > 125000 & HINCP_adj <= 225000 ~ "4",
       HINCP_adj > 225000 ~ "5",
       .default = "0"
-    ),
-    # Race and Ethnicity 
-    
+    )
   ) |> 
   group_by(SERIALNO) |> 
   mutate(

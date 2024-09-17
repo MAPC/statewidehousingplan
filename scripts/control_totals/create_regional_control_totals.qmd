@@ -8,15 +8,24 @@ editor: visual
 
 #0.1 - Set knitr path + root for inputs
 
-```{r, setup, include=FALSE}
+```{# Set Scenario Names}
+
+#Population Scenario
+scen <- 'Baseline'
+#Headship rate Scenario
+hdshp <- 'acs1721'
+
 #Use when Rproject is open
 #root <- '../../../../Data/Working/Regional_Control_Totals/'
 
+# base <- "K:/DataServices/Projects/"
+base <- "S:/Network Shares/K Drive/DataServices/Projects/"
+
 #General K drive filepath
-root <-"K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/"
+root <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/")
 
 #Set output filepath
-output_path <- "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/MAPC/"
+output_path <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/", scen, "/")
 
 #Set knitr path
 knitr::opts_knit$set(root.dir = root)
@@ -96,6 +105,7 @@ GEOID.cn.20 <- mapcdatakeys::all_muni_data_keys |>
     GEOID,
     .keep_all = TRUE
   )
+
 
 ```
 
@@ -221,13 +231,14 @@ gq.clean <- function(df){
 # 1.0 - Processing UMDI population data
 
 ```{r}
+
+# Set Years of Interest
+yrs <- c(2020,2030,2035,2040,2045,2050)
+
 # Load in Household Population Projections
-umdi_pop <- read_excel(paste0(root, "UMDI/UMDI_V2024_H1_2024.07.19.xlsx"), sheet = 1) |>
-  filter(Model == "V2024_H1" & (Year %in% c(2010,2020,2030,2040,2050))) |> 
-  #Select years of interest - decadal intervals
-  #ageCAT6 refers to 5 year age groups (0-4, 5-9, 10-14, etc.)
+umdi_pop <- fread(paste0(root, "UMDI/",scen,"/UMDI_",scen,".csv")) |>
+  filter(Year %in% yrs) |> 
   select(MCD,`MCD Code`,`Age Group`,Sex, Year, Population) |> 
-  #Rename variables
   dplyr::rename(
     muni_name = MCD,
     muni_id = `MCD Code`,
@@ -279,6 +290,7 @@ umdi.pop.MAPC97 <- left_join(
 
 #Remove topline umdi population projections
 rm(umdi_pop)
+
 
 ```
 
@@ -1350,7 +1362,7 @@ allvars <- pums_variables |>  filter(year==yr) |>  select(var_code) |>  unique()
 
 #List of PUMS variables
 variable_list <- c("PUMA", "TYPEHUGQ", "SEX", "AGEP", "RAC1P", "HISP", "ESR",
-                   "WKHP", "SCHL", "WAGP", "SEMP", "ADJINC", "SPORDER", "HINCP")
+                   "WKHP", "SCHL", "WAGP", "SEMP", "ADJINC", "SPORDER", "HINCP", "TEN")
 #SEMP bottom coding has changed from $1 to $4 like WAGP
 
 #Query {tidycensus} for 2017-2021 5-Year PUMS data
@@ -1672,23 +1684,24 @@ lf_baseline <- pums_data |>
 #Output the baseline file for Household Population aggregations
 write.csv(
   hhpop_baseline,
-  paste0(output_path,"hhpop_baseline.1721.csv"), 
+  paste0(output_path,"hhpop_baseline.",hdshp,".csv"), 
   row.names = FALSE
 )
 
 #Output the baseline file for Household Type aggregations
 write.csv(
   hhtype_baseline,
-  paste0(output_path,"hhtype_baseline.1721.csv"),
+  paste0(output_path,"hhtype_baseline.",hdshp,".csv"),
   row.names = FALSE
 )
 
 #Output the baseline file for Laborforce aggregations
 write.csv(
   lf_baseline,
-  paste0(output_path,"lf_baseline.1721.csv"),
+  paste0(output_path,"lf_baseline.",hdshp,".csv"),
   row.names = FALSE
 )
+
 
 ```
 
@@ -1741,10 +1754,10 @@ if (sum(hr_check$flag) > 0){
   print("Proceed!")
 }
 
-#Write an intermediate file for the headship rates for the 17-21 PUMS
+#Write an intermediate file for the headship rates from this PUMS vintage
 write.csv(
   headship_rates,
-  paste0(output_path, "headship_rates.1721.csv"),
+  paste0(output_path, "headship_rates.pums",yr,".csv"),
   row.names = FALSE
 )
 
@@ -1913,13 +1926,11 @@ proj.hh.MAPC97_by.mpo.hhtype <- left_join(
 # 7.5 Create Reweighter Template Files for Household Projections by RPA/MPO and Household Type
 
 ```{r}
-#Set list of decades to iterate through projections data.
-years <- c(2010, 2020, 2030, 2040, 2050)
 
 #===============================================================================
 # Iterate through household projections to create reweighter targeting files for households
 # MAPC101/RPA Versions
-for (i in years) {
+for (i in yrs) {
   #Filter the projected households dataframe by year i
   tmp <- proj.hh.MAPC101_by.rpa.hhtype |> 
     filter(
@@ -1940,7 +1951,7 @@ for (i in years) {
   #Write the reweighter targeting file to .csv by year i.
   write.csv(
     target.file,
-    paste0(output_path, "hhtype.MAPC101.targetfile.",i,".csv"),
+    paste0(output_path, "hhtype.targetfile.MAPC101.",scen,'.hdshp',hdshp,'.y',i,".csv"),
     row.names = FALSE
   )
   
@@ -1953,7 +1964,7 @@ for (i in years) {
 
 #===============================================================================
 # MAPC97/MPO Versions
-for (i in years) {
+for (i in yrs) {
   #Filter the projected households dataframe by year i
   tmp <- proj.hh.MAPC97_by.mpo.hhtype |> 
     filter(
@@ -1974,7 +1985,7 @@ for (i in years) {
   #Write the reweighter targeting file to .csv by year i.
   write.csv(
     target.file,
-    paste0(output_path, "hhtype.MAPC97.targetfile.",i,".csv"),
+    paste0(output_path, "hhtype.targetfile.MAPC97.",scen,'.hdshp',hdshp,'.y',i,".csv"),
     row.names = FALSE
   )
   

@@ -5,7 +5,7 @@
 # root <- 'K:/DataServices/Projects/'
 # root <- '//data-001/public/DataServices/Projects'
 
-setwd(paste0(root,'Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Reweighter/',scen,'Input_Files/',mid))
+setwd(conpath)
 
 # specify the config file name
 config_file <- paste0("reweighting_config_2021_",mid,".json")

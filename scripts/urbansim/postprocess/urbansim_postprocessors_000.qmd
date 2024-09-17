@@ -2002,6 +2002,7 @@ sf.blk <- left_join(sfb, comp.blk, by=c('GEOID' = 'block_id')) %>% filter(!is.na
 ```
 
 Visualize differences
+
 ```{r}
 #| echo: false
 # Palette for household difference
@@ -2221,16 +2222,19 @@ block_diff <- sf.blk %>%
 ```
 
 # Difference at municipal level:
+
 ```{r}
 muni_diff
 ```
 
 # Difference at Census Block level:
+
 ```{r}
 block_diff
 ```
 
 # Compare TAZ destination SOV average costs
+
 ```{r}
 taz <- st_read('../Skims/ctps_taz_statewide.shp')
 park <- fread('../Skims/TDM23/tdm23.1.0/parking_v20221007.csv')

@@ -169,10 +169,17 @@ pums <- pums |>
     HHLDER.RACE.Grp = case_when(
       HHLDRRAC1P == "1" ~ "White Alone",
       HHLDRRAC1P == "2" ~ "Black or African American Alone",
-      HHLDRRAC1P %in% c("3", "4", "5", "7") ~ "AIAN.NHPI Alone",
+      HHLDRRAC1P %in% c("3", "4", "5") ~ "AIAN Alone",
       HHLDRRAC1P == "6" ~ "Asian Alone",
-      HHLDRRAC1P == "7" ~ "SOR Alone",
-      HHLDRRAC1P == "8" ~ "Two or More Races Alone",
+      HHLDRRAC1P == "7" ~ "NHPI Alone",
+      HHLDRRAC1P == "8" ~ "SOR Alone",
+      HHLDRRAC1P == "9" ~ "Two or More Races Alone",
+      .default = "Unknown"
+    ),
+    #Householder Latinx Groupings
+    HHDER.HISP.Grp = case_when(
+      HHLDRHISP == "01" ~ "Non-Hispanic",
+      HHLDRHISP != "01" ~ "Hispanic",
       .default = "Unknown"
     )
   ) |>
@@ -1160,4 +1167,50 @@ BG.OC.NONRELATE.PPB <- OC.NONRELATE.PPB |>
 
 BG.OC.NONRELATE.PPB
 
+```
+
+# 5.5 Ethnicity Group
+```{r}
+#===============================================================================
+# 5.5 Overcrowding by Income Groups at the State-Level
+OC.HHLDER_HISP.PPB <- pums |> 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
+  group_by(
+    HHDER.HISP.Grp,
+    overcrowded.ppb
+  ) |> 
+  summarise(
+    oc.hh = sum(WGTP)
+  ) |> 
+  ungroup() |> 
+  group_by(
+    HHDER.HISP.Grp
+  ) |> 
+  mutate(
+    hh = sum(oc.hh)
+  ) |> 
+  ungroup() |>
+  mutate(
+    pct = round(oc.hh/hh, digits = 3)
+  )
+
+BG.OC.HHLDER_HISP.PPB <- OC.HHLDER_HISP.PPB |> 
+  filter(overcrowded.ppb == "1") |> 
+  ggplot(aes(x = HHDER.HISP.Grp, y = pct)) +
+  geom_bar(stat = "identity", color = "black", fill = "steelblue") +
+  geom_text(aes(label = scales::percent(pct)), vjust = -0.3, size = 3.5) +
+  #scale_x_discrete(limits = rev) +
+  scale_y_continuous(label = scales::percent) +
+  labs(
+    title = "Non-White Households are More Often Overcrowded",
+    x = "Race of Householder",
+    y = "Percent of Households Overcrowded"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(color = "black"),
+    axis.text.y = element_text(color = "black")
+  )
+
+BG.OC.HHLDER_HISP.PPB
 ```

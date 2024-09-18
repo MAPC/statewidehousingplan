@@ -55,41 +55,43 @@ psf <- fread(paste0(root,'ma_muni_puma10_join.csv')) |>
   left_join(
     mkeys,
     by = c('muni_id')
-  ) |>
-  setDT()
-
-#Generate RPA to PUMA crosswalk.
-#This assigns a PUMA to the RPA with which it has the most areal overlap.
-lsf <- psf[,lapply(.SD,sum,na.rm=T),.(rpa_acr,PUMA),.SDcols='Shape_Area']
-lsf[,mx:=max(Shape_Area),PUMA]
-xw <- lsf[Shape_Area==mx, .(rpa_acr,PUMA)]
-xw[,PUMA:=sprintf("%05d",PUMA)]
+  ) |> 
+  select(-c(muni_id)) |> 
+  distinct(
+    PUMA,
+    .keep_all = TRUE
+  ) |> 
+  mutate(
+    PUMA = str_pad(PUMA, 5, side = "left", pad = "0")
+  )
 
 #Manufacturing MVC and NPEDC RPAs manually
 #Create an empty matrix with 2x1 dimenstions
-matrix <- matrix(nrow = 1, ncol = 2)
+matrix <- matrix(nrow = 1, ncol = 3)
 #Set the column names to match the PUMA to RPA/MPO crosswalk
-col_names <- c("rpa_acr", "PUMA")
+col_names <- c("rpa_acr", "mpo", "PUMA")
 
 #Create dataframes with matrix dimensions for both RPAs
 mvc <- data.frame(matrix = matrix)
-npedc <- data.frame(matrix = matrix)
+ccc <- data.frame(matrix = matrix)
 
 #Assign column names to the dataframes
 colnames(mvc) <- col_names
-colnames(npedc) <- col_names
+colnames(ccc) <- col_names
 
 #Populate data into the MVC and MPEDC dataframes
 mvc[[1]] <- "MVC"
-mvc[[2]] <- "04800"
-npedc[[1]] <- "NPEDC"
-npedc[[2]] <- "04800"
+mvc[[2]] <- "MVC"
+mvc[[3]] <- "04800"
+ccc[[1]] <- "CCC"
+ccc[[2]] <- "CCC"
+ccc[[3]] <- "04800"
 
 #Append MVC and NPEDC data to PUMA to RPA/MPO crosswalk
-xw <- bind_rows(xw, mvc, npedc)
+xw <- bind_rows(psf, mvc, ccc)
 
 #Remove intermediate dataframes.
-rm(matrix, col_names, mvc, npedc)
+rm(matrix, col_names, mvc, ccc, psf)
 gc()
 
 
@@ -149,15 +151,26 @@ pums <- pums |>
     # Adjust Household income (HINCP) to constant dollars (USD2021)
     HINCP_adj = HINCP*ADJINC,
     # Household Income Groupings consistent with UrbanSim groupings
-    HH.Income.Group = case_when(
+    HH.Income.Grp = case_when(
       HINCP_adj <= 35000 ~ "1",
       HINCP_adj > 35000 & HINCP_adj <= 75000 ~ "2",
       HINCP_adj > 75000 & HINCP_adj <= 125000 ~ "3",
       HINCP_adj > 125000 & HINCP_adj <= 225000 ~ "4",
       HINCP_adj > 225000 ~ "5",
       .default = "0"
+    ),
+    # Householder Race Groupings. 
+    HHLDER.RACE.Grp = case_when(
+      HHLDRRAC1P == "1" ~ "White Alone",
+      HHLDRRAC1P == "2" ~ "Black or African American Alone",
+      HHLDRRAC1P %in% c("3", "4", "5", "7") ~ "AIAN.NHPI Alone",
+      HHLDRRAC1P == "6" ~ "Asian Alone",
+      HHDERRAC1P == "7" ~ "SOR Alone",
+      HHDERRAC1P == "8" ~ "Two or More Races Alone",
+      .default = "Unknown"
     )
-  ) |> 
+  ) |>
+  # Creating household flags for person variables.
   group_by(SERIALNO) |> 
   mutate(
     # Create a variable which is the sum of the number of children in a household
@@ -924,3 +937,16 @@ Reasonable rate
 Non-multigenerational households without the presence of subfamilies
 
 From there
+
+# 5.0 Visualizations
+# 5.1 Tenure
+```{r}
+```
+
+# 5.2 Income Groups
+```{r}
+```
+
+# 5.3 Race Groups
+```{r}
+```

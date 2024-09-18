@@ -1113,3 +1113,50 @@ BG.OC.HHLDER_RACE.PPB <- OC.HHLDER_RACE.PPB |>
 
 BG.OC.HHLDER_RACE.PPB
 ```
+
+# 5.4 Presence of Non-Relatives in a Household
+```{r}
+#===============================================================================
+# 5.3 Overcrowding by Income Groups at the State-Level
+OC.NONRELATE.PPB <- pums |> 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
+  group_by(
+    NONRELATIVE.flag,
+    overcrowded.ppb
+  ) |> 
+  summarise(
+    oc.hh = sum(WGTP)
+  ) |> 
+  ungroup() |> 
+  group_by(
+    NONRELATIVE.flag
+  ) |> 
+  mutate(
+    hh = sum(oc.hh)
+  ) |> 
+  ungroup() |>
+  mutate(
+    pct = oc.hh/hh
+  )
+
+BG.OC.NONRELATE.PPB <- OC.NONRELATE.PPB |> 
+  filter(overcrowded.ppb == "1") |> 
+  ggplot(aes(x = NONRELATIVE.flag, y = pct)) +
+  geom_bar(stat = "identity", color = "black", fill = "steelblue") +
+  geom_text(aes(label = scales::percent(pct)), vjust = -0.3, size = 3.5) +
+  #scale_x_discrete(limits = rev) +
+  scale_y_continuous(label = scales::percent) +
+  labs(
+    title = "Non-White Households are More Often Overcrowded",
+    x = "Presence of a Non-Relative in the Household",
+    y = "Percent of Overcrowded Households"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(color = "black"),
+    axis.text.y = element_text(color = "black")
+  )
+
+BG.OC.NONRELATE.PPB
+
+```

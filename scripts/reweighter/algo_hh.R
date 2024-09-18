@@ -7,6 +7,7 @@
 # Version August 14, 2019
 #
 
+
 # import libraries
 library(dplyr)
 library(data.table)
@@ -14,9 +15,9 @@ library(data.table)
 options(digits=20)
 # library(bit64)
 # import custom functions
-runDIR <- paste0(root,'Current_Projects/Projections/Reweighter/Scripts/')
 
-source(paste0(runDIR,"objective.R"))
+
+source("objective.R")
 
 # randomized descent algoritm
 # INPUTS:-
@@ -167,7 +168,7 @@ random_descent_hh <- function(inp, cond, num_iter, u_factor, wflag,
             t_ids[[t]] <- cond[[b]][[t]][[7]]
             # add a new column containing the intermediate weights 
             data <- mutate(data, INTER=t_baselines[[t]])
-            data.table::fwrite(data, file=paste(table[[1]], ".csv", sep=""))
+            data.table::fwrite(data, paste0( table[[1]], ".csv"))
         }
         # save the baselines, targets and ids
         baselines[[b]] <- t_baselines
@@ -275,9 +276,9 @@ random_descent_hh <- function(inp, cond, num_iter, u_factor, wflag,
                 if (n_tables[[b]] == 0) {next}
                 for (t in seq(n_tables[[b]])){
                     table <- cond[[b]][[t]]
-                    data <- data.table::fread(file=paste(table[[1]], ".csv", sep=""))
+                    data <- data.table::fread(paste(table[[1]], ".csv", sep=""))
                     data <- mutate(data, INTER=baselines[[b]][[t]])
-                    data.table::fwrite(data, file=paste(table[[1]], ".csv", sep=""))
+                    data.table::fwrite(data, paste(table[[1]], ".csv", sep=""))
                 }
             }
         }
@@ -321,7 +322,7 @@ random_descent_hh <- function(inp, cond, num_iter, u_factor, wflag,
     }
     
     # write iteration stats
-    write.csv(iter_stats,file=iter_file,row.names = FALSE)
+    write.csv(iter_stats,paste0(iter_file),row.names = FALSE)
     
     # write tables
     for (b in seq(n_blocks)){

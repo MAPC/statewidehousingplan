@@ -1,35 +1,22 @@
 # 
 #  Manage_Scenario.R
 #
-#  Version August 14, 2019
-#
-##########################################################
-#  Supply the following parameters for this scenario
-#  by editing the values of the following variables:
-##########################################################
 
-#root <- 'S:/Network Shares/DS Projects/'
-# root <- 'K:/DataServices/Projects/'
-#root <- '//data-001/public/DataServices/Projects'
+setwd(inpath)
 
-setwd(paste0(root,'Current_Projects/Projections/Reweighter/Input_Files/',mid))
-outDIR <- paste0(root,'Current_Projects/Projections/Reweighter/Input_Files/',mid,'/')
-
-setwd(paste0('G:/Input_Files/',mid))
-outDIR <- paste0('G:/Input_Files/',mid,'/')
+version <- 'September 17, 2024'
 
 # Log text file that holds messages for this scenario
-log_file <- paste0(outDIR,"Projections2050_",mid,"_",yr,".txt")
+log_file <- paste0(outpath,"logfile_",scen,"_",mid,"_",yr,".txt")
 
 #  Input PUMS extract csv file that was used by read_config_hh.R
-# pums_file <- "PUMS2013.csv"
-pums_file <- paste0("PUMS2019_",mid,".csv")
+pums_file <- pums
 
 # Output csv file for the weights created by algo_hh.R
-weights_file <- paste0(outDIR,"weights_final_Projections2050_",mid,"_",yr,".csv")
+weights_file <- paste0(outpath,"weights_final_",scen,"_",mid,"_",yr,".csv")
 
 # Output csv file for iteration statistics
-iter_file=paste0(outDIR,"iter_stats_Projections2050_",mid,"_",yr,".csv")
+iter_file <- paste0(outpath,"iter_stats.csv")
 
 # Maximum number of iterations
 num_iters <- 1000
@@ -58,8 +45,8 @@ options(scipen=999)
 
 # Write parameters to log file.
 
-write("Manage_Scenario.R version August 14, 2019",log_file)
-#write(date,file=log_file,append=TRUE)
+write(paste("Manage_Scenario.R version:", version), log_file)
+write(Sys.time(),file=log_file,append=TRUE)
 write(paste("Log file:",log_file),file=log_file,append=TRUE)
 write(paste("PUMS file:",pums_file),file=log_file,append=TRUE)
 write(paste("Weights file:",weights_file),file=log_file,append=TRUE)
@@ -73,16 +60,12 @@ if(random) {
   else write(paste("The seed for randomization is",seed),file=log_file,append=TRUE)
 }
 
-
 # Input save_list file that was created by read_config_hh.R
 # This manages the least squares algorithm in algo_hh.R
 # Note: savefilehh.RData is the name given by read_config_hh.R,
 #       so typically this does not need to be changed.
-save_list_file <- paste0("savefilehh_",mid,".RData")
+save_list_file <- paste0(inpath,"savefilehh_",mid,".RData")
 
-
-#
-#
 # import libraries
 suppressPackageStartupMessages(library(data.table))
 suppressPackageStartupMessages(library(readr))
@@ -92,7 +75,8 @@ suppressPackageStartupMessages(library(dplyr))
 # source("../Scripts/algo_hh.R")
 
 # read the input file
-inp <- data.table::fread(file=pums_file)
+# inp <- data.table::fread(file=pums_file)
+inp <- pums_file
 # read the savefile RData object
 conditions <- read_rds(save_list_file)
 # set the write flag. No reason to set this to TRUE.
@@ -103,4 +87,4 @@ weights <- random_descent_hh(inp, conditions, num_iters, update_factor,write_fla
                              max_norm,iter_file,log_file,
                              random,seed)
 # write the weights to file
-data.table::fwrite(weights, file=weights_file)
+data.table::fwrite(weights, weights_file)

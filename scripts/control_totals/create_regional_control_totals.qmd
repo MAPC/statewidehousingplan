@@ -21,7 +21,7 @@ hdshp <- 'acs1721'
 #root <- '../../../../Data/Working/Regional_Control_Totals/'
 
 # base <- "K:/DataServices/Projects/"
-base <- "S:/Network Shares/K Drive/DataServices/Projects/"
+base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
 
 #General K drive filepath
 root <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/")
@@ -1293,6 +1293,12 @@ umdi.pop.MAPC97 <- left_join(
     )
   )
 
+# Export population in households
+
+fwrite(umdi.pop.MAPC101, paste0(output_path,'pop.in.hhds.MAPC101_by.RPA.ageCAT6.csv'))
+
+fwrite(umdi.pop.MAPC97, paste0(output_path,'pop.in.hhds.MAPC97_by.RPA.ageCAT6.csv'))
+
 #Removing dataframes no longer necessary for the creation of reweighter targets.
 rm(population.MAPC101.df, population.MAPC97.df, population.df, GEOID.cn.10, GEOID.cn.20,
    vars.dec10, vars.dec20)
@@ -1300,60 +1306,45 @@ gc()
 
 ```
 
-#6.0 - Load and process PUMS Data #6.1 - Create PUMA to RPA/MPO Crosswalk for 2010 PUMAs
+#6.0 - Load and process PUMS Data 
+
+#6.1 - Create PUMA to RPA/MPO Crosswalk for 2010 PUMAs
 
 ```{r}
-#Set up datakeys for future joins.
-mkeys <- mapcdatakeys::all_muni_data_keys |>  select(muni_id,rpa_acr,mpo)
 
+#Set up datakeys for future joins.
+mkeys <- mapcdatakeys::all_muni_data_keys %>%
+  select(muni_id, rpa_acr, mpo)
+
+# PUMA crosswalk
 #Load in the municipality to PUMA crosswalk.
-psf <- fread(paste0(root,'ma_muni_puma10_join.csv')) |>
-  dplyr::rename(
-    muni_id=TOWN_ID,
-    PUMA = PUMACE10
-  ) |>
-  left_join(
-    mkeys,
-    by = c('muni_id')
-  ) |>
+psf <- fread(paste0(root, 'pums_muni_inter.csv')) %>%
+  select(TOWN_ID, PUMACE10, Shape_Area) %>%
+  dplyr::rename(muni_id = TOWN_ID, PUMA = PUMACE10) %>%
+  left_join(mkeys, by = c('muni_id')) %>%
   setDT()
 
 #Generate RPA to PUMA crosswalk.
-lsf <- psf[,lapply(.SD,sum,na.rm=T),.(rpa_acr,PUMA),.SDcols='Shape_Area']
-lsf[,mx:=max(Shape_Area),PUMA]
-xw <- lsf[Shape_Area==mx, .(rpa_acr,PUMA)]
-xw[,PUMA:=sprintf("%05d",PUMA)]
+lsf <- psf[, lapply(.SD, sum, na.rm = T), .(rpa_acr, PUMA), .SDcols = 'Shape_Area']
+lsf[, mx := max(Shape_Area), PUMA]
+xw <- lsf[Shape_Area == mx, .(rpa_acr, PUMA)]
+xw[, PUMA := sprintf("%05d", PUMA)]
 
-#Manufacturing MVC and NPEDC RPAs manually
-#Create an empty matrix with 2x1 dimenstions
-matrix <- matrix(nrow = 1, ncol = 2)
-#Set the column names to match the PUMA to RPA/MPO crosswalk
-col_names <- c("rpa_acr", "PUMA")
+# Manufacturing MVC and NPEDC RPAs manually
 
-#Create dataframes with matrix dimensions for both RPAs
-mvc <- data.frame(matrix = matrix)
-npedc <- data.frame(matrix = matrix)
-
-#Assign column names to the dataframes
-colnames(mvc) <- col_names
-colnames(npedc) <- col_names
-
-#Populate data into the MVC and MPEDC dataframes
-mvc[[1]] <- "MVC"
-mvc[[2]] <- "04800"
-npedc[[1]] <- "NPEDC"
-npedc[[2]] <- "04800"
+cc <- data.table(rpa_acr = c('MVC', 'NPEDC'),
+                 PUMA = c('04800', '04800'))
 
 #Append MVC and NPEDC data to PUMA to RPA/MPO crosswalk
-xw <- bind_rows(xw, mvc, npedc)
+xw <- rbind(xw, cc)
 
 #Remove intermediate dataframes.
-rm(matrix, col_names, mvc, npedc)
+# rm(matrix, col_names, mvc, npedc)
 gc()
 
 ```
 
-# 6.2 Query 2017-2021 ACS 5-year PUMS data + categorize data
+# 6.2 - Query 2017-2021 ACS 5-year PUMS data + categorize data
 
 ```{r}
 #Set PUMS vintage final year for {tidycensus} API query.
@@ -2001,6 +1992,7 @@ for (i in yrs) {
 ```
 
 # Old Code
+
 ```{r}
 ################################################################################
 # 5. Generate BASELINE data for the reweighter targeting files

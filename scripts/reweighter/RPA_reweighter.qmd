@@ -2,13 +2,14 @@
 title: "RPA_Reweighter"
 format: html
 editor: visual
+project: execute-dir: project
 ---
 
 ## RPA Reweighter
 
 This set of scripts runs the household reweighter to produce reweighted PUMS data that satisfies household targets set by the user.
 
-#0.1 - Set Scenario Name, knitr path, and root directory
+# 1 - Set Scenario Name, knitr path, and root directory
 
 ```{r, setup, include=FALSE}
 
@@ -33,7 +34,7 @@ output_path <- paste0(workpath, scen, '/Output_Files/')
 # knitr::opts_knit$set(root.dir = workpath)
 ```
 
-# 0.2 - Set package dependencies, set environment, helper functions
+# 2 - Set package dependencies, set environment, helper functions
 
 ```{r}
 pacman::p_load(
@@ -61,14 +62,9 @@ mpos <- unlist(c(mapcdatakeys::all_muni_data_keys %>% select(mpo) %>% unique()))
 
 ```
 
-# 0.3 - Subset PUMS data for each RPA
+# 3 - Subset PUMS data for each RPA
 
-Load CPI deflator time series to adjust PUMS income to 2013 dollars (for UrbanSim)
-
-```{r}
-cpi <- fread(paste0(workpath,'PUMS_data/cpi_deflators_by_year.csv'))
-cpi.deflator <- cpi[year==2013, index] / cpi[year==vintage, index]
-```
+We use the CPI deflator time series to adjust PUMS income to 2013 dollars (for UrbanSim)
 
 ACS uses the Consumer Price Index for All Urban Consumers Retroactive Series (R-CPI-U-RS): <https://www.bls.gov/cpi/research-series/r-cpi-u-rs-home.htm>
 
@@ -79,28 +75,16 @@ as opposed to the ASEC/Census which uses C-CPI-U
 **PUMA to municipality crosswalk**
 
 ```{r}
-# PUMA crosswalk
-mxw <- fread(paste0(workpath, 'PUMS_data/ma_muni_puma10_join.csv'))
-mxw <- mxw[, .(TOWN_ID, PUMACE10)]
-setnames(mxw, c('muni_id', 'PUMA'))
-mxw <- mxw[, .(muni_id, PUMA)]
-axw <-
-  mapcdatakeys::all_muni_data_keys %>% 
-  select(muni_id, rpa_acr, mpo) %>% 
-  left_join(mxw, by = 'muni_id') %>% 
-  select(-muni_id) %>% 
-  unique() %>% 
-  setDT()
-axw[, PUMA := sprintf("%05d", PUMA)]
-mapc.pumas <- axw[rpa_acr == 'MAPC', unique(PUMA)]
-swm.pumas <- axw[mpo != 'MAPC', .(mpo, PUMA)] %>% 
-  unique()
+# Load CPI time series
+cpi <- fread(paste0(workpath,'PUMS_data/cpi_deflators_by_year.csv'))
+cpi.deflator <- cpi[year==2013, index] / cpi[year==vintage, index]
 
 #Set up datakeys for future joins.
 mkeys <- mapcdatakeys::all_muni_data_keys %>%
   select(muni_id, rpa_acr, mpo)
 
-#Load in the municipality to PUMA crosswalk.
+# PUMA crosswalk
+# Load in the municipality to PUMA crosswalk.
 psf <- fread(paste0(workpath, 'PUMS_data/pums_muni_inter.csv')) %>%
   select(TOWN_ID, PUMACE10, Shape_Area) %>%
   dplyr::rename(muni_id = TOWN_ID, PUMA = PUMACE10) %>%
@@ -120,6 +104,10 @@ cc <- data.table(rpa_acr = c('MVC', 'NPEDC'),
 
 #Append MVC and NPEDC data to PUMA to RPA/MPO crosswalk
 xw <- rbind(xw, cc)
+
+mapc.pumas <- xw[rpa_acr == 'MAPC', unique(PUMA)]
+swm.pumas <- xw[rpa_acr != 'MAPC', .(rpa_acr, PUMA)] %>% 
+  unique()
 
 # PUMS 5-yr data
 
@@ -278,6 +266,7 @@ fwrite(pums_data,
 # Make Input folders for reweighter by RPA
 for (m in unique(xw$rpa_acr)) {
   dir.create(paste0(workpath, scen, '/Input_Files/', m), showWarnings = F)
+  dir.create(paste0(workpath, scen, '/Output_Files/', m), showWarnings = F)
 }
 
 # MAPC 101 subset
@@ -286,18 +275,18 @@ fwrite(pums_data[PUMA %in% mapc.pumas],
 message(paste0('MAPC 101 PUMS export complete'))
 
 # SWM join PUMA and export subsets
-for (m in unique(swm.pumas$mpo)) {
-  mp <- swm.pumas[mpo == m]
+for (m in unique(swm.pumas$rpa_acr)) {
+  mp <- swm.pumas[rpa_acr == m]
   pums_data %>%
     left_join(mp, by = 'PUMA') %>%
-    filter(mpo == m) %>%
+    filter(rpa_acr == m) %>%
     fwrite(paste0(workpath, scen, '/Input_Files/', m, '/PUMS', vintage, '_', m, '.csv'))
   message(paste0(m, ' PUMS export complete'))
 }
 
 ```
 
-# 0.4 - Create RPA config JSON files for reweighter configuration
+# 4 - Create RPA config JSON files for reweighter configuration
 
 ```{r}
 
@@ -307,54 +296,106 @@ infile <- paste0(workpath, 'Templates/reweighting_config_2021.json')
 for (m in mpos){
   outfile <- paste0(workpath, scen, '/Input_Files/', m, '/reweighting_config_2021_', m, '.json')
   cfig = readLines(infile)
-  cfig = gsub('PUMS2021', paste0('PUMS2021_', scen), cfig)
+  cfig = gsub('PUMS2021', paste0('PUMS2021_', m), cfig)
   writeLines(cfig, outfile)
 }
 ```
 
-# 0.5 - Configure Reweighter for each RPA
+# 5 - Configure Reweighter for each RPA
 
 ```{r}
 
-source('~/scripts/reweighter/algo_hh.R')
+source('algo_hh.R')
 
 # Configuration Loop
-for (mid in mpos){
-  conpath <- paste0(workpath, scen, '/Input_Files/', mid)
-  source('~/scripts/reweighter/read_config_RPA.R')
+for (mid in 'MAPC'){
+  inpath <- paste0(workpath, scen, '/Input_Files/', mid, '/')
+  
+  source('read_config_RPA.R')
   message(paste0(mid,' configuration complete'))
 }
 ```
 
-# Set targets and run reweighter
+# 6 - Set targets and run reweighter
 
 ```{r}
 
   # Set Targets and run reweighter loop
 
-# Running with MAPC 101 or with MAPC 97 towns
+# Choose whether to run using the MAPC 101 or the MAPC 97 towns
+
 reb <- 'MAPC101'
 #reb <- 'MAPC97'
 
+# for (yr in c(2040)){
 for (yr in c(2020,2030,2035,2040,2045,2050)){
-
-  for (mid in mpos) {
+  for (mid in c('MAPC')) {
+  # for (mid in mpos) {
     
     inpath <- paste0(workpath, scen, '/Input_Files/', mid, '/')
     outpath <- paste0(workpath, scen, '/Output_Files/', mid, '/')
-    
-    target <- fread(paste0(ctrltotal.path,'hhtype.',reb,'.targetfile.',yr,'.csv')) %>% 
+    template <- fread(paste0(workpath,'Templates/AgeHHder_HHtype_template.csv')) %>% 
+      select(-BASELINE,-TARGET)
+    target <- fread(paste0(ctrltotal.path,'hhtype.',reb,'.targetfile.',yr,'.csv')) %>%
                       filter(RPA==mid) %>% 
-                      fwrite(paste0(inpath, '/AgeHHder_HHtype.csv'))
+      select(-RPA) %>% right_join(template, by= c('AgeCat','HHtype')) %>% setDT()
+    target[AgeCat %in% c('x == 1', 'x == 2', 'x == 3'), `:=`(BASELINE=0,INTER=0,TARGET=0)]
+    setorder(target,AgeCat,HHtype)
+    fwrite(target, paste0(inpath, '/AgeHHder_HHtype.csv'))
     message(paste0(mid, ' targets set'))
     
-    pums <- fread(paste0(inpath, 'PUMS',vintage,'_', mid, '.csv'))
-    source('scripts/reweighter/Manage_Scenario_RPA.R')
+    pums <- fread(paste0(inpath, 'PUMS', vintage, '_', mid, '.csv'))
+    
+    source('Manage_Scenario_RPA.R')
     message(paste0(mid, ' reweighter complete'))
     
     mess <- data.table(txt = paste0(mid, ' reweighter complete'))
     fwrite(mess,
            paste0(outpath, mid, '_', yr, '_complete.txt'))
+  }
+}
+
+```
+# 7 - QC reweighter Outputs
+```{r}
+
+
+reb <- 'MAPC101'
+#reb <- 'MAPC97'
+
+
+for (yr in c(2040)) {
+  # for (yr in c(2020,2030,2035,2040,2045,2050)){
+  for (mid in c('MAPC')) {
+    # for (mid in mpos) {
+    outpath <- paste0(workpath, scen, '/Output_Files/', mid, '/')
+    # Summarize total households by mpo from target inputs to reweighter
+    target <- fread(paste0(ctrltotal.path,'hhtype.',reb,'.targetfile.',yr,'.csv')) %>%
+                      filter(RPA==mid) %>% setDT()
+      
+    tsum <- target[, lapply(.SD, sum), RPA, .SDcols = 'TARGET']
+    tsum[, TARGET := round(TARGET)]
+    setnames(tsum, 'RPA', 'mpo')
+    setkey(tsum, mpo)
+    
+    # Calculate total households from the reweighter outputs
+    pums <- fread(paste0(inpath, 'PUMS', vintage, '_', mid, '.csv'))
+    setkey(pums, SERIALNO, SPORDER)
+    
+    rw <- data.table()
+    # for (m in mpos) {
+    for (m in mid) {
+      x <- fread(paste0(
+        outpath,
+        '/weights_final_',scen,'_',m,'_',yr,'.csv'
+      )) %>% select(SERIALNO, SPORDER, new_WGTP) %>% mutate(mpo = m) %>% setDT()
+      setkey(x, SERIALNO, SPORDER)
+      xp <- pums[x]
+      xsum <- xp[SPORDER == 1, lapply(.SD, sum), .(mpo), .SDcols = c('WGTP','new_WGTP')]
+      xsum[, rw_HH := round(new_WGTP)][, pums_hh := round(WGTP)]
+      rw <- rbind(rw, xsum)
+    }
+    setkey(rw, mpo)
   }
 }
 

@@ -5,21 +5,21 @@ library(data.table)
 root <- 'S:/Network Shares/K Drive/DataServices/Projects/'
 # root <- 'K:/DataServices/Projects/'
 
-setwd(paste0(root, 'Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Reweighter/Headship_rates'))
+dir <- paste0(root, 'Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Reweighter/Headship_rates')
 
 
-acs21 <- fread('headship_rates.1721.csv') %>% 
+acs21 <- fread(paste0(dir,'headship_rates.1721.csv')) %>% 
   rename(hhtype = var,
          rate1721 = freq,
          rpa = rpa_acr) 
 
-t00 <- fread('hh_rates_hhtype_2000.csv') %>% 
+t00 <- fread(paste0(dir,'hh_rates_hhtype_2000.csv')) %>% 
   pivot_longer(cols=names(.)[-1]) %>% 
   rename(hhtype=name,
          rate2000=value) %>% 
   mutate(hhtype = gsub('2000','',hhtype))
 
-a00 <- fread('hh_rates_by_age_RPA_2000.csv') %>% 
+a00 <- fread(paste0(dir,'hh_rates_by_age_RPA_2000.csv')) %>% 
   pivot_longer(cols=names(.)[-1]) %>%
   rename(rpa=name, 
          rate2000=value) %>% 

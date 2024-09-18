@@ -1,12 +1,8 @@
 #
 # read_config_hh.R
 #
-# root <- 'S:/Network Shares/K Drive/DataServices/Projects/'
-# root <- 'K:/DataServices/Projects/'
-# root <- '//data-001/public/DataServices/Projects'
 
-setwd(conpath)
-
+setwd(inpath)
 # specify the config file name
 config_file <- paste0("reweighting_config_2021_",mid,".json")
 
@@ -66,7 +62,7 @@ num_blocks <- length(config[["blocks"]])
 # get the file name
 file_name <- config[["file_name"]]
 # read the data
-data <- fread(file=file_name)
+data <- fread(paste0(inpath,file_name))
 
 
 save_list <- list()
@@ -178,7 +174,7 @@ for (b in seq(num_blocks)){
         }
 
         d <- data %>%
-        select(c(unlist(var_names), target_var)) %>%
+        select(all_of(c(unlist(var_names), target_var))) %>%
         as.data.table()
 
 
@@ -238,7 +234,7 @@ for (b in seq(num_blocks)){
 
         # regenerate the data for id computation (for both parents and children)
         d <- data %>%
-        select(c(unlist(var_names), target_var)) %>%
+        select(all_of(c(unlist(var_names), target_var))) %>%
         as.data.table()
         
         # get the ids for reference in the algorithm (for parents and children)
@@ -264,7 +260,7 @@ for (b in seq(num_blocks)){
   
         header <- paste(unlist(var_names), collapse=",")
         header <- paste(c(header, "BASELINE", "TARGET"), collapse=",")
-        write(header, file=tf, append=FALSE)
+        write(header, file=paste0(inpath,tf), append=FALSE)
   
         for(n in seq(num_cells)){
             ivec <- index2coord(n)
@@ -273,7 +269,7 @@ for (b in seq(num_blocks)){
                 row[i] <- conds[[i]][[ivec[i]]]
             }
             row <- paste(c(row, target_vector[n], target_vector[n]), collapse=",")
-            write(row, file=tf, append=TRUE)
+            write(row, file=paste0(inpath,tf), append=TRUE)
         }
 
         # save all the attributes pertaining to a specific table
@@ -302,5 +298,5 @@ for (b in seq(num_blocks)){
 save_list[["file_name"]] <- file_name
 save_list[["children"]] <- children
 # save the RData object
-saveRDS(save_list, file=paste0("savefilehh_",mid,".RData"), version=2)
+saveRDS(save_list, file=paste0(inpath,"savefilehh_",mid,".RData"), version=2)
 

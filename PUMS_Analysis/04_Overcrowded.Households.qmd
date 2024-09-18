@@ -967,7 +967,7 @@ OC.TEN.PPB <- pums |>
   ) |> 
   ungroup() |>
   mutate(
-    pct = oc.hh/hh
+    pct = round(oc.hh/hh, digits = 3)
   )
 
 BG.OC.TEN.PPB <- OC.TEN.PPB |> 
@@ -1011,7 +1011,7 @@ OC.TEN.RPA.PPB <- pums |>
   ) |> 
   ungroup() |> 
   mutate(
-    pct = oc.hh/sum(oc.hh)
+    pct = round(oc.hh/hh, digits = 3)
   )
 
 # #Write the output to csv
@@ -1091,7 +1091,7 @@ OC.HHLDER_RACE.PPB <- pums |>
   ) |> 
   ungroup() |>
   mutate(
-    pct = oc.hh/hh
+    pct = round(oc.hh/hh, digits = 3)
   )
 
 BG.OC.HHLDER_RACE.PPB <- OC.HHLDER_RACE.PPB |> 
@@ -1137,7 +1137,7 @@ OC.NONRELATE.PPB <- pums |>
   ) |> 
   ungroup() |>
   mutate(
-    pct = oc.hh/hh
+    pct = round(oc.hh/hh, digits = 3)
   )
 
 BG.OC.NONRELATE.PPB <- OC.NONRELATE.PPB |> 

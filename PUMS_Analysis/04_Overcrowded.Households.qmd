@@ -997,6 +997,17 @@ BG.OC.TEN.PPB <- OC.TEN.PPB |>
 
 BG.OC.TEN.PPB
 
+ggsave(
+  filename = "BG.OC.TEN.PPB.jpeg",
+  plot = BG.OC.TEN.PPB,
+  device = "jpeg",
+  path = output_path,
+  width = 10,
+  height = 7,
+  units = "in",
+  dpi = 300
+)
+
 #===============================================================================
 # 5.2 Overcrowding by Tenure at the State-Level
 OC.TEN.RPA.PPB <- pums |> 
@@ -1074,6 +1085,17 @@ BG.OC.INC.PPB <- OC.INC.PPB |>
   )
 
 BG.OC.INC.PPB
+
+ggsave(
+  filename = "BG.OC.INC.PPB.jpeg",
+  plot = BG.OC.INC.PPB,
+  device = "jpeg",
+  path = output_path,
+  width = 10,
+  height = 7,
+  units = "in",
+  dpi = 300
+)
 ```
 
 # 5.3 Race Groups
@@ -1120,6 +1142,17 @@ BG.OC.HHLDER_RACE.PPB <- OC.HHLDER_RACE.PPB |>
   )
 
 BG.OC.HHLDER_RACE.PPB
+
+ggsave(
+  filename = "BG.OC.HHLDER_RACE.PPB.jpeg",
+  plot = BG.OC.HHLDER_RACE.PPB,
+  device = "jpeg",
+  path = output_path,
+  width = 10,
+  height = 7,
+  units = "in",
+  dpi = 300
+)
 ```
 
 # 5.4 Presence of Non-Relatives in a Household
@@ -1167,6 +1200,17 @@ BG.OC.NONRELATE.PPB <- OC.NONRELATE.PPB |>
 
 BG.OC.NONRELATE.PPB
 
+ggsave(
+  filename = "BG.OC.NONRELATE.PPB.jpeg",
+  plot = BG.OC.NONRELATE.PPB,
+  device = "jpeg",
+  path = output_path,
+  width = 10,
+  height = 7,
+  units = "in",
+  dpi = 300
+)
+
 ```
 
 # 5.5 Ethnicity Group
@@ -1202,8 +1246,8 @@ BG.OC.HHLDER_HISP.PPB <- OC.HHLDER_HISP.PPB |>
   #scale_x_discrete(limits = rev) +
   scale_y_continuous(label = scales::percent) +
   labs(
-    title = "Non-White Households are More Often Overcrowded",
-    x = "Race of Householder",
+    title = "Hispanic Households are More Often Overcrowded",
+    x = "Ethnicity of Householder",
     y = "Percent of Households Overcrowded"
   ) +
   theme_minimal() +
@@ -1213,4 +1257,15 @@ BG.OC.HHLDER_HISP.PPB <- OC.HHLDER_HISP.PPB |>
   )
 
 BG.OC.HHLDER_HISP.PPB
+
+ggsave(
+  filename = "BG.OC.HHLDER_HISP.PPB.jpeg",
+  plot = BG.OC.HHLDER_HISP.PPB,
+  device = "jpeg",
+  path = output_path,
+  width = 10,
+  height = 7,
+  units = "in",
+  dpi = 300
+)
 ```

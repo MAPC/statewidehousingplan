@@ -1177,9 +1177,12 @@ OC.NONRELATE.PPB <- pums |>
   ) |> 
   ungroup() |>
   mutate(
+    # Create a percent of overcrowded and non-overcrowded households within each crosstab group.
+    # Round to three digits.
     pct = round(oc.hh/hh, digits = 3)
   )
 
+# Creates a bar graph of using the dataframe created above.
 BG.OC.NONRELATE.PPB <- OC.NONRELATE.PPB |> 
   filter(overcrowded.ppb == "1") |> 
   ggplot(aes(x = NONRELATIVE.flag, y = pct)) +
@@ -1198,8 +1201,10 @@ BG.OC.NONRELATE.PPB <- OC.NONRELATE.PPB |>
     axis.text.y = element_text(color = "black")
   )
 
+# Print the bar graph created above.
 BG.OC.NONRELATE.PPB
 
+# Save an image of the bar graph created above.
 ggsave(
   filename = "BG.OC.NONRELATE.PPB.jpeg",
   plot = BG.OC.NONRELATE.PPB,
@@ -1218,12 +1223,14 @@ ggsave(
 #===============================================================================
 # 5.5 Overcrowding by Income Groups at the State-Level
 OC.HHLDER_HISP.PPB <- pums |> 
+  # Filters dataframe to households (non-group quarters units) and householders.
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
     HHDER.HISP.Grp,
     overcrowded.ppb
   ) |> 
   summarise(
+    # Calculates the number of overcrowded and non-overcrowded households in each crosstab group.
     oc.hh = sum(WGTP)
   ) |> 
   ungroup() |> 
@@ -1231,19 +1238,23 @@ OC.HHLDER_HISP.PPB <- pums |>
     HHDER.HISP.Grp
   ) |> 
   mutate(
+    # Calculates the total number of households in the crosstab group (OC + Non-OC)
     hh = sum(oc.hh)
   ) |> 
   ungroup() |>
   mutate(
+    # Create a percent of overcrowded and non-overcrowded households within each crosstab group.
+    # Round to three digits.
     pct = round(oc.hh/hh, digits = 3)
   )
 
+# Creates the bar graph for the above table
 BG.OC.HHLDER_HISP.PPB <- OC.HHLDER_HISP.PPB |> 
+  # Filter for the overcrowded aggregates.
   filter(overcrowded.ppb == "1") |> 
   ggplot(aes(x = HHDER.HISP.Grp, y = pct)) +
   geom_bar(stat = "identity", color = "black", fill = "steelblue") +
   geom_text(aes(label = scales::percent(pct)), vjust = -0.3, size = 3.5) +
-  #scale_x_discrete(limits = rev) +
   scale_y_continuous(label = scales::percent) +
   labs(
     title = "Hispanic Households are More Often Overcrowded",
@@ -1256,8 +1267,10 @@ BG.OC.HHLDER_HISP.PPB <- OC.HHLDER_HISP.PPB |>
     axis.text.y = element_text(color = "black")
   )
 
+# Print the bar graph created above.
 BG.OC.HHLDER_HISP.PPB
 
+# Save an image of the bar graph created above.
 ggsave(
   filename = "BG.OC.HHLDER_HISP.PPB.jpeg",
   plot = BG.OC.HHLDER_HISP.PPB,

@@ -1045,6 +1045,7 @@ OC.TEN.RPA.PPB <- pums |>
 #===============================================================================
 # 5.2 Overcrowding by Income Groups at the State-Level
 OC.INC.PPB <- pums |> 
+  # Filters dataframe to households (non-group quarters units) and householders.
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
     HH.Income.Grp,
@@ -1063,15 +1064,18 @@ OC.INC.PPB <- pums |>
   ungroup() |>
   mutate(
     pct = round(oc.hh/hh, digits = 3)
-  ) 
+  )
+
+# Use this list to set the order of the income groups in the bar graph
 level_order <- c("<=$35,000", "$35,001-$75,000", "$75,001-$125,000", "$125,001-$225,000", ">$225,000")
 
+# Creates a bar graph of using the dataframe created above.
 BG.OC.INC.PPB <- OC.INC.PPB |> 
+  # Filter for the overcrowded aggregates.
   filter(overcrowded.ppb == "1") |> 
   ggplot(aes(x = factor(HH.Income.Grp, level_order), y = pct)) +
   geom_bar(stat = "identity", color = "black", fill = "steelblue") +
   geom_text(aes(label = scales::percent(pct)), vjust = -0.3, size = 3.5) +
-  #scale_x_discrete(limits = rev) +
   scale_y_continuous(label = scales::percent) +
   labs(
     title = "Middle Income Housheolds are more Often Overcrowded",
@@ -1084,8 +1088,10 @@ BG.OC.INC.PPB <- OC.INC.PPB |>
     axis.text.y = element_text(color = "black")
   )
 
+# Print the bar graph created above.
 BG.OC.INC.PPB
 
+# Save an image of the bar graph created above.
 ggsave(
   filename = "BG.OC.INC.PPB.jpeg",
   plot = BG.OC.INC.PPB,
@@ -1103,12 +1109,14 @@ ggsave(
 #===============================================================================
 # 5.3 Overcrowding by Income Groups at the State-Level
 OC.HHLDER_RACE.PPB <- pums |> 
+  # Filters dataframe to households (non-group quarters units) and householders.
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
     HHLDER.RACE.Grp,
     overcrowded.ppb
   ) |> 
   summarise(
+    # Calculates the number of overcrowded and non-overcrowded households in each crosstab group.
     oc.hh = sum(WGTP)
   ) |> 
   ungroup() |> 
@@ -1116,19 +1124,23 @@ OC.HHLDER_RACE.PPB <- pums |>
     HHLDER.RACE.Grp
   ) |> 
   mutate(
+    # Calculates the total number of households in the crosstab group (OC + Non-OC)
     hh = sum(oc.hh)
   ) |> 
   ungroup() |>
   mutate(
+    # Create a percent of overcrowded and non-overcrowded households within each crosstab group.
+    # Round to three digits.
     pct = round(oc.hh/hh, digits = 3)
   )
 
-BG.OC.HHLDER_RACE.PPB <- OC.HHLDER_RACE.PPB |> 
+# Creates a bar graph of using the dataframe created above.
+BG.OC.HHLDER_RACE.PPB <- OC.HHLDER_RACE.PPB |>
+  # Filter for the overcrowded aggregates.
   filter(overcrowded.ppb == "1") |> 
   ggplot(aes(x = HHLDER.RACE.Grp, y = pct)) +
   geom_bar(stat = "identity", color = "black", fill = "steelblue") +
   geom_text(aes(label = scales::percent(pct)), vjust = -0.3, size = 3.5) +
-  #scale_x_discrete(limits = rev) +
   scale_y_continuous(label = scales::percent) +
   labs(
     title = "Non-White Households are More Often Overcrowded",
@@ -1141,8 +1153,10 @@ BG.OC.HHLDER_RACE.PPB <- OC.HHLDER_RACE.PPB |>
     axis.text.y = element_text(color = "black")
   )
 
+# Print the bar graph created above.
 BG.OC.HHLDER_RACE.PPB
 
+# Save an image of the bar graph created above.
 ggsave(
   filename = "BG.OC.HHLDER_RACE.PPB.jpeg",
   plot = BG.OC.HHLDER_RACE.PPB,
@@ -1160,12 +1174,14 @@ ggsave(
 #===============================================================================
 # 5.4 Overcrowding by Income Groups at the State-Level
 OC.NONRELATE.PPB <- pums |> 
+  # Filters dataframe to households (non-group quarters units) and householders.
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
     NONRELATIVE.flag,
     overcrowded.ppb
   ) |> 
   summarise(
+    # Calculates the number of overcrowded and non-overcrowded households in each crosstab group.
     oc.hh = sum(WGTP)
   ) |> 
   ungroup() |> 
@@ -1173,6 +1189,7 @@ OC.NONRELATE.PPB <- pums |>
     NONRELATIVE.flag
   ) |> 
   mutate(
+    # Calculates the total number of households in the crosstab group (OC + Non-OC)
     hh = sum(oc.hh)
   ) |> 
   ungroup() |>
@@ -1184,6 +1201,7 @@ OC.NONRELATE.PPB <- pums |>
 
 # Creates a bar graph of using the dataframe created above.
 BG.OC.NONRELATE.PPB <- OC.NONRELATE.PPB |> 
+  # Filter for the overcrowded aggregates.
   filter(overcrowded.ppb == "1") |> 
   ggplot(aes(x = NONRELATIVE.flag, y = pct)) +
   geom_bar(stat = "identity", color = "black", fill = "steelblue") +

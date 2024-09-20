@@ -6,7 +6,7 @@ editor: visual
 
 # 0.0 Setup - Define helper functions, set knitr path, load necessary packages, set muni data keys
 
-#0.1 - Set knitr path + root for inputs
+# 0.1 - Set knitr path + root for inputs
 
 ```{r}
 
@@ -20,8 +20,8 @@ hdshp <- 'acs1721'
 #Use when Rproject is open
 #root <- '../../../../Data/Working/Regional_Control_Totals/'
 
-# base <- "K:/DataServices/Projects/"
-base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
+base <- "K:/DataServices/Projects/"
+#base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
 
 #General K drive filepath
 root <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/")
@@ -233,7 +233,6 @@ gq.clean <- function(df){
 # 1.0 - Processing UMDI population data
 
 ```{r}
-
 # Set Years of Interest
 yrs <- c(2020,2030,2035,2040,2045,2050)
 
@@ -577,6 +576,35 @@ hhpop.20 <- pa.values |>
 #Remove dataframes no longer needed in the process.
 rm(pa.labels, pa.values, pa.vars)
 gc()
+```
+# 2.3.Sidebar Pull Household Type Data from 2020 Decennial Census
+
+```{r}
+#===============================================================================
+#Decennial 2020 Population in Households
+#Creates a list of sex by age population variables to use in the API query
+hhtyp.vars <- dec.vars(vars.dec20, "HOUSEHOLD SIZE BY HOUSEHOLD TYPE BY PRESENCE OF OWN CHILDREN")
+
+#Assigns appropriate labels to the Decennial Census variables
+hhtyp.labels <- vars.dec20 |> 
+      filter(name %in% hhtyp.vars) |> #Filter the data to the specific concept
+      select(name, label) |>  #Select relevant variables
+      filter(name %in% c("PCT2_002N", "PCT2_009N", "PCT2_013N", "PCT2_016N",
+                         "PCT2_018N", "PCT2_0019N", "PCT2_008N", "PCT2_012N",
+                         "PCT2_015N")) #Filtering for the relevant HH type categories
+
+#Queries the Census API via {tidycensus} to retrieve data about the population
+#in households
+hhtyp.values <- decennial_call(hhtyp.vars, geog = "county subdivision", 2020)
+
+#Clean the 2020 Household Population data
+hhtyp.20 <- hhtyp.values |> 
+  filter(GEOID %in% GEOID.20$GEOID) |> 
+  inner_join(
+    hhtyp.labels,
+    by = c("variable"="name")
+  )
+
 ```
 
 # 2.3 Join 2010 and 2020 Population and Household Population data

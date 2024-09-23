@@ -13,14 +13,14 @@ editor: visual
 # Set Scenario Names
 
 #Population Scenario
-scen <- 'Baseline'
+scen <- 'Scenario_1'
 #Headship rate Scenario
 hdshp <- 'acs1721'
 
 #Use when Rproject is open
 #root <- '../../../../Data/Working/Regional_Control_Totals/'
 
-base <- "K:/DataServices/Projects/"
+base <- "K:/DataServices/Projects/Current_Projects/"
 #base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
 
 #General K drive filepath
@@ -577,6 +577,7 @@ hhpop.20 <- pa.values |>
 rm(pa.labels, pa.values, pa.vars)
 gc()
 ```
+
 # 2.3.Sidebar Pull Household Type Data from 2020 Decennial Census
 
 ```{r}
@@ -908,7 +909,7 @@ rm(gq.labels, gq.values, gq.vars)
 gc()
 ```
 
-# 3.3 Calculate the percentage of the group quarters population living in Univerity/College Housing
+# 3.3 Calculate the percentage of the group quarters population living in University/College Housing
 
 ```{r}
 #Join the total GQ Population and University/College GQ Population
@@ -1334,9 +1335,9 @@ gc()
 
 ```
 
-#6.0 - Load and process PUMS Data 
+# 6.0 - Load and process PUMS Data
 
-#6.1 - Create PUMA to RPA/MPO Crosswalk for 2010 PUMAs
+# 6.1 - Create PUMA to RPA/MPO Crosswalk for 2010 PUMAs
 
 ```{r}
 
@@ -1386,14 +1387,17 @@ variable_list <- c("PUMA", "TYPEHUGQ", "SEX", "AGEP", "RAC1P", "HISP", "ESR",
                    "WKHP", "SCHL", "WAGP", "SEMP", "ADJINC", "SPORDER", "HINCP", "TEN")
 #SEMP bottom coding has changed from $1 to $4 like WAGP
 
+
 #Query {tidycensus} for 2017-2021 5-Year PUMS data
 pums_data <- get_pums(
     state = "MA",
     survey = "acs5",
     year = yr,
     variables = variable_list
-  ) |> 
+  ) |>
   #Join RPA to PUMA crosswalk to PUMS data
+  # pums_data <- fread(paste0(root,'pums2021_basic.csv')) |>
+  #   mutate(PUMA = sprintf("%05d", PUMA)) |> 
   left_join(
     xw,
     by = c('PUMA')
@@ -1838,30 +1842,147 @@ lfpr <- pums_data |>
 
 # 7.4 Create Household Projections by RPA and Household Type
 
+# 7.4.0 Create 2020 control total targets using Decennial Census 2020 DHC
+
+```{r}
+#===============================================================================
+
+# For 2020 we don't want to use PUMS headship rates to determine households and characteristics, as this would produce total households that does not match 2020 decennial census. 
+# However, we can't prdouce exactly the same headship rates by age of householder and household type from Census as we can from PUMS. We therefore create a slightly different control total structure for 2020 that will use different target tables for the reweighter.
+
+munis <- mapcdatakeys::all_muni_data_keys %>% select(muni_id,cosub_cn20,rpa_acr,mpo) %>% rename(GEOID=cosub_cn20) %>% mutate(GEOID=as.character(GEOID))
+
+vars2020 <- load_variables(2020, 'dhc') %>% setDT()
+age.vars <- vars2020[concept=="HOUSEHOLD TYPE BY AGE OF HOUSEHOLDER" & !label %in% c(" !!Total:!!Nonfamily households:", " !!Total:!!Family households:", " !!Total:"),sun(name)]
+age.labels <- vars2020[concept=='HOUSEHOLD TYPE BY AGE OF HOUSEHOLDER',.(name,label)]
+age.labels[,label:=gsub(' ','_',label)][,label:=gsub('_!!Total:!!Family_households:!!','',label)][,label:=gsub('_!!Total:!!Nonfamily_households:!!','',label)]
+setnames(age.labels,'name','variable')
+
+age20 <-
+  decennial_call(age.vars, 'county subdivision', 2020) %>% 
+  right_join(age.labels, by='variable') %>% 
+  group_by(GEOID,label) %>% 
+  summarise(hh = sum(value)) %>% 
+  ungroup %>% 
+  mutate(ageCAT4 = case_when(
+    label == 'Householder_15_to_24_years' ~ 'x == 1',
+    label == "Householder_25_to_34_years" ~ 'x == 2',
+    label == "Householder_35_to_44_years" ~ 'x == 3',
+    label == "Householder_45_to_54_years" ~ 'x == 4',
+    label == "Householder_55_to_59_years" ~ 'x == 5',
+    label == "Householder_60_to_64_years" ~ 'x == 6',
+    label == "Householder_65_to_74_years" ~ 'x == 7',
+    label == "Householder_75_to_84_years" ~ 'x == 8',
+    label == "Householder_85_years_and_over" ~ 'x == 9'
+    )
+  ) %>% 
+  filter(!is.na(ageCAT4)) %>% 
+  right_join(munis,by = 'GEOID')
+
+# Summarize to RPA using MAPC 101 towns
+age20_mapc101 <- age20 %>% 
+  group_by(rpa_acr,ageCAT4) %>% 
+  summarise(TARGET = sum(hh))
+
+# Summarize to MPO using MAPC 97 towns
+age20_mapc97 <- age20 %>% 
+  group_by(mpo,ageCAT4) %>% 
+  summarise(TARGET = sum(hh))
+
+type.vars <- vars2020[concept=="HOUSEHOLD SIZE BY HOUSEHOLD TYPE BY PRESENCE OF OWN CHILDREN",sun(name)]
+type.labels <- vars2020[concept=="HOUSEHOLD SIZE BY HOUSEHOLD TYPE BY PRESENCE OF OWN CHILDREN",.(name,label)]
+type.labels[,label:=gsub(' ','_',label)][,label:=gsub('_!!','',label)]
+setnames(type.labels,'name','variable')
+
+type20 <-
+  decennial_call(type.vars, 'county subdivision', 2020) %>% 
+  right_join(type.labels, by='variable') %>% 
+  group_by(GEOID,label) %>% 
+  summarise(hh = sum(value)) %>% 
+  ungroup %>% 
+  mutate(type = case_when(
+    label %in% c(
+      'Total:!!2-or-more-person_household:!!Family_households:!!Married_couple_family:!!With_own_children_under_18_years',
+      'Total:!!2-or-more-person_household:!!Family_households:!!Other_family:!!Male_householder,_no_spouse_present:!!With_own_children_under_18_years',
+      'Total:!!2-or-more-person_household:!!Family_households:!!Other_family:!!Female_householder,_no_spouse_present:!!With_own_children_under_18_years'
+      ) ~ 'x == 1',
+    label %in% c(
+      'Total:!!2-or-more-person_household:!!Family_households:!!Married_couple_family:!!No_own_children_under_18_years',
+      'Total:!!2-or-more-person_household:!!Family_households:!!Other_family:!!Female_householder,_no_spouse_present:!!No_own_children_under_18_years',
+      'Total:!!2-or-more-person_household:!!Family_households:!!Other_family:!!Male_householder,_no_spouse_present:!!No_own_children_under_18_years',
+      'Total:!!2-or-more-person_household:!!Nonfamily_households:'
+      ) ~ 'x == 3', 
+    label == 'Total:!!1-person_household:' ~ 'x == 5')
+    ) %>% 
+  filter(!is.na(type)) %>%
+  right_join(munis,by = 'GEOID') %>% 
+  setDT()
+
+# Summarize to RPA using MAPC 101 towns
+type20_mapc101 <- type20 %>% 
+  group_by(rpa_acr,type) %>% 
+  summarise(TARGET = sum(hh))
+
+# Summarize to MPO using MAPC 97 towns
+type20_mapc97 <- type20 %>% 
+  group_by(mpo,type) %>% 
+  summarise(TARGET = sum(hh))
+
+size.vars <- vars2020[concept=="HOUSEHOLD TYPE BY HOUSEHOLD SIZE" & !label %in% c(" !!Total:!!Nonfamily households:", " !!Total:!!Family households:", " !!Total:"),sun(name)]
+size.labels <- vars2020[concept=="HOUSEHOLD TYPE BY HOUSEHOLD SIZE",.(name,label)]
+size.labels[,label:=gsub(' ','_',label)][,label:=gsub('_!!Total:!!Family_households:!!','',label)][,label:=gsub('_!!Total:!!Nonfamily_households:!!','',label)]
+setnames(size.labels,'name','variable')
+
+
+size20 <-
+  decennial_call(size.vars, 'county subdivision', 2020) %>% 
+  right_join(size.labels, by='variable') %>% 
+  group_by(GEOID,label) %>% 
+  summarise(hh = sum(value)) %>% 
+  ungroup %>% 
+  mutate(size = case_when(
+    label == '1-person_household' ~ 'x == 1',
+    label == '2-person_household' ~ 'x == 2',
+    label == '3-person_household' ~ 'x == 3',
+    label == '4-person_household' ~ 'x == 4',
+    label == '5-person_household' ~ 'x == 5',
+    label == '6-person_household' ~ 'x == 6',
+    label == '7-or-more-person_household' ~ 'x == 7'),
+    ) %>% 
+  filter(!is.na(size)) %>%
+  right_join(munis,by = 'GEOID') %>% 
+  setDT()
+
+# Summarize to RPA using MAPC 101 towns
+size20_mapc101 <- size20 %>% 
+  group_by(rpa_acr,size) %>% 
+  summarise(TARGET = sum(hh))
+
+# Summarize to MPO using MAPC 97 towns
+size20_mapc97 <- size20 %>% 
+  group_by(mpo,size) %>% 
+  summarise(TARGET = sum(hh))
+
+```
+
 # 7.4.1 For MAPC101
 
 # 7.4.2 For MAPC97
 
 ```{r}
-#===============================================================================
 # 7.4.1 - Household Projections by RPA (MAPC101) and Household Type
-proj.hh.MAPC101_by.rpa.hhtype <- left_join(
-  umdi.pop.MAPC101,
-  headship_rates,
-  by = c("rpa_acr", "ageCAT6")
-) |> 
-  rowwise() |> 
+proj.hh.MAPC101_by.rpa.hhtype <- left_join(umdi.pop.MAPC101,
+                                           headship_rates,
+                                           by = c("rpa_acr", "ageCAT6")) |>
+  rowwise() |>
   #Calculating the number of households in each RPA and age catergory
-  mutate(
-    hh = round(hhpop*freq, 0),
-  ) |> 
+  mutate(hh = round(hhpop * freq, 0),) |>
   # Filter the headships rates foe the three household type categories
   # 1. hhderchild = households with a child under 18
   # 3. hhdernochild = Multiple adult, no children households
   # 5. single = Single householder
-  filter(
-    var == "hhderchild" | var == "hhdernochild" | var == "single"
-  ) |> 
+  filter(var == "hhderchild" |
+           var == "hhdernochild" | var == "single") |>
   mutate(
     HHtype = case_when(
       var == "hhderchild" ~ "x == 1",
@@ -1888,10 +2009,9 @@ proj.hh.MAPC101_by.rpa.hhtype <- left_join(
       ageCAT6 == 17 ~ "x == 17",
       ageCAT6 == 18 ~ "x == 18"
     )
-  ) |> 
-  select(-c(pop, hhpop, freq, var, ageCAT6)) |> 
+  ) |>
+  select(-c(pop, hhpop, freq, var, ageCAT6)) |>
   relocate(rpa_acr, AgeCat, HHtype, hh, year)
-  
 
 #===============================================================================
 # 7.4.2 Household Projections by MPO (MAPC97) and Household Type
@@ -1946,13 +2066,20 @@ proj.hh.MAPC97_by.mpo.hhtype <- left_join(
 
 # 7.5 Create Reweighter Template Files for Household Projections by RPA/MPO and Household Type
 
+**!! - Still need to create age_baseline, type_baseline, and size_baseline dataframes from PUMS data to match format of 2020 target tables**
+
+------------------------------------------------------------------------
+
 ```{r}
 
 #===============================================================================
 # Iterate through household projections to create reweighter targeting files for households
 # MAPC101/RPA Versions
 for (i in yrs) {
+  
   #Filter the projected households dataframe by year i
+  
+  if (i != 2020){
   tmp <- proj.hh.MAPC101_by.rpa.hhtype |> 
     filter(
       year == i
@@ -1982,10 +2109,52 @@ for (i in yrs) {
   #Record when the process has finished for each year in the year list.
   print(paste0("MAPC101 Reweighter Target File for ",i," has been generated."))
 }
+  if (i==2020){
+  #Join the projected households by year to the baseline file.
+  target.age <- left_join(
+    age_baseline,
+    age20_mapc101,
+    by = c("RPA" = "rpa_acr", "ageCAT4")) |> 
+    dplyr::rename(
+      TARGET = hh
+    )
+  
+  target.type <- left_join(
+    type_baseline,
+    type20_mapc101,
+    by = c("RPA" = "rpa_acr", "type")) |> 
+    dplyr::rename(
+      TARGET = hh
+    )
+  
+  target.size <- left_join(
+    size_baseline,
+    size20_mapc101,
+    by = c("RPA" = "rpa_acr", "size")) |> 
+    dplyr::rename(
+      TARGET = hh
+    )
+  #Write the reweighter targeting file to .csv by year i.
+  fwrite(
+    target.age,
+    paste0(output_path, "age.targetfile.MAPC101.",scen,'.hdshp',hdshp,'.y',i,".csv"))
+    fwrite(
+    target.type,
+    paste0(output_path, "type.targetfile.MAPC101.",scen,'.hdshp',hdshp,'.y',i,".csv"))
+    fwrite(
+    target.size,
+    paste0(output_path, "size.targetfile.MAPC101.",scen,'.hdshp',hdshp,'.y',i,".csv"))
+
+  #Record when the process has finished for each year in the year list.
+  print(paste0("MAPC101 Reweighter Target Files for ",i," has been generated."))
+}
+  }
 
 #===============================================================================
 # MAPC97/MPO Versions
 for (i in yrs) {
+  
+  if(i!=2020){
   #Filter the projected households dataframe by year i
   tmp <- proj.hh.MAPC97_by.mpo.hhtype |> 
     filter(
@@ -2015,6 +2184,46 @@ for (i in yrs) {
   
   #Record when the process has finished for each year in the year list.
   print(paste0("MAPC97 Reweighter Target File for ",i," has been generated."))
+}
+  if (i==2020){
+  #Join the projected households by year to the baseline file.
+  target.age <- left_join(
+    age_baseline,
+    age20_mapc97,
+    by = c("RPA" = "mpo", "ageCAT4")) |> 
+    dplyr::rename(
+      TARGET = hh
+    )
+  
+  target.type <- left_join(
+    type_baseline,
+    type20_mapc97,
+    by = c("RPA" = "mpo", "type")) |> 
+    dplyr::rename(
+      TARGET = hh
+    )
+  
+  target.size <- left_join(
+    size_baseline,
+    size20_mapc97,
+    by = c("RPA" = "mpo", "size")) |> 
+    dplyr::rename(
+      TARGET = hh
+    )
+  #Write the reweighter targeting file to .csv by year i.
+  fwrite(
+    target.age,
+    paste0(output_path, "age.targetfile.MAPC97.",scen,'.hdshp',hdshp,'.y',i,".csv"))
+    fwrite(
+    target.type,
+    paste0(output_path, "type.targetfile.MAPC97.",scen,'.hdshp',hdshp,'.y',i,".csv"))
+    fwrite(
+    target.size,
+    paste0(output_path, "size.targetfile.MAPC97.",scen,'.hdshp',hdshp,'.y',i,".csv"))
+
+  #Record when the process has finished for each year in the year list.
+  print(paste0("MAPC97 Reweighter Target Files for ",i," has been generated."))
+  }
 }
 
 ```

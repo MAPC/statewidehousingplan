@@ -139,7 +139,21 @@ pums_data <- get_pums(
     #Generate five-year age groupings to match UMDI population projections data.
     AgeCat = cut(AGEP, breaks = c(-Inf, seq(4, 84, 5), Inf), labels = 1:18),
     # Consolidated Age Category
-    # NOTE: Levels are (0) 0-14; (4) 15 to 19; (5) 20 to 24; (6) 25 to 34; (7) 35 to 44; (8) 45 to 54; (9) 55 to 64 (10) 65 to 74 (11) 75+
+    # NOTE: Levels are (0) 0-14; (4) 15 to 19; (5) 20 to 24; (6) 25 to 34; (7) 35 to 44; (8) 45 to 54; (9) 55 to 64 (10) 65 to 74 (11) 75+mutate(ageCAT4 = case_when(
+    
+    # ageCAT4 is the 2020 decennial census age breaks for age of householder - used for 2020 base year control total reweighter targets
+    ageCAT4 = case_when(
+      AGEP %in% 15:24 ~ 1,
+      AGEP %in% 25:34 ~ 2,
+      AGEP %in% 35:44 ~ 3,
+      AGEP %in% 45:54 ~ 4,
+      AGEP %in% 55:59 ~ 5,
+      AGEP %in% 60:64 ~ 6,
+      AGEP %in% 65:74 ~ 7,
+      AGEP %in% 75:84 ~ 8,
+      AGEP >= 85 ~ 9
+    ), 
+
     PAGEC2 = cut(
       AGEP,
       breaks = c(-Inf, 14, 19, 24, 34, 44, 54, 64, 74, 79, 84, Inf),
@@ -218,7 +232,15 @@ pums_data <- get_pums(
       Person_Total == 3 ~ 3,
       Person_Total >= 4 ~ 4
     ),
-    
+    size = case_when(
+      Person_Total == 1 ~ 1,
+      Person_Total == 2 ~ 2,
+      Person_Total == 3 ~ 3,
+      Person_Total == 4 ~ 4,
+      Person_Total == 5 ~ 5,
+      Person_Total == 6 ~ 6,
+      Person_Total >= 7 ~ 7,
+    ),
     # Categorizing worker categories (0) no workers, (1) one worker, (2) two workers, (3) three or more workers
     WRKHH = case_when(
       Worker_Total == 0 ~ 0,
@@ -356,7 +378,9 @@ for (yr in c(2020,2030,2035,2040,2045,2050)){
 }
 
 ```
+
 # 7 - QC reweighter Outputs
+
 ```{r}
 
 

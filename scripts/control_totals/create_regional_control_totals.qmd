@@ -1409,6 +1409,18 @@ pums_data <- get_pums(
     # NOTE: Levels are (0) 0-14; (4) 15 to 19; (5) 20 to 24; (6) 25 to 34; (7) 35 to 44; (8) 45 to 54; (9) 55 to 64 (10) 65 to 74 (11) 75+
     PAGEC2 = cut(AGEP, breaks = c(-Inf, 14, 19, 24, 34, 44, 54, 64, 74, 79, 84, Inf),
                  labels = c(0, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13)),
+    # ageCAT4 is the 2020 decennial census age breaks for age of householder - used for 2020 base year control total reweighter targets
+    ageCAT4 = case_when(
+      AGEP %in% 15:24 ~ 1,
+      AGEP %in% 25:34 ~ 2,
+      AGEP %in% 35:44 ~ 3,
+      AGEP %in% 45:54 ~ 4,
+      AGEP %in% 55:59 ~ 5,
+      AGEP %in% 60:64 ~ 6,
+      AGEP %in% 65:74 ~ 7,
+      AGEP %in% 75:84 ~ 8,
+      AGEP >= 85 ~ 9
+    ), 
     # Categorizing employment status
     empstat = case_when(
       ESR == "b" ~ "Under 16 not eligible for work",
@@ -1490,7 +1502,15 @@ pums_data <- get_pums(
       Person_Total == 3 ~ 3,
       Person_Total >= 4 ~ 4
     ),
-    
+    size = case_when(
+      Person_Total == 1 ~ 1,
+      Person_Total == 2 ~ 2,
+      Person_Total == 3 ~ 3,
+      Person_Total == 4 ~ 4,
+      Person_Total == 5 ~ 5,
+      Person_Total == 6 ~ 6,
+      Person_Total >= 7 ~ 7,
+    ),
     # Categorizing worker categories (0) no workers, (1) one worker, (2) two workers, (3) three or more workers
     WRKHH = case_when(
       Worker_Total == 0 ~ 0,
@@ -1706,6 +1726,122 @@ lf_baseline <- pums_data |>
     INTER = BASELINE
   )
 
+# 7.1.4 For 2020 - baseline file of households by age of householder
+
+age_baseline <- pums_data |> 
+  # Filter for households and the head of household for each SERIALNO
+  filter(TYPEHUGQ == "1" & SPORDER == "1") |>   
+  mutate(
+    ageCAT4 = as.factor(ageCAT4),
+    RPA = as.factor(rpa_acr),
+  ) |>  
+  group_by(
+    RPA,
+  ) |> 
+  # Sum the household weights in the PUMS data.
+  dplyr::count(
+    var = ageCAT4,
+    wt = WGTP
+  ) |> 
+  ungroup() |>  
+  dplyr::rename(
+    ageCAT4 = var,
+    BASELINE = n
+  ) |> 
+  #Rename variables to match the reweigher input requirements.
+  mutate(
+    ageCAT4 = case_when(
+      ageCAT4 == 1 ~ "x == 1",
+      ageCAT4 == 2 ~ "x == 2",
+      ageCAT4 == 3 ~ "x == 3",
+      ageCAT4 == 4 ~ "x == 4",
+      ageCAT4 == 5 ~ "x == 5",
+      ageCAT4 == 6 ~ "x == 6",
+      ageCAT4 == 7 ~ "x == 7",
+      ageCAT4 == 8 ~ "x == 8",
+      ageCAT4 == 9 ~ "x == 9"
+    ),
+    INTER = BASELINE
+  )
+
+# 7.1.5 For 2020 - baseline file of household size
+
+size_baseline <- pums_data |> 
+  # Filter for households and the head of household for each SERIALNO
+  filter(TYPEHUGQ == "1" & SPORDER == "1") |>   
+  mutate(
+    size = as.factor(size),
+    RPA = as.factor(rpa_acr),
+  ) |>  
+  group_by(
+    RPA,
+  ) |> 
+  # Sum the household weights in the PUMS data.
+  dplyr::count(
+    var = size,
+    wt = WGTP
+  ) |> 
+  ungroup() |>  
+  dplyr::rename(
+    size = var,
+    BASELINE = n
+  ) |> 
+  #Rename variables to match the reweigher input requirements.
+  mutate(
+    size = case_when(
+      size == 1 ~ "x == 1",
+      size == 2 ~ "x == 2",
+      size == 3 ~ "x == 3",
+      size == 4 ~ "x == 4",
+      size == 5 ~ "x == 5",
+      size == 6 ~ "x == 6",
+      size == 7 ~ "x == 7"
+    ),
+    INTER = BASELINE
+  )
+
+# 7.1.6 - Baseline of only Households by Household Type for 2020
+type_baseline <- pums_data |> 
+  # Filter for households and the head of household for each SERIALNO
+  filter(TYPEHUGQ == "1" & SPORDER == "1") |>   
+  mutate(
+    RPA = as.factor(rpa_acr),
+    HHtype = as.factor(HHtype)
+  ) |>  
+  group_by(
+    RPA
+  ) |> 
+  # Sum the household weights in the PUMS data.
+  dplyr::count(
+    var = HHtype,
+    wt = WGTP
+  ) |> 
+  ungroup() |>  
+  dplyr::rename(
+    HHtype = var,
+    BASELINE = n
+  ) |> 
+  #Rename variables to match the reweigher input requirements.
+  mutate(
+    HHtype = case_when(
+      HHtype == 1 ~ "hhderchild",
+      HHtype == 2 ~ "nothhderchild",
+      HHtype == 3 ~ "hhdernochild",
+      HHtype == 4 ~ "nothhdernochild",
+      HHtype == 5 ~ "single"
+    ),
+    INTER = BASELINE
+  ) |> 
+  #Filter for household types with householders (what we need for the reweighter!)
+  dplyr::filter(HHtype == "hhderchild" | HHtype == "hhdernochild" | HHtype == "single") |>  
+  mutate(
+    HHtype = case_when(
+      HHtype == "hhderchild" ~ "x == 1",
+      HHtype == "hhdernochild" ~ "x == 3",
+      HHtype == "single" ~ "x == 5"
+    )
+  )
+
 #Output the baseline file for Household Population aggregations
 write.csv(
   hhpop_baseline,
@@ -1727,7 +1863,26 @@ write.csv(
   row.names = FALSE
 )
 
+#Output the baseline file for 2020 Age of Householder aggregations
+write.csv(
+  age_baseline,
+  paste0(output_path,"age_baseline.",hdshp,".csv"), 
+  row.names = FALSE
+)
 
+#Output the baseline file for 2020 Household size aggregations
+write.csv(
+  size_baseline,
+  paste0(output_path,"size_baseline.",hdshp,".csv"), 
+  row.names = FALSE
+)
+
+#Output the baseline file for 2020 Household type only aggregations
+write.csv(
+  type_baseline,
+  paste0(output_path,"type_baseline.",hdshp,".csv"), 
+  row.names = FALSE
+)
 ```
 
 # 7.2 Create Headship rates from this PUMS vintage
@@ -2122,7 +2277,7 @@ for (i in yrs) {
   target.type <- left_join(
     type_baseline,
     type20_mapc101,
-    by = c("RPA" = "rpa_acr", "type")) |> 
+    by = c("RPA" = "rpa_acr", "HHtype")) |> 
     dplyr::rename(
       TARGET = hh
     )
@@ -2198,7 +2353,7 @@ for (i in yrs) {
   target.type <- left_join(
     type_baseline,
     type20_mapc97,
-    by = c("RPA" = "mpo", "type")) |> 
+    by = c("RPA" = "mpo", "HHtype")) |> 
     dplyr::rename(
       TARGET = hh
     )

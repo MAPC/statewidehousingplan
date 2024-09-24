@@ -448,7 +448,8 @@ for (yr in c(2020)) {
   }
 }
 
-for (yr in c(2030, 2035, 2040, 2045, 2050)) {
+for (yr in c(2035, 2040, 2045, 2050)) {
+#for (yr in c(2030, 2035, 2040, 2045, 2050)) {
   #for (mid in c('MAPC')) {
   for (mid in mpos) {
     # Set config
@@ -460,13 +461,14 @@ for (yr in c(2030, 2035, 2040, 2045, 2050)) {
     outpath <- paste0(workpath, scen, '/Output_Files/', mid, '/')
     template <- fread(paste0(workpath, 'Templates/AgeHHder_HHtype_template.csv')) %>%
       select(-BASELINE, -TARGET)
-    target <- fread(paste0(ctrltotal.path, 'hhtype.', reb, '.targetfile.', yr, '.csv')) %>%
+    target <- fread(paste0(ctrltotal.path, 'hhtype.targetfile.', reb, '.', scen,'.hdshp.',hdshp,'.y',yr, '.csv')) %>%
       filter(RPA == mid) %>%
       select(-RPA) %>% right_join(template, by = c('AgeCat', 'HHtype')) %>% setDT()
     target[AgeCat %in% c('x == 1', 'x == 2', 'x == 3'), `:=`(BASELINE =
                                                                0,
                                                              INTER = 0,
                                                              TARGET = 0)]
+    target[is.na(BASELINE),`:=`(BASELINE =0,INTER = 0,TARGET = 0)]
     setorder(target, AgeCat, HHtype)
     fwrite(target, paste0(inpath, '/AgeHHder_HHtype.csv'))
     message(paste0(mid, ' targets set'))

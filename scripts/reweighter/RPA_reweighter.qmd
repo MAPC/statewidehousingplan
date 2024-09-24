@@ -369,31 +369,69 @@ reb <- 'MAPC101'
 
 # Different configuration for 2020 base year
 
-for (yr in c(2020)){
+for (yr in c(2020)) {
   #for (mid in c('MAPC')) {
   for (mid in mpos) {
-    
     # Set config files
     inpath <- paste0(workpath, scen, '/Input_Files/', mid, '/')
-  
-    source('read_config_RPA_2020baseyear.R')
-    message(paste0(mid,' configuration complete'))
-  
+    
+    source(here('scripts/reweighter/read_config_RPA_2020baseyear.R'))
+    message(paste0(mid, ' configuration complete'))
+    
     outpath <- paste0(workpath, scen, '/Output_Files/', mid, '/')
-    age.target <- fread(paste0(ctrltotal.path,'age.targetfile.',reb,'.',scen,'.hdshp.',hdshp,'.y',yr,'.csv')) %>%
-                      filter(RPA==mid) %>% 
+    age.target <- fread(
+      paste0(
+        ctrltotal.path,
+        'age.targetfile.',
+        reb,
+        '.',
+        scen,
+        '.hdshp.',
+        hdshp,
+        '.y',
+        yr,
+        '.csv'
+      )
+    ) %>%
+      filter(RPA == mid) %>%
       select(-RPA) %>% setDT()
     setorder(age.target, ageCAT4)
     fwrite(age.target, paste0(inpath, '/age.csv'))
     
-    size.target <- fread(paste0(ctrltotal.path,'size.targetfile.',reb,'.',scen,'.hdshp.',hdshp,'.y',yr,'.csv')) %>%
-                      filter(RPA==mid) %>% 
+    size.target <- fread(
+      paste0(
+        ctrltotal.path,
+        'size.targetfile.',
+        reb,
+        '.',
+        scen,
+        '.hdshp.',
+        hdshp,
+        '.y',
+        yr,
+        '.csv'
+      )
+    ) %>%
+      filter(RPA == mid) %>%
       select(-RPA) %>% setDT()
     setorder(size.target, size)
     fwrite(size.target, paste0(inpath, '/size.csv'))
     
-  type.target <- fread(paste0(ctrltotal.path,'type.targetfile.',reb,'.',scen,'.hdshp.',hdshp,'.y',yr,'.csv')) %>%
-                      filter(RPA==mid) %>% 
+    type.target <- fread(
+      paste0(
+        ctrltotal.path,
+        'type.targetfile.',
+        reb,
+        '.',
+        scen,
+        '.hdshp.',
+        hdshp,
+        '.y',
+        yr,
+        '.csv'
+      )
+    ) %>%
+      filter(RPA == mid) %>%
       select(-RPA) %>% setDT()
     setorder(type.target, HHtype)
     fwrite(type.target, paste0(inpath, '/type.csv'))
@@ -402,44 +440,44 @@ for (yr in c(2020)){
     
     pums <- fread(paste0(inpath, 'PUMS', vintage, '_', mid, '.csv'))
     
-    source('Manage_Scenario_RPA.R')
+    source(here('scripts/reweighter/Manage_Scenario_RPA.R'))
     message(paste0(mid, ' reweighter complete'))
     
     mess <- data.table(txt = paste0(mid, ' reweighter complete'))
-    fwrite(mess,
-           paste0(outpath, mid, '_', yr, '_complete.txt'))
+    fwrite(mess, paste0(outpath, mid, '_', yr, '_complete.txt'))
   }
 }
 
-for (yr in c(2030,2035,2040,2045,2050)){
+for (yr in c(2030, 2035, 2040, 2045, 2050)) {
   #for (mid in c('MAPC')) {
   for (mid in mpos) {
-    
     # Set config
     inpath <- paste0(workpath, scen, '/Input_Files/', mid, '/')
-    source('read_config_RPA.R')
-    message(paste0(mid,' configuration complete'))
-
+    source(here('scripts/reweighter/read_config_RPA.R'))
+    message(paste0(mid, ' configuration complete'))
+    
     # Set targets
     outpath <- paste0(workpath, scen, '/Output_Files/', mid, '/')
-    template <- fread(paste0(workpath,'Templates/AgeHHder_HHtype_template.csv')) %>% 
-      select(-BASELINE,-TARGET)
-    target <- fread(paste0(ctrltotal.path,'hhtype.',reb,'.targetfile.',yr,'.csv')) %>%
-                      filter(RPA==mid) %>% 
-      select(-RPA) %>% right_join(template, by= c('AgeCat','HHtype')) %>% setDT()
-    target[AgeCat %in% c('x == 1', 'x == 2', 'x == 3'), `:=`(BASELINE=0,INTER=0,TARGET=0)]
-    setorder(target,AgeCat,HHtype)
+    template <- fread(paste0(workpath, 'Templates/AgeHHder_HHtype_template.csv')) %>%
+      select(-BASELINE, -TARGET)
+    target <- fread(paste0(ctrltotal.path, 'hhtype.', reb, '.targetfile.', yr, '.csv')) %>%
+      filter(RPA == mid) %>%
+      select(-RPA) %>% right_join(template, by = c('AgeCat', 'HHtype')) %>% setDT()
+    target[AgeCat %in% c('x == 1', 'x == 2', 'x == 3'), `:=`(BASELINE =
+                                                               0,
+                                                             INTER = 0,
+                                                             TARGET = 0)]
+    setorder(target, AgeCat, HHtype)
     fwrite(target, paste0(inpath, '/AgeHHder_HHtype.csv'))
     message(paste0(mid, ' targets set'))
     
     pums <- fread(paste0(inpath, 'PUMS', vintage, '_', mid, '.csv'))
     
-    source('Manage_Scenario_RPA.R')
+    source(here('scripts/reweighter/Manage_Scenario_RPA.R'))
     message(paste0(mid, ' reweighter complete'))
     
     mess <- data.table(txt = paste0(mid, ' reweighter complete'))
-    fwrite(mess,
-           paste0(outpath, mid, '_', yr, '_complete.txt'))
+    fwrite(mess, paste0(outpath, mid, '_', yr, '_complete.txt'))
   }
 }
 

@@ -370,8 +370,8 @@ reb <- 'MAPC101'
 # Different configuration for 2020 base year
 
 for (yr in c(2020)){
-  for (mid in c('MAPC')) {
-  # for (mid in mpos) {
+  #for (mid in c('MAPC')) {
+  for (mid in mpos) {
     
     # Set config files
     inpath <- paste0(workpath, scen, '/Input_Files/', mid, '/')
@@ -412,8 +412,8 @@ for (yr in c(2020)){
 }
 
 for (yr in c(2030,2035,2040,2045,2050)){
-  for (mid in c('MAPC')) {
-  # for (mid in mpos) {
+  #for (mid in c('MAPC')) {
+  for (mid in mpos) {
     
     # Set config
     inpath <- paste0(workpath, scen, '/Input_Files/', mid, '/')

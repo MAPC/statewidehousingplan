@@ -20,8 +20,8 @@ hdshp <- 'acs1721'
 #Use when Rproject is open
 #root <- '../../../../Data/Working/Regional_Control_Totals/'
 
-base <- "K:/DataServices/Projects/Current_Projects/"
-#base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
+# base <- "K:/DataServices/Projects/Current_Projects/"
+base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
 
 #General K drive filepath
 root <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/")
@@ -2076,12 +2076,14 @@ type20 <-
 # Summarize to RPA using MAPC 101 towns
 type20_mapc101 <- type20 %>% 
   group_by(rpa_acr,type) %>% 
-  summarise(TARGET = sum(hh))
+  summarise(TARGET = sum(hh)) %>% 
+  rename(HHtype=type)
 
 # Summarize to MPO using MAPC 97 towns
 type20_mapc97 <- type20 %>% 
   group_by(mpo,type) %>% 
-  summarise(TARGET = sum(hh))
+  summarise(TARGET = sum(hh)) %>% 
+  rename(HHtype=type)
 
 size.vars <- vars2020[concept=="HOUSEHOLD TYPE BY HOUSEHOLD SIZE" & !label %in% c(" !!Total:!!Nonfamily households:", " !!Total:!!Family households:", " !!Total:"),sun(name)]
 size.labels <- vars2020[concept=="HOUSEHOLD TYPE BY HOUSEHOLD SIZE",.(name,label)]
@@ -2254,7 +2256,7 @@ for (i in yrs) {
   #Write the reweighter targeting file to .csv by year i.
   write.csv(
     target.file,
-    paste0(output_path, "hhtype.targetfile.MAPC101.",scen,'.hdshp',hdshp,'.y',i,".csv"),
+    paste0(output_path, "hhtype.targetfile.MAPC101.",scen,'.hdshp.',hdshp,'.y',i,".csv"),
     row.names = FALSE
   )
   
@@ -2269,36 +2271,28 @@ for (i in yrs) {
   target.age <- left_join(
     age_baseline,
     age20_mapc101,
-    by = c("RPA" = "rpa_acr", "ageCAT4")) |> 
-    dplyr::rename(
-      TARGET = hh
-    )
+    by = c("RPA" = "rpa_acr", "ageCAT4"))
   
   target.type <- left_join(
     type_baseline,
     type20_mapc101,
-    by = c("RPA" = "rpa_acr", "HHtype")) |> 
-    dplyr::rename(
-      TARGET = hh
-    )
+    by = c("RPA" = "rpa_acr", "HHtype"))
   
   target.size <- left_join(
     size_baseline,
     size20_mapc101,
-    by = c("RPA" = "rpa_acr", "size")) |> 
-    dplyr::rename(
-      TARGET = hh
-    )
+    by = c("RPA" = "rpa_acr", "size"))
+  
   #Write the reweighter targeting file to .csv by year i.
   fwrite(
     target.age,
-    paste0(output_path, "age.targetfile.MAPC101.",scen,'.hdshp',hdshp,'.y',i,".csv"))
+    paste0(output_path, "age.targetfile.MAPC101.",scen,'.hdshp.',hdshp,'.y',i,".csv"))
     fwrite(
     target.type,
-    paste0(output_path, "type.targetfile.MAPC101.",scen,'.hdshp',hdshp,'.y',i,".csv"))
+    paste0(output_path, "type.targetfile.MAPC101.",scen,'.hdshp.',hdshp,'.y',i,".csv"))
     fwrite(
     target.size,
-    paste0(output_path, "size.targetfile.MAPC101.",scen,'.hdshp',hdshp,'.y',i,".csv"))
+    paste0(output_path, "size.targetfile.MAPC101.",scen,'.hdshp.',hdshp,'.y',i,".csv"))
 
   #Record when the process has finished for each year in the year list.
   print(paste0("MAPC101 Reweighter Target Files for ",i," has been generated."))
@@ -2330,7 +2324,7 @@ for (i in yrs) {
   #Write the reweighter targeting file to .csv by year i.
   write.csv(
     target.file,
-    paste0(output_path, "hhtype.targetfile.MAPC97.",scen,'.hdshp',hdshp,'.y',i,".csv"),
+    paste0(output_path, "hhtype.targetfile.MAPC97.",scen,'.hdshp.',hdshp,'.y',i,".csv"),
     row.names = FALSE
   )
   
@@ -2345,36 +2339,28 @@ for (i in yrs) {
   target.age <- left_join(
     age_baseline,
     age20_mapc97,
-    by = c("RPA" = "mpo", "ageCAT4")) |> 
-    dplyr::rename(
-      TARGET = hh
-    )
+    by = c("RPA" = "mpo", "ageCAT4"))
   
   target.type <- left_join(
     type_baseline,
     type20_mapc97,
-    by = c("RPA" = "mpo", "HHtype")) |> 
-    dplyr::rename(
-      TARGET = hh
-    )
+    by = c("RPA" = "mpo", "HHtype"))
   
   target.size <- left_join(
     size_baseline,
     size20_mapc97,
-    by = c("RPA" = "mpo", "size")) |> 
-    dplyr::rename(
-      TARGET = hh
-    )
+    by = c("RPA" = "mpo", "size"))
+  
   #Write the reweighter targeting file to .csv by year i.
   fwrite(
     target.age,
-    paste0(output_path, "age.targetfile.MAPC97.",scen,'.hdshp',hdshp,'.y',i,".csv"))
+    paste0(output_path, "age.targetfile.MAPC97.",scen,'.hdshp.',hdshp,'.y',i,".csv"))
     fwrite(
     target.type,
-    paste0(output_path, "type.targetfile.MAPC97.",scen,'.hdshp',hdshp,'.y',i,".csv"))
+    paste0(output_path, "type.targetfile.MAPC97.",scen,'.hdshp.',hdshp,'.y',i,".csv"))
     fwrite(
     target.size,
-    paste0(output_path, "size.targetfile.MAPC97.",scen,'.hdshp',hdshp,'.y',i,".csv"))
+    paste0(output_path, "size.targetfile.MAPC97.",scen,'.hdshp.',hdshp,'.y',i,".csv"))
 
   #Record when the process has finished for each year in the year list.
   print(paste0("MAPC97 Reweighter Target Files for ",i," has been generated."))

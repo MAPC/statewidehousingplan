@@ -14,7 +14,7 @@ This set of scripts runs the household reweighter to produce reweighted PUMS dat
 ```{r, setup, include=FALSE}
 
 # Set Scenario name
-scen <- 'Baseline'
+scen <- 'Scenario_1'
 
 # Set ACS / PUMS vintage
 vintage <-  2021
@@ -286,6 +286,9 @@ fwrite(pums_data,
        paste0(workpath, '/PUMS_data/PUMS', vintage, '_formatted.csv'))
 
 # Make Input folders for reweighter by RPA
+ dir.create(paste0(workpath, scen, '/Input_Files/'), showWarnings = F)
+ dir.create(paste0(workpath, scen, '/Output_Files/'), showWarnings = F)
+ 
 for (m in unique(xw$rpa_acr)) {
   dir.create(paste0(workpath, scen, '/Input_Files/', m), showWarnings = F)
   dir.create(paste0(workpath, scen, '/Output_Files/', m), showWarnings = F)
@@ -313,14 +316,21 @@ for (m in unique(swm.pumas$rpa_acr)) {
 ```{r}
 
 # Template config file
-infile <- paste0(workpath, 'Templates/reweighting_config_2021.json')
+infile1 <- paste0(workpath, 'Templates/reweighting_config_2021.json')
+
+infile2 <- paste0(workpath, 'Templates/reweighting_config_2020baseyear.json')
 
 for (m in mpos){
-  outfile <- paste0(workpath, scen, '/Input_Files/', m, '/reweighting_config_2021_', m, '.json')
-  cfig = readLines(infile)
-  cfig = gsub('PUMS2021', paste0('PUMS2021_', m), cfig)
-  writeLines(cfig, outfile)
+  outfile1 <- paste0(workpath, scen, '/Input_Files/', m, '/reweighting_config_2021_', m, '.json')
+  outfile2 <- paste0(workpath, scen, '/Input_Files/', m, '/reweighting_config_2020baseyear_', m, '.json')
+  cfig1 = readLines(infile1)
+  cfig1 = gsub('PUMS2021', paste0('PUMS2021_', m), cfig1)
+  writeLines(cfig1, outfile1)
+  cfig2 = readLines(infile2)
+  cfig2 = gsub('PUMS2021', paste0('PUMS2021_', m), cfig2)
+  writeLines(cfig2, outfile2)
 }
+
 ```
 
 # 5 - Configure Reweighter for each RPA
@@ -342,19 +352,75 @@ for (mid in 'MAPC'){
 
 ```{r}
 
-  # Set Targets and run reweighter loop
+#
+
+source('algo_hh.R')
+
+# Set Targets and run reweighter loop
+
+# Select headship rate scenario
+
+hdshp <- 'acs1721'
 
 # Choose whether to run using the MAPC 101 or the MAPC 97 towns
 
 reb <- 'MAPC101'
 #reb <- 'MAPC97'
 
-# for (yr in c(2040)){
-for (yr in c(2020,2030,2035,2040,2045,2050)){
+# Different configuration for 2020 base year
+
+for (yr in c(2020)){
   for (mid in c('MAPC')) {
   # for (mid in mpos) {
     
+    # Set config files
     inpath <- paste0(workpath, scen, '/Input_Files/', mid, '/')
+  
+    source('read_config_RPA_2020baseyear.R')
+    message(paste0(mid,' configuration complete'))
+  
+    outpath <- paste0(workpath, scen, '/Output_Files/', mid, '/')
+    age.target <- fread(paste0(ctrltotal.path,'age.targetfile.',reb,'.',scen,'.hdshp.',hdshp,'.y',yr,'.csv')) %>%
+                      filter(RPA==mid) %>% 
+      select(-RPA) %>% setDT()
+    setorder(age.target, ageCAT4)
+    fwrite(age.target, paste0(inpath, '/age.csv'))
+    
+    size.target <- fread(paste0(ctrltotal.path,'size.targetfile.',reb,'.',scen,'.hdshp.',hdshp,'.y',yr,'.csv')) %>%
+                      filter(RPA==mid) %>% 
+      select(-RPA) %>% setDT()
+    setorder(size.target, size)
+    fwrite(size.target, paste0(inpath, '/size.csv'))
+    
+  type.target <- fread(paste0(ctrltotal.path,'type.targetfile.',reb,'.',scen,'.hdshp.',hdshp,'.y',yr,'.csv')) %>%
+                      filter(RPA==mid) %>% 
+      select(-RPA) %>% setDT()
+    setorder(type.target, HHtype)
+    fwrite(type.target, paste0(inpath, '/type.csv'))
+    
+    message(paste0(mid, ' targets set'))
+    
+    pums <- fread(paste0(inpath, 'PUMS', vintage, '_', mid, '.csv'))
+    
+    source('Manage_Scenario_RPA.R')
+    message(paste0(mid, ' reweighter complete'))
+    
+    mess <- data.table(txt = paste0(mid, ' reweighter complete'))
+    fwrite(mess,
+           paste0(outpath, mid, '_', yr, '_complete.txt'))
+  }
+}
+
+for (yr in c(2030,2035,2040,2045,2050)){
+  for (mid in c('MAPC')) {
+  # for (mid in mpos) {
+    
+    # Set config
+    inpath <- paste0(workpath, scen, '/Input_Files/', mid, '/')
+    source('read_config_RPA.R')
+    message(paste0(mid,' configuration complete'))
+
+    # Set targets
     outpath <- paste0(workpath, scen, '/Output_Files/', mid, '/')
     template <- fread(paste0(workpath,'Templates/AgeHHder_HHtype_template.csv')) %>% 
       select(-BASELINE,-TARGET)

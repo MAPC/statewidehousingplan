@@ -1371,15 +1371,16 @@ cc <- data.table(rpa_acr = c('MVC', 'NPEDC'),
 #Append MVC and NPEDC data to PUMA to RPA/MPO crosswalk
 xw <- rbind(xw, cc)
 
+fwrite(xw, paste0(rwt_path, 'PUMS_data/PUMA10_RPA_crosswalk.csv'))
+
 #Remove intermediate dataframes.
-# rm(matrix, col_names, mvc, npedc)
 gc()
 
 ```
 
 # 6.2 - ACS 5-year PUMS data + categorize data
 
-NOTE: We use the CPI deflator time series to adjust PUMS income to 2013 dollars (for UrbanSim). ACS uses the Consumer Price Index for All Urban Consumers Retroactive Series (R-CPI-U-RS, details here: <https://www.bls.gov/cpi/research-series/r-cpi-u-rs-home.htm>) as opposed to the ASEC/Census which uses C-CPI-U (details here: *<https://www.census.gov/topics/income-poverty/income/guidance/current-vs-constant-dollars.html>)*
+NOTE: We use the CPI deflator time series to adjust PUMS income to 2013 dollars (for UrbanSim). ACS uses the Consumer Price Index for All Urban Consumers Retroactive Series (R-CPI-U-RS, details here: <https://www.bls.gov/cpi/research-series/r-cpi-u-rs-home.htm>) as opposed to the ASEC/Census which uses C-CPI-U (details here: [*https://www.census.gov/topics/income-poverty/income/guidance/current-vs-constant-dollars.html*](https://www.census.gov/topics/income-poverty/income/guidance/current-vs-constant-dollars.html){.uri}*)*
 
 ```{r}
 #Set PUMS vintage final year for {tidycensus} API query.

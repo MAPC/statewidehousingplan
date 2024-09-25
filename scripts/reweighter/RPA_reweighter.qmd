@@ -66,13 +66,15 @@ mpos <- unlist(c(mapcdatakeys::all_muni_data_keys %>% select(mpo) %>% unique()))
 
 Formatted PUMS data is created by the *create_regional_control_totals.qmd* in section 6.2
 
-```{pums_data <- fread(paste0(workpath, '/PUMS_data/PUMS', vintage, '_formatted.csv'))}
+```{r}
+
+pums_data <- fread(paste0(workpath, '/PUMS_data/PUMS', vintage, '_formatted.csv'))
 
 # Make Input folders for reweighter by RPA
  dir.create(paste0(workpath, scen, '/Input_Files/'), showWarnings = F)
  dir.create(paste0(workpath, scen, '/Output_Files/'), showWarnings = F)
  
-for (m in unique(xw$rpa_acr)) {
+for (m in mpos) {
   dir.create(paste0(workpath, scen, '/Input_Files/', m), showWarnings = F)
   dir.create(paste0(workpath, scen, '/Output_Files/', m), showWarnings = F)
 }

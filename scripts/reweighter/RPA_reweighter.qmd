@@ -44,7 +44,8 @@ pacman::p_load(
   janitor,
   readxl,
   rjson,
-  data.table
+  data.table,
+  here
 )
 
 ##get rid of scientific notation
@@ -91,9 +92,8 @@ message(paste0('MAPC 101 PUMS export complete'))
 
 # SWM join PUMA and export subsets
 for (m in unique(swm.pumas$rpa_acr)) {
-  mp <- swm.pumas[rpa_acr == m]
   pums_data %>%
-    filter(rpa_acr %in% mp$PUMA) %>%
+    filter(rpa_acr==m) %>%
     fwrite(paste0(workpath, scen, '/Input_Files/', m, '/PUMS', vintage, '_', m, '.csv'))
   message(paste0(m, ' PUMS export complete'))
 }

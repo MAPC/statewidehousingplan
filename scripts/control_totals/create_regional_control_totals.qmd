@@ -29,6 +29,10 @@ root <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regi
 #Set output filepath
 output_path <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/", scen, "/")
 
+# Reweighter files path
+
+rwt_path <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Reweighter/")
+
 #Set knitr path
 knitr::opts_knit$set(root.dir = root)
 ```
@@ -1373,26 +1377,33 @@ gc()
 
 ```
 
-# 6.2 - Query 2017-2021 ACS 5-year PUMS data + categorize data
+# 6.2 - ACS 5-year PUMS data + categorize data
+
+NOTE: We use the CPI deflator time series to adjust PUMS income to 2013 dollars (for UrbanSim). ACS uses the Consumer Price Index for All Urban Consumers Retroactive Series (R-CPI-U-RS, details here: <https://www.bls.gov/cpi/research-series/r-cpi-u-rs-home.htm>) as opposed to the ASEC/Census which uses C-CPI-U (details here: *<https://www.census.gov/topics/income-poverty/income/guidance/current-vs-constant-dollars.html>)*
 
 ```{r}
 #Set PUMS vintage final year for {tidycensus} API query.
-yr <- 2021
+vintage <- 2021
 
-#List of all 2017-2021 ACS PUMS Variables
-allvars <- pums_variables |>  filter(year==yr) |>  select(var_code) |>  unique()
+#List of all ACS PUMS Variables
+allvars <- pums_variables |>  filter(year==vintage) |>  select(var_code) |>  unique()
 
 #List of PUMS variables
 variable_list <- c("PUMA", "TYPEHUGQ", "SEX", "AGEP", "RAC1P", "HISP", "ESR",
                    "WKHP", "SCHL", "WAGP", "SEMP", "ADJINC", "SPORDER", "HINCP", "TEN")
 #SEMP bottom coding has changed from $1 to $4 like WAGP
 
+# Load CPI time series for deflating income variable
+
+cpi <- fread(paste0(root,'cpi_deflators_by_year.csv'))
+cpi.deflator <- cpi[year==2013, index] / cpi[year==vintage, index]
+
 
 #Query {tidycensus} for 2017-2021 5-Year PUMS data
 pums_data <- get_pums(
     state = "MA",
     survey = "acs5",
-    year = yr,
+    year = vintage,
     variables = variable_list
   ) |>
   #Join RPA to PUMA crosswalk to PUMS data
@@ -1534,8 +1545,22 @@ pums_data <- get_pums(
       Child_Total == 0 & Person_Total > 1 & HHder != 99 ~ 3,
       Child_Total == 0 & Person_Total > 1 & HHder == 99 ~ 4,
       Person_Total == 1 & HHder != 99 ~ 5
-    )
-  )
+    ),
+      
+    # Adjust income first to the highest year in the 5-year vintage using included adjustment field (ADJINC) and then deflate back to 2013, using the cpi deflator calculated in the previous code chunk
+
+    ADJINC = as.numeric(ADJINC),
+    HINCP = round((as.numeric(HINCP) * ADJINC) * cpi.deflator, 0),
+    WAGPALLC_US =
+      cut(
+        HINCP,
+        breaks = c(-Inf, 35000, 75000, 125000, 225000, Inf),
+        labels = c("1", "2", "3", "4", "5")
+      )
+  ) %>%
+  setDT()
+
+pums_data[, NP := max(SPORDER), .(SERIALNO, rpa_acr)]
 
 #Check to make sure all RPAs have been included in the PUMA-RPA Crosswalk.
 if (length(unique(pums_data$rpa_acr)) != 13){
@@ -1544,7 +1569,11 @@ if (length(unique(pums_data$rpa_acr)) != 13){
   print("Proceed!")
 }
 
-fwrite(pums_data, paste0(output_path, 'PUMS',yr,'_formatted.csv'))
+fwrite(pums_data, paste0(output_path, 'PUMS', vintage, '_formatted.csv'))
+
+fwrite(pums_data,
+       paste0(rwt_path, '/PUMS_data/PUMS', vintage, '_formatted.csv'))
+
 ```
 
 # 7.0 Generating reweighter target files

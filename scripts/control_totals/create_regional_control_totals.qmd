@@ -1487,7 +1487,7 @@ pums_data <- get_pums(
   ) |> 
   
   #Generating Household Variables
-  group_by(SERIALNO) |> 
+  group_by(SERIALNO,rpa_acr) |> 
   mutate(
     Worker_Total = sum(worker),
     Person_Total = sum(person),
@@ -1544,6 +1544,7 @@ if (length(unique(pums_data$rpa_acr)) != 13){
   print("Proceed!")
 }
 
+fwrite(pums_data, paste0(output_path, 'PUMS',yr,'_formatted.csv'))
 ```
 
 # 7.0 Generating reweighter target files
@@ -2003,7 +2004,9 @@ lfpr <- pums_data |>
 #===============================================================================
 
 # For 2020 we don't want to use PUMS headship rates to determine households and characteristics, as this would produce total households that does not match 2020 decennial census. 
-# However, we can't prdouce exactly the same headship rates by age of householder and household type from Census as we can from PUMS. We therefore create a slightly different control total structure for 2020 that will use different target tables for the reweighter.
+
+# However, we can't prdouce exactly the same headship rates by age of householder and household type from Census as we can from PUMS.
+# We therefore create a slightly different control total structure for 2020 that will use different target tables for the reweighter.
 
 munis <- mapcdatakeys::all_muni_data_keys %>% select(muni_id,cosub_cn20,rpa_acr,mpo) %>% rename(GEOID=cosub_cn20) %>% mutate(GEOID=as.character(GEOID))
 

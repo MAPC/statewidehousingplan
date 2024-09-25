@@ -1434,6 +1434,7 @@ pums_data <- get_pums(
       AGEP %in% 75:84 ~ 8,
       AGEP >= 85 ~ 9
     ), 
+    AgeCat = ageCAT6,
     # Categorizing employment status
     empstat = case_when(
       ESR == "b" ~ "Under 16 not eligible for work",

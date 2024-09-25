@@ -221,11 +221,9 @@ for (yr in c(2020)) {
     fwrite(mess, paste0(outpath, mid, '_', yr, '_complete.txt'))
   }
 }
-
-for (yr in c(2035, 2040, 2045, 2050)) {
-#for (yr in c(2030, 2035, 2040, 2045, 2050)) {
-  #for (mid in c('MAPC')) {
+for (yr in c(2030, 2035, 2040, 2045, 2050)) {
   for (mid in mpos) {
+    
     # Set config
     inpath <- paste0(workpath, scen, '/Input_Files/', mid, '/')
     source(here('scripts/reweighter/read_config_RPA.R'))

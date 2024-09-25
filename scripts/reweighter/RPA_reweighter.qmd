@@ -333,22 +333,7 @@ for (m in mpos){
 
 ```
 
-# 5 - Configure Reweighter for each RPA
-
-```{r}
-
-source('algo_hh.R')
-
-# Configuration Loop
-for (mid in 'MAPC'){
-  inpath <- paste0(workpath, scen, '/Input_Files/', mid, '/')
-  
-  source('read_config_RPA.R')
-  message(paste0(mid,' configuration complete'))
-}
-```
-
-# 6 - Set targets and run reweighter
+# 5 - Configure, set targets and run reweighter for each RPA and year
 
 ```{r}
 
@@ -485,7 +470,7 @@ for (yr in c(2035, 2040, 2045, 2050)) {
 
 ```
 
-# 7 - QC reweighter Outputs
+# 6 - QC reweighter Outputs
 
 ```{r}
 
@@ -493,18 +478,18 @@ for (yr in c(2035, 2040, 2045, 2050)) {
 reb <- 'MAPC101'
 #reb <- 'MAPC97'
 
+comp.dt <- data.table()
 
-for (yr in c(2040)) {
-  # for (yr in c(2020,2030,2035,2040,2045,2050)){
-  for (mid in c('MAPC')) {
-    # for (mid in mpos) {
+for (yr in 2020){
+  for (mid in mpos) {
+    inpath <- paste0(workpath, scen, '/Input_Files/', mid, '/')
     outpath <- paste0(workpath, scen, '/Output_Files/', mid, '/')
     # Summarize total households by mpo from target inputs to reweighter
-    target <- fread(paste0(ctrltotal.path,'hhtype.',reb,'.targetfile.',yr,'.csv')) %>%
-                      filter(RPA==mid) %>% setDT()
-      
+    target <- fread(paste0(ctrltotal.path, 'type.targetfile.', reb, '.', scen, '.hdshp.', hdshp, '.y', yr, '.csv')) %>%
+      filter(RPA == mid) %>% setDT()
+    
     tsum <- target[, lapply(.SD, sum), RPA, .SDcols = 'TARGET']
-    tsum[, TARGET := round(TARGET)]
+    tsum[, TARGET := round(TARGET)][,year:=yr]
     setnames(tsum, 'RPA', 'mpo')
     setkey(tsum, mpo)
     
@@ -513,20 +498,57 @@ for (yr in c(2040)) {
     setkey(pums, SERIALNO, SPORDER)
     
     rw <- data.table()
-    # for (m in mpos) {
-    for (m in mid) {
-      x <- fread(paste0(
-        outpath,
-        '/weights_final_',scen,'_',m,'_',yr,'.csv'
-      )) %>% select(SERIALNO, SPORDER, new_WGTP) %>% mutate(mpo = m) %>% setDT()
-      setkey(x, SERIALNO, SPORDER)
-      xp <- pums[x]
-      xsum <- xp[SPORDER == 1, lapply(.SD, sum), .(mpo), .SDcols = c('WGTP','new_WGTP')]
-      xsum[, rw_HH := round(new_WGTP)][, pums_hh := round(WGTP)]
-      rw <- rbind(rw, xsum)
-    }
+    
+    x <- fread(paste0(outpath, '/weights_final_', scen, '_', mid, '_', yr, '.csv')) %>% select(SERIALNO, SPORDER, new_WGTP) %>% mutate(mpo = mid) %>% setDT()
+    setkey(x, SERIALNO, SPORDER)
+    xp <- pums[x]
+    xsum <- xp[SPORDER == 1, lapply(.SD, sum), .(mpo), .SDcols = c('WGTP', 'new_WGTP')]
+    xsum[, rw_HH := round(new_WGTP)][, pums_baseline_hh := round(WGTP)]
+    rw <- rbind(rw, xsum)
     setkey(rw, mpo)
+    comp <- tsum[rw]
+    comp.out <- comp[,.(year,mpo,pums_baseline_hh, TARGET,rw_HH)]
+    comp.out[,diff:= TARGET - rw_HH]
+    fwrite(comp.out,paste0(outpath,'reweighter_QC_', scen, '_', mid, '_', hdshp, '_', yr,' .csv'))
+    comp.dt <- rbind(comp.dt,comp.out)
   }
 }
+for (yr in c(2030,2035,2040,2045,2050)){
+  for (mid in mpos) {
+    inpath <- paste0(workpath, scen, '/Input_Files/', mid, '/')
+    outpath <- paste0(workpath, scen, '/Output_Files/', mid, '/')
+    # Summarize total households by mpo from target inputs to reweighter
+    target <- fread(paste0(ctrltotal.path, 'hhtype.targetfile.', reb, '.', scen, '.hdshp.', hdshp, '.y', yr, '.csv')) %>%
+      filter(RPA == mid) %>% setDT()
+    
+    tsum <- target[, lapply(.SD, sum), RPA, .SDcols = 'TARGET']
+    tsum[, TARGET := round(TARGET)][,year:=yr]
+    setnames(tsum, 'RPA', 'mpo')
+    setkey(tsum, mpo)
+    
+    # Calculate total households from the reweighter outputs
+    pums <- fread(paste0(inpath, 'PUMS', vintage, '_', mid, '.csv'))
+    setkey(pums, SERIALNO, SPORDER)
+    
+    rw <- data.table()
+    
+    x <- fread(paste0(outpath, '/weights_final_', scen, '_', mid, '_', yr, '.csv')) %>% select(SERIALNO, SPORDER, new_WGTP) %>% mutate(mpo = mid) %>% setDT()
+    setkey(x, SERIALNO, SPORDER)
+    xp <- pums[x]
+    xsum <- xp[SPORDER == 1, lapply(.SD, sum), .(mpo), .SDcols = c('WGTP', 'new_WGTP')]
+    xsum[, rw_HH := round(new_WGTP)][, pums_baseline_hh := round(WGTP)]
+    rw <- rbind(rw, xsum)
+    setkey(rw, mpo)
+    comp <- tsum[rw]
+    comp.out <- comp[,.(year,mpo,pums_baseline_hh, TARGET,rw_HH)]
+    comp.out[,diff:= TARGET - rw_HH]
+    fwrite(comp.out,paste0(outpath,'reweighter_QC_', scen, '_', mid, '_', hdshp, '_', yr,' .csv'))
+    comp.dt <- rbind(comp.dt,comp.out)
+  }
+}
+
+fwrite(comp.dt,paste0(workpath, scen, '/Output_Files/reweighter_QC_all_RPAs_all_years_', hdshp, '_', hdshp,' .csv'))
+
+comp.dt[abs(diff)>1]
 
 ```

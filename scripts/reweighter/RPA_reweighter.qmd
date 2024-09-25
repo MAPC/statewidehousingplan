@@ -69,15 +69,20 @@ Formatted PUMS data is created by the *create_regional_control_totals.qmd* in se
 ```{r}
 
 pums_data <- fread(paste0(workpath, '/PUMS_data/PUMS', vintage, '_formatted.csv'))
+xw <- fread(paste0(workpath, '/PUMS_data/PUMS', vintage, '_formatted.csv'))
 
 # Make Input folders for reweighter by RPA
- dir.create(paste0(workpath, scen, '/Input_Files/'), showWarnings = F)
- dir.create(paste0(workpath, scen, '/Output_Files/'), showWarnings = F)
+dir.create(paste0(workpath, scen, '/Input_Files/'), showWarnings = F)
+dir.create(paste0(workpath, scen, '/Output_Files/'), showWarnings = F)
  
 for (m in mpos) {
   dir.create(paste0(workpath, scen, '/Input_Files/', m), showWarnings = F)
   dir.create(paste0(workpath, scen, '/Output_Files/', m), showWarnings = F)
 }
+
+mapc.pumas <- xw[rpa_acr == 'MAPC', unique(PUMA)]
+swm.pumas <- xw[rpa_acr != 'MAPC', .(rpa_acr, PUMA)] %>% 
+  unique()
 
 # MAPC 101 subset
 fwrite(pums_data[PUMA %in% mapc.pumas],
@@ -88,8 +93,7 @@ message(paste0('MAPC 101 PUMS export complete'))
 for (m in unique(swm.pumas$rpa_acr)) {
   mp <- swm.pumas[rpa_acr == m]
   pums_data %>%
-    left_join(mp, by = 'PUMA') %>%
-    filter(rpa_acr == m) %>%
+    filter(rpa_acr %in% mp$PUMA) %>%
     fwrite(paste0(workpath, scen, '/Input_Files/', m, '/PUMS', vintage, '_', m, '.csv'))
   message(paste0(m, ' PUMS export complete'))
 }

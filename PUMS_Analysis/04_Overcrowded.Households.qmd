@@ -152,8 +152,6 @@ pums <- pums |>
     SFN = as.numeric(SFN),
     # Replace the NA for non-subfamily members with 0.
     SFN = replace_na(SFN, 0),
-    # Create a column which denotes the presence of subfamilies for a household.
-    SFN.num = max(SFN),
     # Adjust Household income (HINCP) to constant dollars (USD2021)
     HINCP_adj = HINCP*ADJINC,
     # Household Income Groupings consistent with UrbanSim groupings
@@ -176,11 +174,17 @@ pums <- pums |>
       HHLDRRAC1P == "9" ~ "Two or More Races Alone",
       .default = "Unknown"
     ),
-    #Householder Latinx Groupings
+    # Householder Latinx Groupings
     HHDER.HISP.Grp = case_when(
       HHLDRHISP == "01" ~ "Non-Hispanic",
       HHLDRHISP != "01" ~ "Hispanic",
       .default = "Unknown"
+    ),
+    # Create a flag for whether a person in a household is a roommate or housemate
+    roommate.flag = case_when(
+      RELSHIPP == 34 ~ 1,
+      RELSHIPP != 34 ~ 0,
+      .default = 0
     )
   ) |>
   # Creating household flags for person variables.
@@ -189,7 +193,11 @@ pums <- pums |>
     # Create a variable which is the sum of the number of children in a household
     child_count = sum(child),
     # Create a variable which is the sum of the number of non-relatives in the household
-    NONRELATIVE_count = sum(RELSHIPP_TYPE)
+    NONRELATIVE_count = sum(RELSHIPP_TYPE),
+    # Create a variable that is the sum of roommates in a household
+    roommate_count = sum(roommate.flag),
+    # Create a column which denotes the presence of subfamilies for a household.
+    SFN.num = sum(SFN),
   ) |> 
   ungroup() |> 
   mutate(
@@ -204,7 +212,58 @@ pums <- pums |>
    SFN.flag = if_else(SFN.num > 0, 1, 0),
    # Create a household flag for presence of a non-relative in the household.
    NONRELATIVE.flag = if_else(NONRELATIVE_count > 0, 1, 0)
+  ) |> 
+  mutate(
+    # Non-multigenerational household WITH at least one (1) subfamily WITH at least one (1) child
+    subset.flag.1 = case_when(
+      MULTG == 1 & SFN.flag > 0 & child_flag > 0 ~ 1,
+      .default = 0
+    ),
+    # Multigenerational households WITH at least one (1) subfamily WITH at least one (1) child AND is overcrowded
+    subset.flag.2 = case_when(
+      MULTG == 2 & SFN.flag > 0 & child_flag > 0 & overcrowded.ppb == "1" ~ 1,
+      .default = 0
+    ),
+    # Households with at least one (1) subfamily WITH at least one (1) child AND is overcrowded
+    subset.flag.3 = case_when(
+      SFN.flag > 0 & child_flag > 0 & overcrowded.ppb == "1" ~ 1,
+      .default = 0
+    )
   )
+
+# Create a subset of the PUMS file for 
+pums.subset.1 <- pums |> 
+  filter(subset.flag.1 == 1)
+
+# And write to the subset as a .csv
+write.csv(
+  pums.subset.1,
+  paste0(output_path, "pums.HRAdj.subset.1.csv"),
+  row.names = FALSE
+)
+
+# Create a subset of the PUMS file for
+pums.subset.2 <- pums |> 
+  filter(subset.flag.2 == 1)
+
+# And write to the subset as a .csv
+write.csv(
+  pums.subset.2,
+  paste0(output_path, "pums.HRAdj.subset.2.csv"),
+  row.names = FALSE
+)
+
+# Create a subset of the PUMS file for
+pums.subset.3 <- pums |> 
+  filter(subset.flag.3 == 1)
+
+# And write to the subset as a .csv
+write.csv(
+  pums.subset.3,
+  paste0(output_path, "pums.HRAdj.subset.3.csv"),
+  row.names = FALSE
+)
+
 ```
 
 # 1.0 PUMS Analysis

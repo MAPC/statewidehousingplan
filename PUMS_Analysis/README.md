@@ -5,7 +5,7 @@
 
 __1. analysis scripts__  filenames from 00_ to 08_ contain the topics being studied.
 
-__2. data acquisition__ pums_import_var_list.R
+__2. data acquisition__ pums_2021_import_var_list.R  (updated with new vars)
 
 __3 source:__ PUMS API 
 

@@ -50,7 +50,13 @@ hvars <- pums_vars_2021 %>%
 
 # person vars
 var.list  <- c('AGEP',
+               'DDRS', # added 16 Sep
                'DIS',
+               'DEAR', # added 16 Sep
+               'DEYE', # added 16 Sep
+               'DOUT', # added 16 Sep
+               'DPHY', # added 16 Sep
+               'DREM', # added 16 Sep
                'ENG',
                'HISP',
                'LANX',
@@ -125,7 +131,7 @@ pums_vars <- rbind(ck_vars,ck_vars_b)
 
 # 2.2  save full Data Dictionary of var.list
 
-write_csv(pums_vars, paste0(exp_path,"/pums_vars_DataDict.csv"))
+write_csv(pums_vars, paste0(exp_path,"/pums_vars_DataDict_20241002.csv"))
 
 # 2.3 trim to uniq variables (not split to hous / person, or sub-sets)
 # # count uniq vars
@@ -134,7 +140,7 @@ uniq_vars <- pums_vars %>%
   arrange(var_code)
   
 # 2.4  save version of uniq variables in var.list
-write_csv(uniq_vars, paste0(exp_path,"/pums_vars_uniq.csv"))
+write_csv(uniq_vars, paste0(exp_path,"/pums_vars_uniq_20241002.csv"))
 
 ######
 # 3 retrieve data function
@@ -237,6 +243,12 @@ pums_2021_reorder <- pums_2021 [c('uniq_obs',
                                  'SCHL',
                                  'SEX',
                                  'YOEP',
+                                 'DDRS', # added 16 Sep
+                                 'DEAR', # added 16 Sep
+                                 'DEYE', # added 16 Sep
+                                 'DOUT', # added 16 Sep
+                                 'DPHY', # added 16 Sep
+                                 'DREM', # added 16 Sep
                                  'DIS',
                                  'RAC1P',
                                  'HISP',
@@ -313,6 +325,9 @@ still_missing <- join_list_2 %>%
   filter(is.na(newcol_ck)) %>% 
   select(-c(newcol_ck))
 
+# 10.4  add additional new cols 16 Sep
+hh_pums_2021_newcols[c("DDRS", "DEAR", "DEYE", "DOUT", "DPHY", "DREM")] <- NA
+
 
 # 11 reorder the hh df
 hh_pums_2021_reorder <- hh_pums_2021_newcols [c('uniq_obs',
@@ -372,6 +387,12 @@ hh_pums_2021_reorder <- hh_pums_2021_newcols [c('uniq_obs',
                                   'SCHL',
                                   'SEX',
                                   'YOEP',
+                                  'DDRS', # added 16 Sep
+                                  'DEAR', # added 16 Sep
+                                  'DEYE', # added 16 Sep
+                                  'DOUT', # added 16 Sep
+                                  'DPHY', # added 16 Sep
+                                  'DREM', # added 16 Sep
                                   'DIS',
                                   'RAC1P',
                                   'HISP',
@@ -688,13 +709,13 @@ disab_hh_list <- c('uniq_obs',
                    'HHLDRRAC1P',
                    'HHLDRHISP',
                    'HISP',
-                   'DIS', 
-                   'DDRS',
-                   'DEAR',
-                   'DEYE',
-                   'DOUT',
-                   'DPHY',
-                   'DREM')
+                   'DDRS', # added 16 Sep
+                   'DEAR', # added 16 Sep
+                   'DEYE', # added 16 Sep
+                   'DOUT', # added 16 Sep
+                   'DPHY', # added 16 Sep
+                   'DREM', # added 16 Sep  
+                   'DIS')
 
 # 19.2 export PERSONS W DISABILITY HOUSEHOLDS
 write_csv(pums_disab_hh_2021, paste0(exp_path,"/pums_disab_hh_2021_V_",dateAsText,".csv"))

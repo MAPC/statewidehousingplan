@@ -660,7 +660,7 @@ write_csv(immig_hh_vars, paste0(exp_path,"/pums_immig_hh_variables_2021.csv"))
 # 19 SUBSET PERSONS W DISABILITY HOUSEHOLDS (columns from Sheet 1)
 
 pums_disab_hh_2021 <- pums_all_2021 %>% 
-  select(c(uniq_obs, RT, SERIALNO, PUMA, ST, ADJHSG, WGTP, NP, TYPEHUGQ,NPP, PARTNER, PSF, PWGTP, AGEP, RELSHIPP, SEX, RAC1P, OC, SFN, SFR, ADJINC, HHLDRAGEP, HHLDRRAC1P, HHLDRHISP, HISP, DIS))
+  select(c(uniq_obs, RT, SERIALNO, PUMA, ST, ADJHSG, WGTP, NP, TYPEHUGQ,NPP, PARTNER, PSF, PWGTP, AGEP, RELSHIPP, SEX, RAC1P, OC, SFN, SFR, ADJINC, HHLDRAGEP, HHLDRRAC1P, HHLDRHISP, HISP, DIS, DDRS, DEAR, DEYE, DOUT, DPHY, DREM))
 
 # 19.1 export VARS for PERSONS W DISABILITY HOUSEHOLDS
 disab_hh_list <- c('uniq_obs',
@@ -688,7 +688,13 @@ disab_hh_list <- c('uniq_obs',
                    'HHLDRRAC1P',
                    'HHLDRHISP',
                    'HISP',
-                   'DIS')
+                   'DIS', 
+                   'DDRS',
+                   'DEAR',
+                   'DEYE',
+                   'DOUT',
+                   'DPHY',
+                   'DREM')
 
 # 19.2 export PERSONS W DISABILITY HOUSEHOLDS
 write_csv(pums_disab_hh_2021, paste0(exp_path,"/pums_disab_hh_2021_V_",dateAsText,".csv"))

@@ -9,10 +9,9 @@ library(janitor)
 
 
 # lberman 2024-08-06
+# lberman 2024-10-03  revised to include new vars in sub-tables
 # https://walker-data.com/tidycensus/articles/pums-data.html
 # https://walker-data.com/tidycensus/reference/get_pums.html
-
-census_api_key("d590f657a113f2f78b5a422462ea00745e79111c", install = TRUE)
 
 # hh from PUMS ftp https://www.census.gov/programs-surveys/acs/microdata/access.html
 
@@ -469,10 +468,11 @@ write_csv(over_vars, paste0(exp_path,"/pums_overcrowding_variables_2021.csv"))
 
 # 15 SUBSET MULTIPLE ADULT HOUSING (columns from Sheet 1)
 
-# dropped from previous subset for Overcrowding: BDSP, RMSP, HINCP, LNGI
+# dropped from previous subset for Overcrowding: BDSP, RMSP, HINCP, LNGI  
+# 3 Oct added ADJINC, HHLDRAGEP, HHLDRRAC1P, HHLDRHISP, HINCP, RAC1P
 
 pums_multiadult_2021 <- pums_all_2021 %>% 
-  select(c(uniq_obs, SPORDER, SERIALNO, ST, WGTP, PWGTP, RT, PUMA, ADJHSG, ADJINC, NP, TYPEHUGQ, CPLT, HHLDRAGEP, HHLDRRAC1P, HHLDRHISP, HHT, HHT2, HUGCL, HUPAC, HUPAOC, HUPARC, MULTG, NPF, NPP, NR, NRC, PARTNER, PSF, R18, AGEP, RELSHIPP, RAC1P, OC, SFN, SFR,TEN))
+  select(c(uniq_obs, SPORDER, SERIALNO, ST, WGTP, PWGTP, RT, PUMA, ADJHSG, ADJINC, NP, TYPEHUGQ, CPLT, HHLDRAGEP, HHLDRRAC1P, HHLDRHISP, HINCP, HISP, HHT, HHT2, HUGCL, HUPAC, HUPAOC, HUPARC, MULTG, NPF, NPP, NR, NRC, PARTNER, PSF, R18, AGEP, RAC1P, RELSHIPP, RAC1P, OC, SFN, SFR,TEN))
 
 # 15.2 export VARS for MULTIPLE ADULT HOUSING
 multiadult_list <- c('RT',
@@ -487,6 +487,8 @@ multiadult_list <- c('RT',
                'HHLDRHISP',
                'HHT',
                'HHT2',
+               'HINCP', # added 3 oct
+               'HISP',  # added 3 oct
                'HUGCL',
                'HUPAC',
                'HUPAOC',
@@ -514,14 +516,16 @@ write_csv(pums_multiadult_2021, paste0(exp_path,"/pums_multiadult_2021_V_",dateA
 multiadult_vars <- uniq_vars %>%
   filter(var_code %in% multiadult_list)
 
-write_csv(over_vars, paste0(exp_path,"/pums_multiadult_variables_2021.csv"))
+write_csv(multiadult_vars, paste0(exp_path,"/pums_multiadult_variables_2021.csv"))
 
 
 
 # 16 SUBSET FAMILY SIZE UNITS (columns from Sheet 1)
 
+# add 3 0ct: ADJINC, YRBLT, HHLDRRAC1P, HHLDRHISP, HINCP, HISP
+
 pums_familysize_2021 <- pums_all_2021 %>% 
-  select(c(uniq_obs, RT, SERIALNO, PUMA, ST, ADJHSG, WGTP, NP, HHT, HHT2, HUGCL, HUPAC, HUPAOC, HUPARC, MULTG, NPF, NPP, NR, NRC, PARTNER, PSF, R18, PWGTP, AGEP, RELSHIPP, SEX, RAC1P, OC, SFN, SFR, TYPEHUGQ, BDSP, BLD, RMSP, TEN, VACS, YRBLT, GRNTP, GRPIP, MV, SRNT, SVAL))
+  select(c(uniq_obs, RT, SERIALNO, PUMA, ST, ADJHSG, ADJINC, WGTP, NP, HHLDRRAC1P, HHLDRHISP, HHT, HHT2, HINCP, HISP, HUGCL, HUPAC, HUPAOC, HUPARC, MULTG, NPF, NPP, NR, NRC, PARTNER, PSF, R18, PWGTP, AGEP, RAC1P, RELSHIPP, SEX, OC, SFN, SFR, TYPEHUGQ, BDSP, BLD, RMSP, TEN, VACS, YRBLT, GRNTP, GRPIP, MV, SRNT, SVAL, YRBLT))
 
 # 16.1 export VARS for FAMILY SIZE
 familysize_list <- c('uniq_obs',
@@ -529,10 +533,15 @@ familysize_list <- c('uniq_obs',
                      'PUMA',
                      'ST',
                      'ADJHSG',
+                     'ADJINC', #added 3 Oct
                      'WGTP',
                      'NP',
+                     'HHLDRRAC1P', #added 3 Oct
+                     'HHLDRHISP', #added 3 Oct
                      'HHT',
                      'HHT2',
+                     'HINCP', #added 3 Oct
+                     'HISP', #added 3 Oct
                      'HUGCL',
                      'HUPAC',
                      'HUPAOC',
@@ -547,6 +556,7 @@ familysize_list <- c('uniq_obs',
                      'R18',
                      'PWGTP',
                      'AGEP',
+                     'RAC1P', #added 3 oct
                      'RELSHIPP',
                      'SEX',
                      'RAC1P',
@@ -563,7 +573,8 @@ familysize_list <- c('uniq_obs',
                      'GRNTP',
                      'GRPIP',
                      'MV',
-                     'SRNTSVAL')
+                     'SRNTSVAL',
+                     'YRBLT') # added 3 oct
 
 # 16.2 export familysize
 write_csv(pums_familysize_2021, paste0(exp_path,"/pums_familysize_2021_V_",dateAsText,".csv"))
@@ -577,8 +588,10 @@ write_csv(familysize_vars, paste0(exp_path,"/pums_familysize_variables_2021.csv"
 
 # 17 SUBSET  UNITS BUILT SINCE 2010 (columns from Sheet 1)
 
+# add 3 0ct: ADJINC, HHLDRRAC1P, HHLDRHISP, HINCP, HISP, RAC1P
+
 pums_unitsbuilt_2021 <- pums_all_2021 %>% 
-  select(c(uniq_obs, RT, SERIALNO, PUMA, ST, ADJHSG, WGTP, NP, TYPEHUGQ, BDSP, BLD, RMSP, TEN, VACS, YRBLT, GRNTP, GRPIP, MV, SRNT, SVAL, OCPIP, SMOCP))
+  select(c(uniq_obs, RT, SERIALNO, PUMA, ST, ADJHSG, ADJINC, WGTP, NP, TYPEHUGQ, BDSP, BLD, RMSP, TEN, VACS, YRBLT, GRNTP, GRPIP, MV, SRNT, SVAL, OCPIP, SMOCP, HHLDRRAC1P, HHLDRHISP, HINCP, HISP, RAC1P))
 
 # 17.1 export VARS for UNITS BUILT SINCE 2010
 unitsbuilt_list <- c('uniq_obs',
@@ -587,6 +600,7 @@ unitsbuilt_list <- c('uniq_obs',
                      'PUMA',
                      'ST',
                      'ADJHSG',
+                     'ADJINC', #added 3 oct
                      'WGTP',
                      'NP',
                      'TYPEHUGQ',
@@ -603,7 +617,12 @@ unitsbuilt_list <- c('uniq_obs',
                      'SRNT',
                      'SVAL',
                      'OCPIP',
-                     'SMOCP')
+                     'SMOCP',
+                     'HHLDRRAC1P',
+                     'HHLDRHISP',
+                     'HINCP', 
+                     'HISP', 
+                     'RAC1P')
 
 # 17.2 export built since 2010
 write_csv(pums_unitsbuilt_2021, paste0(exp_path,"/pums_unitsbuilt_2021_V_",dateAsText,".csv"))
@@ -612,7 +631,6 @@ unitsbuilt_vars <- uniq_vars %>%
   filter(var_code %in% unitsbuilt_list)
 
 write_csv(unitsbuilt_vars, paste0(exp_path,"/pums_unitsbuilt_variables_2021.csv"))
-
 
 
 

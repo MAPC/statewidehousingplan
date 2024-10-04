@@ -124,8 +124,8 @@ households_with_disability <- people_with_disability %>%
   ungroup()
 
 #Define the survey design with household weights
-household_design <- svydesign(ids = ~1,           # No clustering
-                              weights = ~WGTP,    # Apply household weights
+household_design <- svydesign(ids = ~1,           #No clustering
+                              weights = ~WGTP,    #Apply household weights
                               data = households_with_disability)
 
 #Calculate the total number of households (weighted)

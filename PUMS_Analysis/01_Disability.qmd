@@ -82,6 +82,47 @@ print(pums_duplicates)
 2)  Age distribution of people living with disability
 
 ```{r}
+#1) Calculate the number of people with a disability - unsure about GQ variable
+people_with_disability <- pums %>%
+  group_by(uniq_obs) %>%
+  filter(DIS == 1) 
+
+#Define the survey design
+people_design_dis <- svydesign(ids = ~1,           #No clustering
+                              weights = ~PWGTP,    #Apply household weights
+                              data = people_with_disability)
+
+#Calculate the total number of households with a disability (weighted)
+total_people_with_disability <- svytotal(~I(uniq_obs != 0), design = people_design_dis)
+print(total_people_with_disability)
+
+#Calculate the total number in sample (weighted)
+person_data <- pums %>%
+filter(RT == "P")
+
+total_weighted_sample <- sum(person_data$PWGTP, na.rm = TRUE)
+print(total_weighted_sample)
+
+#Calculate percent with a disability
+percentage_with_disability_person <- (total_people_with_disability[[2]] / total_weighted_sample[[1]]) * 100
+
+dis_summary_table_person <- data.frame(
+  "People with Disability" = total_people_with_disability[[2]],
+  "Share with Disability" = percentage_with_disability_person,
+  "Total" = total_weighted_sample[[1]])
+```
+
+12% have some type of disability statewide. 
+
+
+```{r}
+#2) Age distribution of people living with disability
+
+
+
+
+
+
 
 
 ```
@@ -109,13 +150,7 @@ Cost-burden
 ```{r}
 #Number of households with a member who has a disability 
 
-#Calculate the number of people with a disability 
-people_with_disability <- pums %>%
-  group_by(uniq_obs) %>%
-  filter(DIS == 1) 
-
 #Aggregate person-level data to household level
-#Keep only distinct households by grouping by hhld id and selecting one row per household
 households_with_disability <- people_with_disability %>%
   group_by(SERIALNO) %>%
   summarize(WGTP = first(WGTP), count_disabled = sum(DIS == 1)) %>%  #Retain household weights (same for all persons in the household)
@@ -147,3 +182,10 @@ dis_summary_table <- data.frame(
   "Total Households" = total_weighted_households[[1]])
 
 ```
+
+22% of households in the state have someone with a disability 
+
+```{r}
+
+```
+

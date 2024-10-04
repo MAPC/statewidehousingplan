@@ -16,6 +16,7 @@ library(srvyr)
 library(data.table)
 library(janitor) 
 library(dplyr)
+library(knitr)
 ```
 
 # 0.1 - Set knitr path + root for inputs
@@ -108,29 +109,41 @@ Cost-burden
 ```{r}
 #Number of households with a member who has a disability 
 
-#First calculate the number of people with a disability 
+#Calculate the number of people with a disability 
 people_with_disability <- pums %>%
   group_by(uniq_obs) %>%
   filter(DIS == 1) 
-
-print(people_with_disability)
-
 
 #Aggregate person-level data to household level
 #Keep only distinct households by grouping by hhld id and selecting one row per household
 households_with_disability <- people_with_disability %>%
   group_by(SERIALNO) %>%
-  summarize(WGTP = first(WGTP)) %>%  #Retain household weights (same for all persons in the household)
+  summarize(WGTP = first(WGTP), count_disabled = sum(DIS == 1)) %>%  #Retain household weights (same for all persons in the household)
   ungroup()
 
 #Define the survey design with household weights
-household_design <- svydesign(ids = ~1,           #No clustering
+household_design_dis <- svydesign(ids = ~1,           #No clustering
                               weights = ~WGTP,    #Apply household weights
                               data = households_with_disability)
 
-#Calculate the total number of households (weighted)
-total_households_with_disability <- svytotal(~I(SERIALNO != 0), design = household_design)
-
+#Calculate the total number of households with a disability (weighted)
+total_households_with_disability <- svytotal(~I(SERIALNO != 0), design = household_design_dis)
 print(total_households_with_disability)
+
+#Calculate the total number of households in sample (weighted)
+household_data <- pums %>%
+filter(RT == "H")
+
+total_weighted_households <- sum(household_data$WGTP, na.rm = TRUE)
+print(total_weighted_sample)
+
+#Calculate percent of households who have some one with a disability
+percentage_with_disability <- (total_households_with_disability[[2]] / total_weighted_households[[1]]) * 100
+
+#Create summary table
+dis_summary_table <- data.frame(
+  "Households with Disability" = total_households_with_disability[[2]],
+  "Share of Households with Disability" = percentage_with_disability,
+  "Total Households" = total_weighted_households[[1]])
 
 ```

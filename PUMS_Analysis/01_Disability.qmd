@@ -257,6 +257,11 @@ ambulatory_total_households <- sum(ambulatory_households$WGTP, na.rm = TRUE)
 #Calculate percentage out of all households
 ambulatory_percentage <- (ambulatory_total_households / total_weighted_households) * 100
 
+ambulatory_summary_table_hhld <- data.frame(
+  "Ambulatory Households with Disability" = ambulatory_total_households,
+  "Share of Households" = ambulatory_percentage,
+  "Total Households" = total_weighted_households)
+
 
 #Repeating above steps for all detailed disabilities 
 
@@ -321,7 +326,7 @@ cognitive_percentage <- (cognitive_total_households / total_weighted_households)
 ```{r}
 #Export detailed disability household data 
   write.xlsx(list('Ambulatory_hhld' = ,
-                  'y' = ,
+                  '' = ,
                 '' = ),
            file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/dis_hhld_detail.xlsx") 
 

@@ -86,9 +86,10 @@ print(pums_duplicates)
 
 ```{r}
 # 1) Calculate the number of people with a disability
+#Create data set with people who have a disability outside of group quarters
 people_with_disability <- pums %>%
   group_by(uniq_obs) %>%
-  filter(DIS == 1) %>% #filtering disability flag
+  filter(DIS == 1) %>% #filtering for disability flag, will only include person-level data not hhld data
   filter(TYPEHUGQ != 2) #filtering out institutional group quarters
 
 #Define the survey design
@@ -96,15 +97,16 @@ people_design_dis <- svydesign(ids = ~1,           #No clustering
                               weights = ~PWGTP,    #Apply person weight
                               data = people_with_disability)
 
-#Calculate the total number of households with a disability (weighted)
+#Calculate the total number of people with a disability (weighted)
 total_people_with_disability <- svytotal(~I(uniq_obs != 0), design = people_design_dis)
 print(total_people_with_disability)
 
-#Calculate the total number in sample (weighted)
+#Calculate the total number in sample not in GQ 
 person_data <- pums %>%
 filter(RT == "P") %>%
 filter(TYPEHUGQ != 2)
 
+#add weights
 total_weighted_sample <- sum(person_data$PWGTP, na.rm = TRUE)
 print(total_weighted_sample)
 
@@ -115,6 +117,43 @@ dis_summary_table_person <- data.frame(
   "People with Disability" = total_people_with_disability[[2]],
   "Share with Disability" = percentage_with_disability_person,
   "Total" = total_weighted_sample[[1]])
+
+
+###Repeat above steps for people with disability in GQ
+
+
+#Create data set with people who have a disability IN group quarters
+people_with_disability_GQ <- pums %>%
+  group_by(uniq_obs) %>%
+  filter(DIS == 1) %>% #filtering disability flag
+  filter(TYPEHUGQ == 2) #only institutional group quarters
+
+#Define the survey design for GQ data set
+people_design_dis_GQ <- svydesign(ids = ~1,           #No clustering
+                              weights = ~PWGTP,    #Apply person weight
+                              data = people_with_disability_GQ)
+
+#Calculate the total number of people with a disability (weighted) in GQ
+total_people_with_disability_GQ <- svytotal(~I(uniq_obs != 0), design = people_design_dis_GQ)
+print(total_people_with_disability_GQ)
+
+#Calculate the total number in sample in GQ
+person_data_GQ <- pums %>%
+filter(RT == "P") %>%
+filter(TYPEHUGQ == 2)
+
+#add weights
+total_weighted_sample_GQ <- sum(person_data_GQ$PWGTP, na.rm = TRUE)
+print(total_weighted_sample)
+
+#Calculate percent with a disability
+percentage_with_disability_person_GQ <- (total_people_with_disability_GQ[[2]] / total_weighted_sample_GQ[[1]]) * 100
+
+dis_summary_table_person_GQ <- data.frame(
+  "People with Disability" = total_people_with_disability_GQ[[2]],
+  "Share with Disability" = percentage_with_disability_person_GQ,
+  "Total" = total_weighted_sample_GQ[[1]])
+
 ```
 
 12% have some type of disability statewide, which is around 850,000 people. 

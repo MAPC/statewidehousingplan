@@ -59,7 +59,7 @@ RPA_crosswalk <- read.csv ("J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24
 # 0.4 PUMS Data Cleaning
 
 ```{r}
-#Joining the PUMA to RPA crosswalk to the PUMS data.
+#Joining the PUMA to RPA crosswalk to the PUMS data. - not working right now, it's many to many join 
 pums <- left_join(
   pums,
   RPA_crosswalk,
@@ -82,7 +82,7 @@ print(pums_duplicates)
 2)  Age distribution of people living with disability
 
 ```{r}
-#1) Calculate the number of people with a disability - unsure about GQ variable
+#1) Calculate the number of people with a disability
 people_with_disability <- pums %>%
   group_by(uniq_obs) %>%
   filter(DIS == 1) 
@@ -112,7 +112,9 @@ dis_summary_table_person <- data.frame(
   "Total" = total_weighted_sample[[1]])
 ```
 
-12% have some type of disability statewide. 
+12% have some type of disability statewide, which is around 850,000 people. 
+
+Note that for cognitive difficulty, ambulatory difficulty, and self-care difficulty, children under 5 are not included in these measures.
 
 
 ```{r}
@@ -149,7 +151,7 @@ Cost-burden
 
 ```{r}
 #Number of households with a member who has a disability 
-
+#Statewide
 #Aggregate person-level data to household level
 households_with_disability <- people_with_disability %>%
   group_by(SERIALNO) %>%
@@ -183,7 +185,7 @@ dis_summary_table <- data.frame(
 
 ```
 
-22% of households in the state have someone with a disability 
+22% of households in the state have someone with a disability. This is around 650,000 households. 
 
 ```{r}
 

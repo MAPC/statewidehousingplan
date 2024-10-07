@@ -114,21 +114,31 @@ dis_summary_table_person <- data.frame(
 
 12% have some type of disability statewide, which is around 850,000 people. 
 
-Note that for cognitive difficulty, ambulatory difficulty, and self-care difficulty, children under 5 are not included in these measures.
+This is the non-institutionalized population and note that children under 5 are not included in the disability measures for cognitive difficulty, ambulatory difficulty, and self-care difficulty. 
 
 
 ```{r}
 # 2) Age distribution of people living with disability
 age_people_with_disability <- people_with_disability %>% 
-select(uniq_obs, PUMA, PWGTP, AGEP)
+select(uniq_obs, PUMA, PWGTP, AGEP) %>% 
+mutate(age_range = case_when(
+    AGEP >= 0 & AGEP < 18 ~ "Under 18",
+    AGEP >= 18 & AGEP < 65 ~ "18-64", #might want to break down age detail more
+    AGEP >= 65 ~ "65 and over"))
 
-
-
-
-
-
+disability_age_counts <- age_people_with_disability %>%
+  group_by(age_range) %>%
+  summarise(age_weighted_sum = sum(PWGTP)) %>%
+  mutate(percentage = (age_weighted_sum / total_people_with_disability[[2]]) * 100) %>%
+  mutate(age_range = factor(age_range, levels = c("Under 18", "18-64", "65 and over"))) %>%
+  arrange(age_range)
 
 ```
+
+The majority of disabilities are in adults. About half, or 48%, of people with any disability are in the age group 18-64. Another 43% is 65+ and only around 8% are under 18. 
+
+Note that children under 5 are not included in the disability measures for cognitive difficulty, ambulatory difficulty, and self-care difficulty. 
+
 
 # 1.2 State-level, household level analysis
 

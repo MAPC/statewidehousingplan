@@ -242,6 +242,89 @@ dis_summary_table_hhld <- data.frame(
 ```
 
 ```{r}
+#Detailed disability type 
+
+## Ambulatory disabilities - DPHY
+ambulatory_households <- people_with_disability %>% #GQ is already filtered out in person-level data
+  group_by(SERIALNO) %>%
+  filter(DPHY == 1) %>%
+  summarize(WGTP = first(WGTP), count_ambulatory = sum(DPHY == 1)) %>%  #Retain household weights (same for all persons in the household)
+  ungroup()
+
+#Calculate weighted total of ambulatory hhlds 
+ambulatory_total_households <- sum(ambulatory_households$WGTP, na.rm = TRUE)
+
+#Calculate percentage out of all households
+ambulatory_percentage <- (ambulatory_total_households / total_weighted_households) * 100
+
+
+#Repeating above steps for all detailed disabilities 
+
+## Self-care difficulty - DDRS 
+self_care_households <- people_with_disability %>% 
+  group_by(SERIALNO) %>%
+  filter(DDRS == 1) %>%
+  summarize(WGTP = first(WGTP), count_self_care = sum(DDRS == 1)) %>%  
+  ungroup()
+
+self_care_total_households <- sum(self_care_households$WGTP, na.rm = TRUE)
+self_care_percentage <- (self_care_total_households / total_weighted_households) * 100
+
+## Hearing difficulty - DEAR
+hearing_households <- people_with_disability %>% 
+  group_by(SERIALNO) %>%
+  filter(DEAR == 1) %>%
+  summarize(WGTP = first(WGTP), count_hearing = sum(DEAR == 1)) %>%  
+  ungroup()
+
+hearing_total_households <- sum(hearing_households$WGTP, na.rm = TRUE)
+hearing_percentage <- (hearing_total_households / total_weighted_households) * 100
+
+## Vision difficulty - DEYE 
+vision_households <- people_with_disability %>% 
+  group_by(SERIALNO) %>%
+  filter(DEYE == 1) %>%
+  summarize(WGTP = first(WGTP), count_vision = sum(DEYE == 1)) %>%  
+  ungroup()
+
+vision_total_households <- sum(vision_households$WGTP, na.rm = TRUE)
+vision_percentage <- (vision_total_households / total_weighted_households) * 100
+
+## Independent living difficulty - DOUT
+independent_living_households <- people_with_disability %>% 
+  group_by(SERIALNO) %>%
+  filter(DOUT == 1) %>%
+  summarize(WGTP = first(WGTP), count_independent_living = sum(DOUT == 1)) %>%   
+  ungroup()
+
+independent_living_total_households <- sum(independent_living_households$WGTP, na.rm = TRUE)
+independent_living_percentage <- (independent_living_total_households / total_weighted_households) * 100
+
+## Cognitive difficulty - DREM 
+cognitive_households <- people_with_disability %>% 
+  group_by(SERIALNO) %>%
+  filter(DREM == 1) %>%
+  summarize(WGTP = first(WGTP), count_cognitive = sum(DREM == 1)) %>%  
+  ungroup()
+
+cognitive_total_households <- sum(cognitive_households$WGTP, na.rm = TRUE)
+cognitive_percentage <- (cognitive_total_households / total_weighted_households) * 100
+
+## Make a table with counts and percents for detailed disabilities 
+
+
+
+
+
+```
+
+```{r}
+#Export detailed disability household data 
+  write.xlsx(list('Ambulatory_hhld' = ,
+                  'y' = ,
+                '' = ),
+           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/dis_hhld_detail.xlsx") 
+
 
 ```
 

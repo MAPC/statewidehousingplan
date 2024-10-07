@@ -88,8 +88,8 @@ print(pums_duplicates)
 # 1) Calculate the number of people with a disability
 people_with_disability <- pums %>%
   group_by(uniq_obs) %>%
-  filter(DIS == 1) %>%
-  filter(TYPEHUGQ != 2)
+  filter(DIS == 1) %>% #filtering disability flag
+  filter(TYPEHUGQ != 2) #filtering out institutional group quarters
 
 #Define the survey design
 people_design_dis <- svydesign(ids = ~1,           #No clustering

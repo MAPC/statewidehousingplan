@@ -242,7 +242,7 @@ dis_summary_table_hhld <- data.frame(
 ```
 
 ```{r}
-#Detailed disability type 
+#Detailed disability type for hhlds 
 
 ## Ambulatory disabilities - DPHY
 ambulatory_households <- people_with_disability %>% #GQ is already filtered out in person-level data
@@ -257,13 +257,15 @@ ambulatory_total_households <- sum(ambulatory_households$WGTP, na.rm = TRUE)
 #Calculate percentage out of all households
 ambulatory_percentage <- (ambulatory_total_households / total_weighted_households) * 100
 
+#Create summary table
 ambulatory_summary_table_hhld <- data.frame(
-  "Ambulatory Households with Disability" = ambulatory_total_households,
-  "Share of Households" = ambulatory_percentage,
-  "Total Households" = total_weighted_households)
-
+  Description = "Ambulatory Households",   
+  Count = ambulatory_total_households,     
+  Percent = ambulatory_percentage,         
+  Total_Households = total_weighted_households)
 
 #Repeating above steps for all detailed disabilities 
+
 
 ## Self-care difficulty - DDRS 
 self_care_households <- people_with_disability %>% 
@@ -275,6 +277,13 @@ self_care_households <- people_with_disability %>%
 self_care_total_households <- sum(self_care_households$WGTP, na.rm = TRUE)
 self_care_percentage <- (self_care_total_households / total_weighted_households) * 100
 
+self_care_summary_table_hhld <- data.frame(
+  Description = "Self-Care Disability Households",   
+  Count = self_care_total_households,     
+  Percent = self_care_percentage,         
+  Total_Households = total_weighted_households)
+
+
 ## Hearing difficulty - DEAR
 hearing_households <- people_with_disability %>% 
   group_by(SERIALNO) %>%
@@ -284,6 +293,13 @@ hearing_households <- people_with_disability %>%
 
 hearing_total_households <- sum(hearing_households$WGTP, na.rm = TRUE)
 hearing_percentage <- (hearing_total_households / total_weighted_households) * 100
+
+hearing_summary_table_hhld <- data.frame(
+  Description = "Hearing Disability Households",   
+  Count = hearing_total_households,     
+  Percent = hearing_percentage,         
+  Total_Households = total_weighted_households)
+
 
 ## Vision difficulty - DEYE 
 vision_households <- people_with_disability %>% 
@@ -295,6 +311,13 @@ vision_households <- people_with_disability %>%
 vision_total_households <- sum(vision_households$WGTP, na.rm = TRUE)
 vision_percentage <- (vision_total_households / total_weighted_households) * 100
 
+vision_summary_table_hhld <- data.frame(
+  Description = "Vision Disability Households",   
+  Count = vision_total_households,     
+  Percent = vision_percentage,         
+  Total_Households = total_weighted_households)
+
+
 ## Independent living difficulty - DOUT
 independent_living_households <- people_with_disability %>% 
   group_by(SERIALNO) %>%
@@ -304,6 +327,13 @@ independent_living_households <- people_with_disability %>%
 
 independent_living_total_households <- sum(independent_living_households$WGTP, na.rm = TRUE)
 independent_living_percentage <- (independent_living_total_households / total_weighted_households) * 100
+
+independent_living_summary_table_hhld <- data.frame(
+  Description = "Independent Living Disability Households",   
+  Count = independent_living_total_households,     
+  Percent = independent_living_percentage,         
+  Total_Households = total_weighted_households)
+
 
 ## Cognitive difficulty - DREM 
 cognitive_households <- people_with_disability %>% 
@@ -315,21 +345,23 @@ cognitive_households <- people_with_disability %>%
 cognitive_total_households <- sum(cognitive_households$WGTP, na.rm = TRUE)
 cognitive_percentage <- (cognitive_total_households / total_weighted_households) * 100
 
-## Make a table with counts and percents for detailed disabilities 
+cognitive_summary_table_hhld <- data.frame(
+  Description = "Cognitive Disability Households",   
+  Count = cognitive_total_households,     
+  Percent = cognitive_percentage,         
+  Total_Households = total_weighted_households)
 
 
-
+## Combine tables with counts and percents for detailed disabilities 
+detailed_disability_table <- rbind(ambulatory_summary_table_hhld, self_care_summary_table_hhld, hearing_summary_table_hhld, vision_summary_table_hhld, independent_living_summary_table_hhld, cognitive_summary_table_hhld)
 
 
 ```
 
 ```{r}
 #Export detailed disability household data 
-  write.xlsx(list('Ambulatory_hhld' = ,
-                  '' = ,
-                '' = ),
+  write.xlsx(list('Detailed Disability Households' = detailed_disability_table),
            file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/dis_hhld_detail.xlsx") 
-
 
 ```
 

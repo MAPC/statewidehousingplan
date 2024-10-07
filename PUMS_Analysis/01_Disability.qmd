@@ -242,7 +242,7 @@ dis_summary_table_hhld <- data.frame(
 ```
 
 ```{r}
-#Detailed disability type for hhlds 
+#Detailed disability type for hhlds statewide
 
 ## Ambulatory disabilities - DPHY
 ambulatory_households <- people_with_disability %>% #GQ is already filtered out in person-level data
@@ -362,6 +362,13 @@ detailed_disability_table <- rbind(ambulatory_summary_table_hhld, self_care_summ
 #Export detailed disability household data 
   write.xlsx(list('Detailed Disability Households' = detailed_disability_table),
            file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/dis_hhld_detail.xlsx") 
+
+```
+
+```{r}
+#Analysis by RPA 
+
+
 
 ```
 

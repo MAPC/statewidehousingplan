@@ -17,6 +17,9 @@ library(data.table)
 library(janitor) 
 library(dplyr)
 library(knitr)
+library(openxlsx)
+library(readxl)
+library(writexl)
 ```
 
 # 0.1 - Set knitr path + root for inputs
@@ -85,7 +88,8 @@ print(pums_duplicates)
 # 1) Calculate the number of people with a disability
 people_with_disability <- pums %>%
   group_by(uniq_obs) %>%
-  filter(DIS == 1) 
+  filter(DIS == 1) %>%
+  filter(TYPEHUGQ != 2)
 
 #Define the survey design
 people_design_dis <- svydesign(ids = ~1,           #No clustering
@@ -98,7 +102,8 @@ print(total_people_with_disability)
 
 #Calculate the total number in sample (weighted)
 person_data <- pums %>%
-filter(RT == "P")
+filter(RT == "P") %>%
+filter(TYPEHUGQ != 2)
 
 total_weighted_sample <- sum(person_data$PWGTP, na.rm = TRUE)
 print(total_weighted_sample)
@@ -138,6 +143,13 @@ disability_age_counts <- age_people_with_disability %>%
 The majority of disabilities are in adults. About half, or 48%, of people with any disability are in the age group 18-64. Another 43% is 65+ and only around 8% are under 18. 
 
 Note that children under 5 are not included in the disability measures for cognitive difficulty, ambulatory difficulty, and self-care difficulty. 
+
+```{r}
+#Export person-level disability data 
+  write.xlsx(list('Percent with disability' = dis_summary_table_person,
+                'Age range' = disability_age_counts),
+           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/dis_person.xlsx") 
+```
 
 
 # 1.2 State-level, household level analysis

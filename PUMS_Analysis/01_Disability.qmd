@@ -82,14 +82,14 @@ print(pums_duplicates)
 2)  Age distribution of people living with disability
 
 ```{r}
-#1) Calculate the number of people with a disability
+# 1) Calculate the number of people with a disability
 people_with_disability <- pums %>%
   group_by(uniq_obs) %>%
   filter(DIS == 1) 
 
 #Define the survey design
 people_design_dis <- svydesign(ids = ~1,           #No clustering
-                              weights = ~PWGTP,    #Apply household weights
+                              weights = ~PWGTP,    #Apply person weight
                               data = people_with_disability)
 
 #Calculate the total number of households with a disability (weighted)
@@ -118,8 +118,9 @@ Note that for cognitive difficulty, ambulatory difficulty, and self-care difficu
 
 
 ```{r}
-#2) Age distribution of people living with disability
-
+# 2) Age distribution of people living with disability
+age_people_with_disability <- people_with_disability %>% 
+select(uniq_obs, PUMA, PWGTP, AGEP)
 
 
 

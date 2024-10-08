@@ -79,13 +79,17 @@ print(pums_duplicates)
 
 # 1.1 State-level, person level analysis
 
-1)  Number of individuals living outside of GQ with any disability/number living in GQ
+1)  Number of individuals living with any disability, outside of GQ and those living in GQ
 
-2)  Age distribution of people living with disability
+2)  Number of individuals for each detailed disability (6 types) 
 
+3)  Age distribution of people living with disability
+
+4)  Age distribution of people living with each detailed disability type
+
+
+# 1) Calculate the number of people with a disability statewide, inside and outside of GQ
 ```{r}
-# 1) Calculate the number of people with a disability
-
 #Create data set with people who have a disability outside of group quarters
 people_with_disability <- pums %>%
   group_by(uniq_obs) %>%
@@ -98,27 +102,25 @@ number_of_people_with_disability <- sum(people_with_disability$PWGTP, na.rm = TR
 #Calculate the total number of people in sample, not in GQ 
 person_data <- pums %>%
 filter(RT == "P") %>% #filtering for only people not hhlds 
-filter(TYPEHUGQ != 2) 
-
-#add weights for total number in sample
+filter(TYPEHUGQ != 2) #filtering out institutional group quarters
+#add weights and sum total number in sample
 total_weighted_sample <- sum(person_data$PWGTP, na.rm = TRUE)
 
 #Calculate percent with a disability
-percentage_with_disability_person <- (number_of_people_with_disability / total_weighted_sample) * 100
+percentage_people_with_disability <- (number_of_people_with_disability / total_weighted_sample) * 100
 
 dis_summary_table_person <- data.frame(
   "People with Disability" = number_of_people_with_disability,
-  "Share with Disability" = percentage_with_disability_person,
+  "Share with Disability" = percentage_people_with_disability,
   "Total" = total_weighted_sample)
 
 
 ###Repeat above steps for people with disability in GQ
 
-
 #Create data set with people who have a disability IN group quarters
 people_with_disability_GQ <- pums %>%
   group_by(uniq_obs) %>%
-  filter(DIS == 1) %>% #filtering disability flag
+  filter(DIS == 1) %>% #filtering for disability flag
   filter(TYPEHUGQ == 2) #only institutional group quarters
 
 #simple way to calculate weighted number of people with disability 
@@ -128,30 +130,138 @@ number_of_people_with_disability_GQ <- sum(people_with_disability_GQ$PWGTP, na.r
 person_data_GQ <- pums %>%
 filter(RT == "P") %>%
 filter(TYPEHUGQ == 2)
-
-#add weights
+#add weights and sum
 total_weighted_sample_GQ <- sum(person_data_GQ$PWGTP, na.rm = TRUE)
 
 #Calculate percent with a disability
-percentage_with_disability_person_GQ <- (number_of_people_with_disability_GQ / total_weighted_sample_GQ) * 100
+percentage_people_with_disability_GQ <- (number_of_people_with_disability_GQ / total_weighted_sample_GQ) * 100
 
 dis_summary_table_person_GQ <- data.frame(
   "People with Disability" = number_of_people_with_disability_GQ,
-  "Share with Disability" = percentage_with_disability_person_GQ,
+  "Share with Disability" = percentage_people_with_disability_GQ,
   "Total" = total_weighted_sample_GQ)
 
+```
+
+```{r}
+#Export person-level disability data 
+  write.xlsx(list('Percent with disability' = dis_summary_table_person,
+                  'Percent of GQ with disability' = dis_summary_table_person_GQ),
+           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/dis_person.xlsx") 
 ```
 
 12% of people in the state have some type of disability, which is a little over 800,000 people.
 
 This is for the non-institutionalized population and note that children under 5 are not included in the disability measures for cognitive difficulty, ambulatory difficulty, and self-care difficulty.
 
-In the institutionalized population, 73% have a disability.
+In the institutionalized population, 73% have a disability, which is over 45,000 people. 
+
+
+# 2) Detailed disability data of people statewide, not in GQ
+```{r}
+# 2.1) Ambulatory disability - DPHY
+ambulatory_people <- people_with_disability %>%
+  filter(DPHY == 1) 
+
+ambulatory_number_of_people <- sum(ambulatory_people$PWGTP, na.rm = TRUE)
+
+#calculate denominator for population of only 5 and up, not in group quarters
+people_5_and_over <- person_data %>%
+  filter(AGEP >= 5)
+
+#add weights and sum total number in sample
+total_people_5_and_over <- sum(people_5_and_over$PWGTP, na.rm = TRUE)
+
+ambulatory_people_percent <- (ambulatory_number_of_people / total_people_5_and_over) * 100
+```
+
+Around 6% of people in the state have an ambulatory disability, meaning they have a condition that substantially limits one or more basic physical activities, such as walking, climbing stairs, reaching, lifting, or carrying. This is around 375,000 people. This data is for the non-institutionalized population that is age 5 and above. 
 
 ```{r}
-# 2) Age distribution of people living with disability
+# 2.2) Self-care disability - DDRS
+self_care_people <- people_with_disability %>%
+  filter(DDRS == 1) 
+
+self_care_number_of_people <- sum(self_care_people$PWGTP, na.rm = TRUE)
+
+self_care_people_percent <- (self_care_number_of_people / total_people_5_and_over) * 100
+```
+
+Approximately 155,000 people in the state, or 2% of people, have a self-care disability. This means they have a physical or mental health condition that has lasted at least 6 months and makes it difficult for them to take care of their own personal needs, such as bathing, dressing, or getting around inside the home. This does not include temporary health conditions, such as broken bones or pregnancies. This data is for the non-institutionalized population that is age 5 and above. 
+
+```{r}
+# 2.3) Cognitive disability - DREM
+cognitive_people <- people_with_disability %>%
+  filter(DREM == 1) 
+
+cognitive_number_of_people <- sum(cognitive_people$PWGTP, na.rm = TRUE)
+
+cognitive_people_percent <- (cognitive_number_of_people / total_people_5_and_over) * 100
+```
+
+Five percent, or about 330,000, have a cognitive disability in the state. Cognitive disabilities include difficulties learning, remembering, concentrating, or making decisions because of a physical, mental, or emotional condition. This data is for the non-institutionalized population that is age 5 and above. 
+
+```{r}
+# 2.4) Independent living disability - DOUT
+independent_living_people <- people_with_disability %>%
+  filter(DOUT == 1) 
+
+independent_living_number_of_people <- sum(independent_living_people$PWGTP, na.rm = TRUE)
+
+#Create new denominator of people 16+ 
+people_16_and_over <- person_data %>%
+  filter(AGEP >= 16)
+
+#add weights and sum total number in sample
+total_people_16_and_over <- sum(people_16_and_over$PWGTP, na.rm = TRUE)
+
+indpendent_living_people_percent <- (independent_living_number_of_people / total_people_16_and_over) * 100
+```
+
+Just over 300,000 people, or 5%, in the state have an independent living disability. This includes physical, mental, or emotional conditions lasting six months or more that makes it difficult or impossible to perform basic activities outside the home alone. This does not include temporary health problems. This data is calculated for the population 16 and older. 
+
+```{r}
+# 2.5) Hearing disability - DEAR
+hearing_people <- people_with_disability %>%
+  filter(DEAR == 1) 
+
+hearing_number_of_people <- sum(hearing_people$PWGTP, na.rm = TRUE)
+
+hearing_people_percent <- (hearing_number_of_people / total_weighted_sample) * 100
+```
+
+Three percent, or 215,000, in the state have a hearing disability, meaning they are deaf or have serious difficulty hearing.
+
+```{r}
+# 2.6) Vision disability - DEYE
+vision_people <- people_with_disability %>%
+  filter(DEYE == 1) 
+
+vision_number_of_people <- sum(vision_people$PWGTP, na.rm = TRUE)
+
+vision_people_percent <- (vision_number_of_people / total_weighted_sample) * 100
+```
+
+Two percent, or 125,000, in the state have a vision disability, meaning they are blind or have serious difficulty seeing even with corrective lenses. 
+
+```{r}
+#Create table with detailed disability data 
+
+
+#Export person-level detailed disability data 
+  write.xlsx(list('Percent with disability' = dis_summary_table_person,
+                  'Percent of GQ with disability' = dis_summary_table_person_GQ,
+                'Age range' = disability_age_counts),
+           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/dis_person.xlsx") 
+
+```
+
+
+# 3) Age distribution of people living with disability statewide
+```{r}
+#Create age ranges for people with disability data set
 age_people_with_disability <- people_with_disability %>% 
-select(uniq_obs, PUMA, PWGTP, AGEP) %>% 
+select(uniq_obs, PUMA, PWGTP, AGEP, DREM, DPHY, DEYE, DEAR, DOUT, DDRS) %>% 
 mutate(age_range = case_when(
     AGEP >= 0 & AGEP < 5 ~ "Under 5",
     AGEP >= 5 & AGEP < 18 ~ "5-17",
@@ -160,29 +270,100 @@ mutate(age_range = case_when(
     AGEP >= 65 & AGEP < 75 ~ "65-74",
     AGEP >= 75 ~ "75 and over"))
 
+#Calculate sum of weights for each age group and percentage
 disability_age_counts <- age_people_with_disability %>%
   group_by(age_range) %>%
   summarise(age_weighted_sum = sum(PWGTP)) %>%
   mutate(percentage = (age_weighted_sum / number_of_people_with_disability * 100)) %>%
   mutate(age_range = factor(age_range, levels = c("Under 5", "5-17", "18-34", "35-64", "65-74", "75 and over"))) %>%
   arrange(age_range)
-
 ```
 
 The majority of people with disabilities are adults, especially older adults. One in four of people with a disability in the state are age 75 and older. A total of 43% of people with a disability are age 65 and older (17% is 64-74 and 26% is age 75+).
 
-A little over a third of people with a disability are in the age range of 35 to 64. 
+A little over a third of people with a disability are in the age range of 35 to 64. Only 14% are in the 18-34 age range and only 8% in the 5-17 category.
 
 Note that children under 5 are excluded in the disability measures for cognitive difficulty, ambulatory difficulty, and self-care difficulty. The independent living variable is only for people 16 and older. 
 
+# 4)  Age distribution of people living with each detailed disability type, not in GQ
 ```{r}
-#Export person-level disability data 
-  write.xlsx(list('Percent with disability' = dis_summary_table_person,
-                  'Percent of GQ with disability' = dis_summary_table_person_GQ,
-                'Age range' = disability_age_counts),
-           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/dis_person.xlsx") 
-
+# 4.1) Ambulatory disability by age - DPHY
+ambulatory_people_age <- age_people_with_disability %>%
+  filter(DPHY == 1) %>%
+  group_by(age_range) %>%
+  summarise(age_weighted_sum = sum(PWGTP)) %>%
+  mutate(percentage = (age_weighted_sum / ambulatory_number_of_people * 100)) %>%
+  mutate(age_range = factor(age_range, levels = c("Under 5", "5-17", "18-34", "35-64", "65-74", "75 and over"))) %>%
+  arrange(age_range)
 ```
+
+```{r}
+# 4.2) Self care disability by age - DDRS
+self_care_people_age <- age_people_with_disability %>%
+  filter(DDRS == 1) %>%
+  group_by(age_range) %>%
+  summarise(age_weighted_sum = sum(PWGTP)) %>%
+  mutate(percentage = (age_weighted_sum / self_care_number_of_people * 100)) %>%
+  mutate(age_range = factor(age_range, levels = c("Under 5", "5-17", "18-34", "35-64", "65-74", "75 and over"))) %>%
+  arrange(age_range)
+```
+
+```{r}
+# 4.3) Cognitive disability by age - DREM 
+cognitive_people_age <- age_people_with_disability %>%
+  filter(DREM == 1) %>%
+  group_by(age_range) %>%
+  summarise(age_weighted_sum = sum(PWGTP)) %>%
+  mutate(percentage = (age_weighted_sum / cognitive_number_of_people * 100)) %>%
+  mutate(age_range = factor(age_range, levels = c("Under 5", "5-17", "18-34", "35-64", "65-74", "75 and over"))) %>%
+  arrange(age_range)
+```
+
+```{r}
+# 4.4) Independent living disability by age - DOUT
+independent_living_people_age <- age_people_with_disability %>%
+  filter(DOUT == 1) %>%
+  group_by(age_range) %>%
+  summarise(age_weighted_sum = sum(PWGTP)) %>%
+  mutate(percentage = (age_weighted_sum / independent_living_number_of_people * 100)) %>%
+  mutate(age_range = factor(age_range, levels = c("Under 5", "5-17", "18-34", "35-64", "65-74", "75 and over"))) %>%
+  arrange(age_range)
+```
+
+```{r}
+# 4.5) Hearing disability by age - DEAR
+hearing_people_age <- age_people_with_disability %>%
+  filter(DEAR == 1) %>%
+  group_by(age_range) %>%
+  summarise(age_weighted_sum = sum(PWGTP)) %>%
+  mutate(percentage = (age_weighted_sum / hearing_number_of_people * 100)) %>%
+  mutate(age_range = factor(age_range, levels = c("Under 5", "5-17", "18-34", "35-64", "65-74", "75 and over"))) %>%
+  arrange(age_range)
+```
+
+```{r}
+# 4.6) Vision disability by age - DEYE 
+vision_people_age <- age_people_with_disability %>%
+  filter(DEYE == 1) %>%
+  group_by(age_range) %>%
+  summarise(age_weighted_sum = sum(PWGTP)) %>%
+  mutate(percentage = (age_weighted_sum / vision_number_of_people * 100)) %>%
+  mutate(age_range = factor(age_range, levels = c("Under 5", "5-17", "18-34", "35-64", "65-74", "75 and over"))) %>%
+  arrange(age_range)
+```
+
+
+```{r}
+#export person-level detailed disability data by age
+  write.xlsx(list('Ambulatory' = ambulatory_people_age,
+                  'Self care' = self_care_people_age,
+                'Cognitive' = cognitive_people_age,
+                'Independent living' = independent_living_people_age,
+                'Hearing' = hearing_people_age, 
+                'Vision' = vision_people_age), 
+           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/detailed_dis_person_age.xlsx") 
+```
+
 
 # 1.2 State-level, household level analysis
 

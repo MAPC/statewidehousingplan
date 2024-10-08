@@ -412,16 +412,6 @@ Number of hhlds with a member who has a disability by type of disability e.g. Wi
 
 Share of hhlds with a member who has a disability by type of disability e.g. With an ambulatory disability, etc.
 
-Hhld Income
-
-Housing tenure
-
-Age of housing stock
-
-Over-crowding
-
-Cost-burden
-
 # 5) Number of hhlds with a member who has a disability statewide
 ```{r}
 #Aggregate person-level data to household level
@@ -584,6 +574,62 @@ detailed_disability_table_hhld <- rbind(ambulatory_summary_table_hhld, self_care
            file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/detailed_dis_hhld.xlsx") 
 ```
 
+# 7) Additional household data on households with a person with a disability statewide
+
+Hhld Income
+
+Housing tenure
+
+Age of housing stock
+
+Over-crowding
+
+Cost-burden
+
+```{r}
+#Household Income for households with disability 
+
+
+
+
+```
+
+```{r}
+#Household tenure for households with disability 
+household_tenure_disability <- people_with_disability %>% #GQ is already filtered out in person-level data
+  group_by(SERIALNO) %>%
+  select(uniq_obs, RT, SERIALNO, PUMA, DIS, TEN) #don't have the tenure variable in my data set
+
+  # summarize(WGTP = first(WGTP), count_disabled = sum(DIS == 1)) %>%  #Retain household weights (same for all persons in the household)
+  # ungroup()
+
+```
+
+```{r}
+#Age of housing stock for households with disability 
+
+
+```
+
+```{r}
+#Over-crowding in households with disability 
+
+
+```
+
+```{r}
+#Cost burden for households with disability 
+
+
+
+```
+
+```{r}
+#Export other household data 
+
+
+```
+
 # Analysis by RPA
 
 1	BERKSHIRE REGIONAL PLANNING COMMISSION	BRPC
@@ -600,7 +646,7 @@ detailed_disability_table_hhld <- rbind(ambulatory_summary_table_hhld, self_care
 12 MARTHA'S VINEYARD COMMISSION	MVC
 13 NANTUCKET PLANNING & ECONOMIC DEVELOPMENT COMMISSION	NPEDC
 
-# 7) Number of households in each RPA with a person with any disability
+# 8) Number of households in each RPA with a person with any disability
 ```{r}
 #Analysis by RPA 
 

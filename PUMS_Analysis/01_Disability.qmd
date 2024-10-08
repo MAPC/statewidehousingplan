@@ -459,7 +459,7 @@ dis_summary_table_hhld <- data.frame(
 
 # 6) Number of hhlds with detailed disability
 ```{r}
-## Ambulatory disabilities - DPHY
+# 6.1) Ambulatory disabilities - DPHY
 ambulatory_households <- people_with_disability %>% #GQ is already filtered out in person-level data
   group_by(SERIALNO) %>%
   filter(DPHY == 1) %>%
@@ -470,19 +470,21 @@ ambulatory_households <- people_with_disability %>% #GQ is already filtered out 
 ambulatory_total_households <- sum(ambulatory_households$WGTP, na.rm = TRUE)
 
 #Calculate percentage out of all households
-ambulatory_percentage_hhld <- (ambulatory_total_households / total_weighted_households) * 100 #need a different denominator, 5 and up
+ambulatory_percentage_hhld <- (ambulatory_total_households / total_weighted_households) * 100 
 
 #Create summary table
 ambulatory_summary_table_hhld <- data.frame(
   Description = "Ambulatory Households",   
   Count = ambulatory_total_households,     
   Percent = ambulatory_percentage_hhld,         
-  Total_Households = total_weighted_households) #need a different denominator, 5 and up 
-
-#Repeating above steps for all detailed disabilities 
+  Total_Households = total_weighted_households) 
 
 
-## Self-care difficulty - DDRS 
+#Repeat above steps for all other detailed disabilities
+```
+
+```{r}
+# 6.2) Self-care difficulty - DDRS 
 self_care_households <- people_with_disability %>% 
   group_by(SERIALNO) %>%
   filter(DDRS == 1) %>%
@@ -490,16 +492,17 @@ self_care_households <- people_with_disability %>%
   ungroup()
 
 self_care_total_households <- sum(self_care_households$WGTP, na.rm = TRUE)
-self_care_percentage_hhld <- (self_care_total_households / total_weighted_households) * 100  #need a different denominator 
+self_care_percentage_hhld <- (self_care_total_households / total_weighted_households) * 100  
 
 self_care_summary_table_hhld <- data.frame(
   Description = "Self-Care Disability Households",   
   Count = self_care_total_households,     
   Percent = self_care_percentage_hhld,         
-  Total_Households = total_weighted_households) #need a different denominator 
+  Total_Households = total_weighted_households) 
+```
 
-
-## Hearing difficulty - DEAR
+```{r}
+# 6.3) Hearing difficulty - DEAR
 hearing_households <- people_with_disability %>% 
   group_by(SERIALNO) %>%
   filter(DEAR == 1) %>%
@@ -514,9 +517,10 @@ hearing_summary_table_hhld <- data.frame(
   Count = hearing_total_households,     
   Percent = hearing_percentage_hhld,         
   Total_Households = total_weighted_households)
+```
 
-
-## Vision difficulty - DEYE 
+```{r}
+# 6.4) Vision difficulty - DEYE 
 vision_households <- people_with_disability %>% 
   group_by(SERIALNO) %>%
   filter(DEYE == 1) %>%
@@ -531,9 +535,10 @@ vision_summary_table_hhld <- data.frame(
   Count = vision_total_households,     
   Percent = vision_percentage_hhld,         
   Total_Households = total_weighted_households)
+```
 
-
-## Independent living difficulty - DOUT
+```{r}
+# 6.5) Independent living difficulty - DOUT
 independent_living_households <- people_with_disability %>% 
   group_by(SERIALNO) %>%
   filter(DOUT == 1) %>%
@@ -541,16 +546,17 @@ independent_living_households <- people_with_disability %>%
   ungroup()
 
 independent_living_total_households <- sum(independent_living_households$WGTP, na.rm = TRUE)
-independent_living_percentage_hhld <- (independent_living_total_households / total_weighted_households) * 100 #need a different denominator 
+independent_living_percentage_hhld <- (independent_living_total_households / total_weighted_households) * 100 
 
 independent_living_summary_table_hhld <- data.frame(
   Description = "Independent Living Disability Households",   
   Count = independent_living_total_households,     
   Percent = independent_living_percentage_hhld,         
-  Total_Households = total_weighted_households) #need a different denominator 
+  Total_Households = total_weighted_households) #need a different denominator
+```
 
-
-## Cognitive difficulty - DREM 
+```{r}
+# 6.6) Cognitive difficulty - DREM 
 cognitive_households <- people_with_disability %>% 
   group_by(SERIALNO) %>%
   filter(DREM == 1) %>%
@@ -564,23 +570,37 @@ cognitive_summary_table_hhld <- data.frame(
   Description = "Cognitive Disability Households",   
   Count = cognitive_total_households,     
   Percent = cognitive_percentage_hhld,         
-  Total_Households = total_weighted_households) #need a different denominator 
+  Total_Households = total_weighted_households) #need a different denominator
+```
 
-
+```{r}
 ## Combine tables with counts and percents for detailed disabilities 
 detailed_disability_table_hhld <- rbind(ambulatory_summary_table_hhld, self_care_summary_table_hhld, hearing_summary_table_hhld, vision_summary_table_hhld, independent_living_summary_table_hhld, cognitive_summary_table_hhld)
-
 ```
 
 ```{r}
 #Export detailed disability household data 
-  write.xlsx(list('Detailed Disability Households' = detailed_disability_table),
+  write.xlsx(list('Detailed Disability Households' = detailed_disability_table_hhld),
            file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/detailed_dis_hhld.xlsx") 
 ```
 
 # Analysis by RPA
 
-# 7)
+1	BERKSHIRE REGIONAL PLANNING COMMISSION	BRPC
+2	FRANKLIN REGIONAL COUNCIL OF GOVERNMENTS	FRCOG
+3	PIONEER VALLEY PLANNING COMMISSION	PVPC
+4	MONTACHUSETT REGIONAL PLANNING COMMISSION	MRPC
+5	CENTRAL MASSACHUSETTS REGIONAL PLANNING COMMISSION	CMRPC
+6	NORTHERN MIDDLESEX COUNCIL OF GOVERNMENTS	NMCOG
+7	MERRIMACK VALLEY PLANNING COMMISSION	MVPC
+8	METROPOLITAN AREA PLANNING COUNCIL	MAPC
+9	OLD COLONY PLANNING COUNCIL	OCPC
+10 SOUTHEAST REGIONAL PLANNING & ECONOMIC DEVELOPMENT DISTRICT	SRPEDD
+11 CAPE COD COMMISSION	CCC
+12 MARTHA'S VINEYARD COMMISSION	MVC
+13 NANTUCKET PLANNING & ECONOMIC DEVELOPMENT COMMISSION	NPEDC
+
+# 7) Number of households in each RPA with a person with any disability
 ```{r}
 #Analysis by RPA 
 

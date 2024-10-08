@@ -173,6 +173,13 @@ people_5_and_over <- person_data %>%
 total_people_5_and_over <- sum(people_5_and_over$PWGTP, na.rm = TRUE)
 
 ambulatory_people_percent <- (ambulatory_number_of_people / total_people_5_and_over) * 100
+
+#create summary table
+ambulatory_summary_table_person <- data.frame(
+  Description = "Ambulatory Disability",   
+  Count = ambulatory_number_of_people,     
+  Percent = ambulatory_people_percent,         
+  Total_Population = total_people_5_and_over) 
 ```
 
 Around 6% of people in the state have an ambulatory disability, meaning they have a condition that substantially limits one or more basic physical activities, such as walking, climbing stairs, reaching, lifting, or carrying. This is around 375,000 people. This data is for the non-institutionalized population that is age 5 and above. 
@@ -185,6 +192,13 @@ self_care_people <- people_with_disability %>%
 self_care_number_of_people <- sum(self_care_people$PWGTP, na.rm = TRUE)
 
 self_care_people_percent <- (self_care_number_of_people / total_people_5_and_over) * 100
+
+#create summary table
+self_care_summary_table_person <- data.frame(
+  Description = "Self-care Disability",   
+  Count = self_care_number_of_people,     
+  Percent = self_care_people_percent,         
+  Total_Population = total_people_5_and_over) 
 ```
 
 Approximately 155,000 people in the state, or 2% of people, have a self-care disability. This means they have a physical or mental health condition that has lasted at least 6 months and makes it difficult for them to take care of their own personal needs, such as bathing, dressing, or getting around inside the home. This does not include temporary health conditions, such as broken bones or pregnancies. This data is for the non-institutionalized population that is age 5 and above. 
@@ -197,6 +211,13 @@ cognitive_people <- people_with_disability %>%
 cognitive_number_of_people <- sum(cognitive_people$PWGTP, na.rm = TRUE)
 
 cognitive_people_percent <- (cognitive_number_of_people / total_people_5_and_over) * 100
+
+#create summary table
+cognitive_summary_table_person <- data.frame(
+  Description = "Cognitive Disability",   
+  Count = cognitive_number_of_people,     
+  Percent = cognitive_people_percent,         
+  Total_Population = total_people_5_and_over) 
 ```
 
 Five percent, or about 330,000, have a cognitive disability in the state. Cognitive disabilities include difficulties learning, remembering, concentrating, or making decisions because of a physical, mental, or emotional condition. This data is for the non-institutionalized population that is age 5 and above. 
@@ -215,7 +236,14 @@ people_16_and_over <- person_data %>%
 #add weights and sum total number in sample
 total_people_16_and_over <- sum(people_16_and_over$PWGTP, na.rm = TRUE)
 
-indpendent_living_people_percent <- (independent_living_number_of_people / total_people_16_and_over) * 100
+independent_living_people_percent <- (independent_living_number_of_people / total_people_16_and_over) * 100
+
+#create summary table
+independent_living_summary_table_person <- data.frame(
+  Description = "Independent Living Disability",   
+  Count = independent_living_number_of_people,     
+  Percent = independent_living_people_percent,         
+  Total_Population = total_people_16_and_over) 
 ```
 
 Just over 300,000 people, or 5%, in the state have an independent living disability. This includes physical, mental, or emotional conditions lasting six months or more that makes it difficult or impossible to perform basic activities outside the home alone. This does not include temporary health problems. This data is calculated for the population 16 and older. 
@@ -228,6 +256,13 @@ hearing_people <- people_with_disability %>%
 hearing_number_of_people <- sum(hearing_people$PWGTP, na.rm = TRUE)
 
 hearing_people_percent <- (hearing_number_of_people / total_weighted_sample) * 100
+
+#create summary table
+hearing_summary_table_person <- data.frame(
+  Description = "Hearing Disability",   
+  Count = hearing_number_of_people,     
+  Percent = hearing_people_percent,         
+  Total_Population = total_weighted_sample) 
 ```
 
 Three percent, or 215,000, in the state have a hearing disability, meaning they are deaf or have serious difficulty hearing.
@@ -240,20 +275,23 @@ vision_people <- people_with_disability %>%
 vision_number_of_people <- sum(vision_people$PWGTP, na.rm = TRUE)
 
 vision_people_percent <- (vision_number_of_people / total_weighted_sample) * 100
+
+vision_summary_table_person <- data.frame(
+  Description = "Vision Disability",   
+  Count = vision_number_of_people,     
+  Percent = vision_people_percent,         
+  Total_Population = total_weighted_sample) 
 ```
 
 Two percent, or 125,000, in the state have a vision disability, meaning they are blind or have serious difficulty seeing even with corrective lenses. 
 
 ```{r}
 #Create table with detailed disability data 
+detailed_disability_table_person <- rbind(ambulatory_summary_table_person, self_care_summary_table_person, cognitive_summary_table_person, independent_living_summary_table_person, hearing_summary_table_person, vision_summary_table_person)
 
-
-#Export person-level detailed disability data 
-  write.xlsx(list('Percent with disability' = dis_summary_table_person,
-                  'Percent of GQ with disability' = dis_summary_table_person_GQ,
-                'Age range' = disability_age_counts),
-           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/dis_person.xlsx") 
-
+#Export table with person-level detailed disability data 
+  write.xlsx(list('Disability detail' = detailed_disability_table_person),
+           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/detailed_dis_person.xlsx") 
 ```
 
 
@@ -266,7 +304,7 @@ mutate(age_range = case_when(
     AGEP >= 0 & AGEP < 5 ~ "Under 5",
     AGEP >= 5 & AGEP < 18 ~ "5-17",
     AGEP >= 18 & AGEP < 35 ~ "18-34",
-    AGEP >= 35 & AGEP < 65 ~ "35-64",
+    AGEP >= 35 & AGEP < 65 ~ "35-64", #do 65+ or 75+ ?? 
     AGEP >= 65 & AGEP < 75 ~ "65-74",
     AGEP >= 75 ~ "75 and over"))
 
@@ -352,9 +390,8 @@ vision_people_age <- age_people_with_disability %>%
   arrange(age_range)
 ```
 
-
 ```{r}
-#export person-level detailed disability data by age
+#export person-level disability data by age
   write.xlsx(list('Disability by age' = disability_age_counts,
                   'Ambulatory' = ambulatory_people_age,
                   'Self care' = self_care_people_age,
@@ -386,9 +423,8 @@ Over-crowding
 
 Cost-burden
 
+# 5) Number of hhlds with a member who has a disability statewide
 ```{r}
-#Number of households with a member who has a disability 
-#Statewide
 #Aggregate person-level data to household level
 households_with_disability <- people_with_disability %>% #GQ is already filtered out in person-level data
   group_by(SERIALNO) %>%
@@ -423,9 +459,8 @@ dis_summary_table_hhld <- data.frame(
            file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/dis_hhld.xlsx") 
 ```
 
+# 6) Number of hhlds with detailed disability
 ```{r}
-#Detailed disability type for hhlds statewide
-
 ## Ambulatory disabilities - DPHY
 ambulatory_households <- people_with_disability %>% #GQ is already filtered out in person-level data
   group_by(SERIALNO) %>%
@@ -437,13 +472,13 @@ ambulatory_households <- people_with_disability %>% #GQ is already filtered out 
 ambulatory_total_households <- sum(ambulatory_households$WGTP, na.rm = TRUE)
 
 #Calculate percentage out of all households
-ambulatory_percentage <- (ambulatory_total_households / total_weighted_households) * 100 #need a different denominator, 5 and up
+ambulatory_percentage_hhld <- (ambulatory_total_households / total_weighted_households) * 100 #need a different denominator, 5 and up
 
 #Create summary table
 ambulatory_summary_table_hhld <- data.frame(
   Description = "Ambulatory Households",   
   Count = ambulatory_total_households,     
-  Percent = ambulatory_percentage,         
+  Percent = ambulatory_percentage_hhld,         
   Total_Households = total_weighted_households) #need a different denominator, 5 and up 
 
 #Repeating above steps for all detailed disabilities 
@@ -457,12 +492,12 @@ self_care_households <- people_with_disability %>%
   ungroup()
 
 self_care_total_households <- sum(self_care_households$WGTP, na.rm = TRUE)
-self_care_percentage <- (self_care_total_households / total_weighted_households) * 100  #need a different denominator 
+self_care_percentage_hhld <- (self_care_total_households / total_weighted_households) * 100  #need a different denominator 
 
 self_care_summary_table_hhld <- data.frame(
   Description = "Self-Care Disability Households",   
   Count = self_care_total_households,     
-  Percent = self_care_percentage,         
+  Percent = self_care_percentage_hhld,         
   Total_Households = total_weighted_households) #need a different denominator 
 
 
@@ -474,12 +509,12 @@ hearing_households <- people_with_disability %>%
   ungroup()
 
 hearing_total_households <- sum(hearing_households$WGTP, na.rm = TRUE)
-hearing_percentage <- (hearing_total_households / total_weighted_households) * 100
+hearing_percentage_hhld <- (hearing_total_households / total_weighted_households) * 100
 
 hearing_summary_table_hhld <- data.frame(
   Description = "Hearing Disability Households",   
   Count = hearing_total_households,     
-  Percent = hearing_percentage,         
+  Percent = hearing_percentage_hhld,         
   Total_Households = total_weighted_households)
 
 
@@ -491,12 +526,12 @@ vision_households <- people_with_disability %>%
   ungroup()
 
 vision_total_households <- sum(vision_households$WGTP, na.rm = TRUE)
-vision_percentage <- (vision_total_households / total_weighted_households) * 100
+vision_percentage_hhld <- (vision_total_households / total_weighted_households) * 100
 
 vision_summary_table_hhld <- data.frame(
   Description = "Vision Disability Households",   
   Count = vision_total_households,     
-  Percent = vision_percentage,         
+  Percent = vision_percentage_hhld,         
   Total_Households = total_weighted_households)
 
 
@@ -508,12 +543,12 @@ independent_living_households <- people_with_disability %>%
   ungroup()
 
 independent_living_total_households <- sum(independent_living_households$WGTP, na.rm = TRUE)
-independent_living_percentage <- (independent_living_total_households / total_weighted_households) * 100 #need a different denominator 
+independent_living_percentage_hhld <- (independent_living_total_households / total_weighted_households) * 100 #need a different denominator 
 
 independent_living_summary_table_hhld <- data.frame(
   Description = "Independent Living Disability Households",   
   Count = independent_living_total_households,     
-  Percent = independent_living_percentage,         
+  Percent = independent_living_percentage_hhld,         
   Total_Households = total_weighted_households) #need a different denominator 
 
 
@@ -525,28 +560,29 @@ cognitive_households <- people_with_disability %>%
   ungroup()
 
 cognitive_total_households <- sum(cognitive_households$WGTP, na.rm = TRUE)
-cognitive_percentage <- (cognitive_total_households / total_weighted_households) * 100 #need a different denominator 
+cognitive_percentage_hhld <- (cognitive_total_households / total_weighted_households) * 100 #need a different denominator 
 
 cognitive_summary_table_hhld <- data.frame(
   Description = "Cognitive Disability Households",   
   Count = cognitive_total_households,     
-  Percent = cognitive_percentage,         
+  Percent = cognitive_percentage_hhld,         
   Total_Households = total_weighted_households) #need a different denominator 
 
 
 ## Combine tables with counts and percents for detailed disabilities 
 detailed_disability_table <- rbind(ambulatory_summary_table_hhld, self_care_summary_table_hhld, hearing_summary_table_hhld, vision_summary_table_hhld, independent_living_summary_table_hhld, cognitive_summary_table_hhld)
 
-
 ```
 
 ```{r}
 #Export detailed disability household data 
   write.xlsx(list('Detailed Disability Households' = detailed_disability_table),
-           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/dis_hhld_detail.xlsx") 
-
+           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/detailed_dis_hhld.xlsx") 
 ```
 
+# Analysis by RPA
+
+# 7)
 ```{r}
 #Analysis by RPA 
 

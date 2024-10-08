@@ -75,9 +75,9 @@ print(pums_duplicates)
 
 ```
 
-# 1.0 PUMS Analysis
+# PUMS Analysis
 
-# 1.1 State-level, person level analysis
+# State-level, person level analysis
 
 1)  Number of individuals living with any disability, outside of GQ and those living in GQ
 
@@ -88,7 +88,7 @@ print(pums_duplicates)
 4)  Age distribution of people living with each detailed disability type
 
 
-# 1) Calculate the number of people with a disability statewide, inside and outside of GQ
+# 1) Number of people with a disability statewide, inside and outside of GQ
 ```{r}
 #Create data set with people who have a disability outside of group quarters
 people_with_disability <- pums %>%
@@ -355,7 +355,8 @@ vision_people_age <- age_people_with_disability %>%
 
 ```{r}
 #export person-level detailed disability data by age
-  write.xlsx(list('Ambulatory' = ambulatory_people_age,
+  write.xlsx(list('Disability by age' = disability_age_counts,
+                  'Ambulatory' = ambulatory_people_age,
                   'Self care' = self_care_people_age,
                 'Cognitive' = cognitive_people_age,
                 'Independent living' = independent_living_people_age,
@@ -365,7 +366,7 @@ vision_people_age <- age_people_with_disability %>%
 ```
 
 
-# 1.2 State-level, household level analysis
+# State-level, household level analysis
 
 Number of hhlds with a member who has a disability statewide and by RPA
 

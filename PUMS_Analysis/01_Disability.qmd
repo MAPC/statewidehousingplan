@@ -30,7 +30,7 @@ library(writexl)
 #root <- '../../../../Data/Working/Regional_Control_Totals/'
 
 #General J drive filepath
-root <-"J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI"
+#root <-"J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI"
 
 #PUMS J drive filepath
 pums_path <- "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI"
@@ -72,7 +72,6 @@ pums_duplicates <- pums %>%
     filter(n() > 1)
 
 print(pums_duplicates)
-
 ```
 
 # PUMS Analysis
@@ -309,7 +308,7 @@ mutate(age_range = case_when(
     AGEP >= 75 ~ "75 and over"))
 
 #Calculate sum of weights for each age group and percentage
-disability_age_counts <- age_people_with_disability %>%
+disability_by_age_table <- age_people_with_disability %>%
   group_by(age_range) %>%
   summarise(age_weighted_sum = sum(PWGTP)) %>%
   mutate(percentage = (age_weighted_sum / number_of_people_with_disability * 100)) %>%
@@ -441,14 +440,13 @@ filter(TYPEHUGQ != 2)
 total_weighted_households <- sum(household_data$WGTP, na.rm = TRUE)
 
 #Calculate percent of households who have some one with a disability
-percentage_with_disability <- (total_households_with_disability / total_weighted_households) * 100
+percentage_with_disability_hhld <- (total_households_with_disability / total_weighted_households) * 100
 
 #Create summary table
 dis_summary_table_hhld <- data.frame(
   "Households with Disability" = total_households_with_disability,
-  "Share of Households with Disability" = percentage_with_disability,
+  "Share of Households with Disability" = percentage_with_disability_hhld,
   "Total Households" = total_weighted_households)
-
 ```
 
 22% of households in the state have someone with a disability. This is around 650,000 households.
@@ -570,7 +568,7 @@ cognitive_summary_table_hhld <- data.frame(
 
 
 ## Combine tables with counts and percents for detailed disabilities 
-detailed_disability_table <- rbind(ambulatory_summary_table_hhld, self_care_summary_table_hhld, hearing_summary_table_hhld, vision_summary_table_hhld, independent_living_summary_table_hhld, cognitive_summary_table_hhld)
+detailed_disability_table_hhld <- rbind(ambulatory_summary_table_hhld, self_care_summary_table_hhld, hearing_summary_table_hhld, vision_summary_table_hhld, independent_living_summary_table_hhld, cognitive_summary_table_hhld)
 
 ```
 

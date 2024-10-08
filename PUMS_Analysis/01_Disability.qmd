@@ -56,6 +56,58 @@ pums <- read.csv("J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums
 ```{r}
 #Load in the municipality to PUMA crosswalk.
 RPA_crosswalk <- read.csv ("J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/PUMA10_RPA_crosswalk.csv")
+
+ma_muni_puma10_join <- read_csv("PUMS_Analysis/ma_muni_puma10_join.csv")
+
+#Load in the municipality to PUMA crosswalk.
+psf <- ma_muni_puma10_join|>
+  dplyr::rename(
+    muni_id=TOWN_ID,
+    PUMA = PUMACE10
+  ) |>
+  left_join(
+    mkeys,
+    by = c('muni_id')
+  ) |> 
+  select(-c(muni_id)) |> 
+  distinct(
+    PUMA,
+    .keep_all = TRUE
+  ) |> 
+  mutate(
+    PUMA = str_pad(PUMA, 5, side = "left", pad = "0")
+  )
+
+#Manufacturing MVC and NPEDC RPAs manually
+#Create an empty matrix with 2x1 dimenstions
+matrix <- matrix(nrow = 1, ncol = 3)
+#Set the column names to match the PUMA to RPA/MPO crosswalk
+col_names <- c("rpa_acr", "mpo", "PUMA")
+
+#Create dataframes with matrix dimensions for both RPAs
+mvc <- data.frame(matrix = matrix)
+ccc <- data.frame(matrix = matrix)
+
+#Assign column names to the dataframes
+colnames(mvc) <- col_names
+colnames(ccc) <- col_names
+
+#Populate data into the MVC and MPEDC dataframes
+mvc[[1]] <- "MVC"
+mvc[[2]] <- "MVC"
+mvc[[3]] <- "04800"
+ccc[[1]] <- "CCC"
+ccc[[2]] <- "CCC"
+ccc[[3]] <- "04800"
+
+#Append MVC and NPEDC data to PUMA to RPA/MPO crosswalk
+xw <- bind_rows(psf, mvc, ccc)
+
+#Remove intermediate dataframes.
+rm(matrix, col_names, mvc, ccc, psf)
+gc()
+
+
 ```
 
 # 0.4 PUMS Data Cleaning

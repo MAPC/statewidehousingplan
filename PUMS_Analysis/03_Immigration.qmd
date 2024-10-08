@@ -6,4 +6,57 @@ editor: visual
 
 # 0.0 Setup - Define helper functions, set knitr path, load necessary packages, set muni data keys
 
+#Set up libraries for the analysis
+
+```{r}
+library(tidycensus)
+library(tidyverse)
+library(survey)
+library(srvyr)
+library(data.table)
+library(janitor) 
+library(dplyr)
+library(knitr)
+library(readxl)
+library(writexl)
+```
+
 # 0.1 - Set knitr path + root for inputs
+
+```{r}
+#copied from MAPC work - not sure if we want to set up this way - 
+
+#Use when Rproject is open
+#root <- '../../../../Data/Working/Regional_Control_Totals/'
+
+#General J drive filepath
+#root <-"J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI"
+
+#PUMS J drive filepath
+pums_path <- "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI"
+
+#Set output filepath
+output_path <- ":/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output"
+
+#Set knitr path
+#knitr::opts_knit$set(root.dir = pums_path)
+```
+
+# 0.2 - Set package dependencies, set environment, set up data keys
+
+```{r}
+#source("J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI")
+
+#Load PUMS variables
+pums <- read.csv(
+```
+
+
+# PUMS Analysis
+
+# State-level, person level analysis
+
+```{r}
+
+```
+

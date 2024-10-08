@@ -255,14 +255,14 @@ ambulatory_households <- people_with_disability %>% #GQ is already filtered out 
 ambulatory_total_households <- sum(ambulatory_households$WGTP, na.rm = TRUE)
 
 #Calculate percentage out of all households
-ambulatory_percentage <- (ambulatory_total_households / total_weighted_households) * 100
+ambulatory_percentage <- (ambulatory_total_households / total_weighted_households) * 100 #need a different denominator, 5 and up
 
 #Create summary table
 ambulatory_summary_table_hhld <- data.frame(
   Description = "Ambulatory Households",   
   Count = ambulatory_total_households,     
   Percent = ambulatory_percentage,         
-  Total_Households = total_weighted_households)
+  Total_Households = total_weighted_households) #need a different denominator, 5 and up 
 
 #Repeating above steps for all detailed disabilities 
 
@@ -275,13 +275,13 @@ self_care_households <- people_with_disability %>%
   ungroup()
 
 self_care_total_households <- sum(self_care_households$WGTP, na.rm = TRUE)
-self_care_percentage <- (self_care_total_households / total_weighted_households) * 100
+self_care_percentage <- (self_care_total_households / total_weighted_households) * 100  #need a different denominator 
 
 self_care_summary_table_hhld <- data.frame(
   Description = "Self-Care Disability Households",   
   Count = self_care_total_households,     
   Percent = self_care_percentage,         
-  Total_Households = total_weighted_households)
+  Total_Households = total_weighted_households) #need a different denominator 
 
 
 ## Hearing difficulty - DEAR
@@ -326,13 +326,13 @@ independent_living_households <- people_with_disability %>%
   ungroup()
 
 independent_living_total_households <- sum(independent_living_households$WGTP, na.rm = TRUE)
-independent_living_percentage <- (independent_living_total_households / total_weighted_households) * 100
+independent_living_percentage <- (independent_living_total_households / total_weighted_households) * 100 #need a different denominator 
 
 independent_living_summary_table_hhld <- data.frame(
   Description = "Independent Living Disability Households",   
   Count = independent_living_total_households,     
   Percent = independent_living_percentage,         
-  Total_Households = total_weighted_households)
+  Total_Households = total_weighted_households) #need a different denominator 
 
 
 ## Cognitive difficulty - DREM 
@@ -343,13 +343,13 @@ cognitive_households <- people_with_disability %>%
   ungroup()
 
 cognitive_total_households <- sum(cognitive_households$WGTP, na.rm = TRUE)
-cognitive_percentage <- (cognitive_total_households / total_weighted_households) * 100
+cognitive_percentage <- (cognitive_total_households / total_weighted_households) * 100 #need a different denominator 
 
 cognitive_summary_table_hhld <- data.frame(
   Description = "Cognitive Disability Households",   
   Count = cognitive_total_households,     
   Percent = cognitive_percentage,         
-  Total_Households = total_weighted_households)
+  Total_Households = total_weighted_households) #need a different denominator 
 
 
 ## Combine tables with counts and percents for detailed disabilities 

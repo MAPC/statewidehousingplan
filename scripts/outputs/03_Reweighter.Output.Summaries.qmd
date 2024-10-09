@@ -107,7 +107,7 @@ for (i in years) {
     
     rm(tmp)
     
-    print(paste0("Finished Reading and Appending Scenario:", scen, " for Year: ", i))
+    print(paste0("Finished Reading and Appending Scenario: ", scen, " for Year: ", i))
   
   }
   else if (scen == "Scenario_2"){

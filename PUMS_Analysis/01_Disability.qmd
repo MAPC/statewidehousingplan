@@ -53,19 +53,29 @@ output_path <- ":/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UM
 #source("J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI")
 
 #Load PUMS variables
-pums <- read.csv("J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/pums_disab_hh_2021_V_2024-10-02.csv")
+#pums <- read.csv("J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/pums_disab_hh_2021_V_2024-10-02.csv")
+
+#Load PUMS data - new  version
+pums <- read.xlsx("J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/pums_disab_hh_2021_V_2024-10-09.xlsx")
 ```
 
 # 0.3 PUMA to RPA Crosswalk
 
 ```{r}
-#Load in the municipality to PUMA crosswalk.
+#Load in PUMA crosswalk - didn't end up using this one but here if needed
 RPA_crosswalk <- read.csv ("J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/PUMA10_RPA_crosswalk.csv")
 
+#install mapc package for geographies
 devtools::install_github("MAPC/mapcdatakeys", force = TRUE)
-
-ma_muni_puma10_join <- read_csv("ma_muni_puma10_join.csv")
 library(mapcdatakeys)
+```
+
+
+```{r}
+#Load in puma crosswalk and use mapc to match geos 
+ma_muni_puma10_join <- read_csv("ma_muni_puma10_join.csv")
+
+mkeys <- mapcdatakeys::all_muni_data_keys |>  select(muni_id,rpa_acr,mpo)
 
 #Load in the municipality to PUMA crosswalk.
 psf <- ma_muni_puma10_join|>
@@ -115,23 +125,21 @@ xw <- bind_rows(psf, mvc, ccc)
 rm(matrix, col_names, mvc, ccc, psf)
 gc()
 
-
 ```
 
 # 0.4 PUMS Data Cleaning
 
 ```{r}
-#Joining the PUMA to RPA crosswalk to the PUMS data. - not working right now, it's a many to many join 
-pums <- left_join(
+#Joining the PUMA to RPA crosswalk to the PUMS data. - not working right now
+#converting puma to numeric 
+xw$PUMA <- as.numeric(xw$PUMA)
+
+#join RPA croswalk to pums data
+pums_RPA <- left_join(
   pums,
-  RPA_crosswalk,
+  xw,
   by = c("PUMA"))
 
-pums_duplicates <- pums %>%
-    group_by(uniq_obs) %>%
-    filter(n() > 1)
-
-print(pums_duplicates)
 ```
 
 # PUMS Analysis
@@ -769,19 +777,43 @@ Cost-burden
 ```{r}
 #Household Income for households with disability 
 
+#To replicate income groups that mapc used
 
+SFN = replace_na(SFN, 0)
+    # Adjust Household income (HINCP) to constant dollars (USD2021)
+    HINCP_adj = HINCP*ADJINC
+    # Household Income Groupings consistent with UrbanSim groupings
+    HH.Income.Grp = case_when(
+      HINCP_adj <= 35000 ~ "<=$35,000",
+      HINCP_adj > 35000 & HINCP_adj <= 75000 ~ "$35,001-$75,000",
+      HINCP_adj > 75000 & HINCP_adj <= 125000 ~ "$75,001-$125,000",
+      HINCP_adj > 125000 & HINCP_adj <= 225000 ~ "$125,001-$225,000",
+      HINCP_adj > 225000 ~ ">$225,000",
+      .default = "0")
 
 
 ```
 
 ```{r}
 #Household tenure for households with disability 
-household_tenure_disability <- people_with_disability %>% #GQ is already filtered out in person-level data
-  group_by(SERIALNO) %>%
-  select(uniq_obs, RT, SERIALNO, PUMA, DIS, TEN) #don't have the tenure variable in my data set
 
-  # summarize(WGTP = first(WGTP), count_disabled = sum(DIS == 1)) %>%  #Retain household weights (same for all persons in the household)
-  # ungroup()
+household_tenure_disability <- people_with_disability %>%
+  group_by(SERIALNO) %>% # group by household 
+  summarise(first_weight = first(WGTP, na.rm = TRUE), # get the first person's weight for hhld
+    TEN = first(TEN), .groups = "drop") %>%          # get the tenure for the first person                          
+  group_by(TEN) %>%                                  # group by TEN to calculate total weights for each tenure type
+  summarise(total_weight_by_tenure = sum(first_weight, na.rm = TRUE), # Sum the weights by tenure
+    .groups = "drop")                                       
+
+household_tenure_disability_table <- household_tenure_disability %>%
+  mutate(TEN = case_when(
+    TEN == 1 ~ "Owned with mortgage or loan (include home equity loans)",
+    TEN == 2 ~ "Owned free and clear",
+    TEN == 3 ~ "Rented",
+    TEN == 4 ~ "Occupied without payment of rent",
+    TRUE ~ "Unknown"))
+
+#may want to add a percent column for tenure 
 
 ```
 

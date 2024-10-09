@@ -19,6 +19,7 @@ library(dplyr)
 library(knitr)
 library(readxl)
 library(writexl)
+library(openxlsx)
 ```
 
 # 0.1 - Set knitr path + root for inputs
@@ -161,9 +162,10 @@ total_weighted_sample <- sum(person_data$PWGTP, na.rm = TRUE)
 percentage_people_with_disability <- (number_of_people_with_disability / total_weighted_sample) * 100
 
 dis_summary_table_person <- data.frame(
-  "People with Disability" = number_of_people_with_disability,
-  "Share with Disability" = percentage_people_with_disability,
-  "Total" = total_weighted_sample)
+  Description = "Non-institutionalized population",   
+  Count = number_of_people_with_disability,     
+  Percent = percentage_people_with_disability,         
+  Total_Population = total_weighted_sample) 
 
 
 ###Repeat above steps for people with disability in GQ
@@ -188,16 +190,20 @@ total_weighted_sample_GQ <- sum(person_data_GQ$PWGTP, na.rm = TRUE)
 percentage_people_with_disability_GQ <- (number_of_people_with_disability_GQ / total_weighted_sample_GQ) * 100
 
 dis_summary_table_person_GQ <- data.frame(
-  "People with Disability" = number_of_people_with_disability_GQ,
-  "Share with Disability" = percentage_people_with_disability_GQ,
-  "Total" = total_weighted_sample_GQ)
+  Description = "Institutional group quarters",   
+  Count = number_of_people_with_disability_GQ,     
+  Percent = percentage_people_with_disability_GQ,         
+  Total_Population = total_weighted_sample_GQ) 
+
+
+#combine tables 
+dis_summary_table_person_level <- rbind(dis_summary_table_person, dis_summary_table_person_GQ)
 
 ```
 
 ```{r}
 #Export person-level disability data 
-  write.xlsx(list('Percent with disability' = dis_summary_table_person,
-                  'Percent of GQ with disability' = dis_summary_table_person_GQ),
+  write.xlsx(list('Percent with disability' = dis_summary_table_person_level),
            file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/dis_person.xlsx") 
 ```
 
@@ -359,7 +365,7 @@ mutate(age_range = case_when(
     AGEP >= 65 & AGEP < 75 ~ "65-74",
     AGEP >= 75 ~ "75 and over"))
 
-#Calculate sum of weights for each age group and percentage
+#Calculate sum of weights for each age group and percentage - share of people with disability by age group
 disability_by_age_table <- age_people_with_disability %>%
   group_by(age_range) %>%
   summarise(age_weighted_sum = sum(PWGTP)) %>%
@@ -373,6 +379,39 @@ The majority of people with disabilities are adults, especially older adults. On
 A little over a third of people with a disability are in the age range of 35 to 64. Only 14% are in the 18-34 age range and only 8% in the 5-17 category.
 
 Note that children under 5 are excluded in the disability measures for cognitive difficulty, ambulatory difficulty, and self-care difficulty. The independent living variable is only for people 16 and older. 
+
+```{r}
+#Share of age group that has a disability 
+#calculate the number of people in each age group 
+
+#create new data set with all person-level data and age ranges 
+age_person_data <- person_data %>% 
+select(uniq_obs, PUMA, PWGTP, AGEP, DIS, DREM, DPHY, DEYE, DEAR, DOUT, DDRS) %>% 
+mutate(age_range = case_when(
+    AGEP >= 0 & AGEP < 5 ~ "Under 5",
+    AGEP >= 5 & AGEP < 18 ~ "5-17",
+    AGEP >= 18 & AGEP < 35 ~ "18-34",
+    AGEP >= 35 & AGEP < 65 ~ "35-64", #do 65+ or 75+ ?? 
+    AGEP >= 65 & AGEP < 75 ~ "65-74",
+    AGEP >= 75 ~ "75 and over"))
+
+#Calculate sum of weights for each age group and percentage - share of each age group with a disability 
+dis_share_of_age_group <- age_person_data %>%
+  group_by(age_range) %>%
+   summarise(dis_age_sum = sum(ifelse(DIS == 1, PWGTP, 0)),  # sum weights where DIS == 1
+    age_ranges_sum = sum(PWGTP)) %>% #total sum of each age group
+  mutate(percentage = (dis_age_sum / age_ranges_sum) * 100) %>%
+  mutate(age_range = factor(age_range, levels = c("Under 5", "5-17", "18-34", "35-64", "65-74", "75 and over"))) %>%
+  arrange(age_range)
+```
+
+```{r}
+#export person-level disability data by age
+  write.xlsx(list('Disability by age' = disability_by_age_table,
+                  'Share of age group with dis' = dis_share_of_age_group), 
+           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/dis_person_age_new.xlsx") 
+```
+
 
 # 4)  Age distribution of people living with each detailed disability type, not in GQ
 ```{r}
@@ -442,8 +481,8 @@ vision_people_age <- age_people_with_disability %>%
 ```
 
 ```{r}
-#export person-level disability data by age
-  write.xlsx(list('Disability by age' = disability_age_counts,
+#export person-level disability data by age - share of each disability by age group
+  write.xlsx(list('Disability by age' = disability_by_age_table,
                   'Ambulatory' = ambulatory_people_age,
                   'Self care' = self_care_people_age,
                 'Cognitive' = cognitive_people_age,
@@ -451,6 +490,88 @@ vision_people_age <- age_people_with_disability %>%
                 'Hearing' = hearing_people_age, 
                 'Vision' = vision_people_age), 
            file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/detailed_dis_person_age.xlsx") 
+```
+
+
+```{r}
+#############Calculate share of each age group that has each disability type
+
+# 4.7) Share of age groups with ambulatory disability - DPHY
+ambulatory_people_age_new <- age_person_data %>%
+  group_by(age_range) %>%
+  summarise(dis_age_sum = sum(ifelse(DPHY == 1, PWGTP, 0)),  # sum weights where DPHY == 1
+    age_ranges_sum = sum(PWGTP)) %>% #total sum of each age group
+  mutate(percentage = (dis_age_sum / age_ranges_sum) * 100) %>%
+  mutate(age_range = factor(age_range, levels = c("Under 5", "5-17", "18-34", "35-64", "65-74", "75 and over"))) %>%
+  arrange(age_range)
+  
+```
+
+```{r}
+# 4.8) Share of age groups with self care disability - DDRS
+self_care_people_age_new <- age_person_data %>%
+  group_by(age_range) %>%
+  summarise(dis_age_sum = sum(ifelse(DDRS == 1, PWGTP, 0)),  # sum weights where DDRS == 1
+    age_ranges_sum = sum(PWGTP)) %>% #total sum of each age group
+  mutate(percentage = (dis_age_sum / age_ranges_sum) * 100) %>%
+  mutate(age_range = factor(age_range, levels = c("Under 5", "5-17", "18-34", "35-64", "65-74", "75 and over"))) %>%
+  arrange(age_range)
+```
+
+```{r}
+# 4.9) Share of age groups with cognitive disability - DREM 
+cognitive_people_age_new <- age_person_data %>%
+  group_by(age_range) %>%
+  summarise(dis_age_sum = sum(ifelse(DREM == 1, PWGTP, 0)),  # sum weights where DREM == 1
+    age_ranges_sum = sum(PWGTP)) %>% #total sum of each age group
+  mutate(percentage = (dis_age_sum / age_ranges_sum) * 100) %>%
+  mutate(age_range = factor(age_range, levels = c("Under 5", "5-17", "18-34", "35-64", "65-74", "75 and over"))) %>%
+  arrange(age_range)
+```
+
+```{r}
+# 4.10) Share of age groups with independent living disability - DOUT
+independent_living_people_age_new <- age_person_data %>%
+  group_by(age_range) %>%
+  summarise(dis_age_sum = sum(ifelse(DOUT == 1, PWGTP, 0)),  # sum weights where DOUT == 1
+    age_ranges_sum = sum(PWGTP)) %>% #total sum of each age group
+  mutate(percentage = (dis_age_sum / age_ranges_sum) * 100) %>%
+  mutate(age_range = factor(age_range, levels = c("Under 5", "5-17", "18-34", "35-64", "65-74", "75 and over"))) %>%
+  arrange(age_range)
+```
+
+```{r}
+# 4.11) Share of age groups with hearing disability - DEAR
+hearing_people_age_new <- age_person_data %>%
+  group_by(age_range) %>%
+  summarise(dis_age_sum = sum(ifelse(DEAR == 1, PWGTP, 0)),  # sum weights where DEAR == 1
+    age_ranges_sum = sum(PWGTP)) %>% #total sum of each age group
+  mutate(percentage = (dis_age_sum / age_ranges_sum) * 100) %>%
+  mutate(age_range = factor(age_range, levels = c("Under 5", "5-17", "18-34", "35-64", "65-74", "75 and over"))) %>%
+  arrange(age_range)
+```
+
+```{r}
+# 4.12) Share of age groups with vision disability  - DEYE 
+vision_people_age_new <- age_person_data %>%
+  group_by(age_range) %>%
+  summarise(dis_age_sum = sum(ifelse(DEYE == 1, PWGTP, 0)),  # sum weights where DEYE == 1
+    age_ranges_sum = sum(PWGTP)) %>% #total sum of each age group
+  mutate(percentage = (dis_age_sum / age_ranges_sum) * 100) %>%
+  mutate(age_range = factor(age_range, levels = c("Under 5", "5-17", "18-34", "35-64", "65-74", "75 and over"))) %>%
+  arrange(age_range)
+```
+
+```{r}
+#export person-level disability data by age - share of each age group with each disability
+  write.xlsx(list('Disability' = dis_share_of_age_group,
+                  'Ambulatory' = ambulatory_people_age_new,
+                  'Self care' = self_care_people_age_new,
+                'Cognitive' = cognitive_people_age_new,
+                'Independent living' = independent_living_people_age_new,
+                'Hearing' = hearing_people_age_new, 
+                'Vision' = vision_people_age_new), 
+           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/detailed_dis_person_age_new.xlsx") 
 ```
 
 

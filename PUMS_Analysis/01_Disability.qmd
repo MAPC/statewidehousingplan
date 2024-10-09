@@ -20,6 +20,10 @@ library(knitr)
 library(readxl)
 library(writexl)
 library(openxlsx)
+
+install.packages("devtools")
+library(devtools)
+
 ```
 
 # 0.1 - Set knitr path + root for inputs
@@ -58,7 +62,10 @@ pums <- read.csv("J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums
 #Load in the municipality to PUMA crosswalk.
 RPA_crosswalk <- read.csv ("J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/PUMA10_RPA_crosswalk.csv")
 
-ma_muni_puma10_join <- read_csv("PUMS_Analysis/ma_muni_puma10_join.csv")
+devtools::install_github("MAPC/mapcdatakeys", force = TRUE)
+
+ma_muni_puma10_join <- read_csv("ma_muni_puma10_join.csv")
+library(mapcdatakeys)
 
 #Load in the municipality to PUMA crosswalk.
 psf <- ma_muni_puma10_join|>
@@ -780,12 +787,6 @@ household_tenure_disability <- people_with_disability %>% #GQ is already filtere
 
 ```{r}
 #Age of housing stock for households with disability 
-
-
-```
-
-```{r}
-#Over-crowding in households with disability 
 
 
 ```

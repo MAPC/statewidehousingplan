@@ -3,24 +3,80 @@ title: "03_Reweighter.Output.Summaries"
 format: html
 editor: visual
 ---
-
-## Quarto
-
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
-
-## Running Code
-
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
-
+# 0.0 Environment Set Up
 ```{r}
-1 + 1
 ```
 
-You can add options to executable code like this
-
+# 0.1 Filepath Set Up
 ```{r}
-#| echo: false
-2 * 2
+#===============================================================================
+#TODO: 
+# 1. Create a way to loop through scenarios and headship rates based on a list
+
+#===============================================================================
+### Set Scenario Names ###
+#Population Scenario
+scen <- 'Scenario_1'
+#Headship rate Scenario
+hdshp <- 'acs1721'
+
+#Use when Rproject is open
+#root <- '../../../../Data/Working/Regional_Control_Totals/'
+
+# Base root. Toggle between S: and K: drive depedning on mapped paths on your computer
+base <- "K:/DataServices/Projects/Current_Projects/"
+#base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
+
+# General K drive filepath
+root <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/")
+
+# Set output filepath
+output_path <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/", scen, "/")
+
+# Reweighter files path
+rwt_path <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Reweighter/")
+
+# Set knitr path
+knitr::opts_knit$set(root.dir = root)
 ```
 
-The `echo: false` option disables the printing of code (only output is displayed).
+# 0.2 Set Package Dependencies + Set Environment Variables, Set up data keys
+```{r}
+library(tidycensus)
+library(tidyverse)
+library(data.table)
+library(reticulate)
+library(mapcdatakeys)
+library(janitor)
+library(readxl)
+
+##get rid of scientific notation
+options(scipen = 999)
+#Set random seed
+set.seed(351)
+
+#Set up muni data keys
+#MPO Data Keys
+keys.mpo <- mapcdatakeys::all_muni_data_keys |> 
+  select(
+    muni_id, muni_name, mpo
+  ) |> 
+  mutate(
+    muni_id = as.character(muni_id),
+    muni_name = ifelse(muni_name == "Manchester-by-the-Sea", "Manchester", muni_name)
+  )
+
+#RPA Data Keys
+keys.rpa <- mapcdatakeys::all_muni_data_keys |> 
+  select(
+    muni_id, muni_name, rpa_acr
+  ) |> 
+  mutate(
+    muni_id = as.character(muni_id),
+    muni_name = ifelse(muni_name == "Manchester-by-the-Sea", "Manchester", muni_name)
+  )
+```
+
+# 1.0 Load Reweighter Output Data
+```{r}
+```

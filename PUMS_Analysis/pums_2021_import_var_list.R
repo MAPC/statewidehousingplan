@@ -20,7 +20,7 @@ options(scipen = 999)
 
 # set output path
 exp_path = "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS"
-exp_path ="C:/Users/lberman/Downloads"
+exp_path ="K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS/ipums_2021"
 
 # Housing units are uniquely identified by the SERIALNO variable
 # Persons are uniquely identified by the combination of SERIALNO and SPORDER.
@@ -262,7 +262,7 @@ pums_2021_reorder <- pums_2021 [c('uniq_obs',
 
 
 # 8 read csv of hh data downloaded from pums ftp
-hh_pums <- read.csv("C:/Users/lberman/Downloads/csv_hma/psam_h25.csv", header = TRUE, stringsAsFactors = FALSE)
+hh_pums <- read.csv(paste0(exp_path, "/psam_h25.csv"), header = TRUE, stringsAsFactors = FALSE)
 
 # 8.1 add SPORDER column = 0
 hh_pums['SPORDER'] = '0'

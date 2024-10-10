@@ -3,8 +3,11 @@ title: "03_Reweighter.Output.Summaries"
 format: html
 editor: visual
 ---
+
 # 0.0 Environment Set Up
+
 # 0.1 Filepath Set Up
+
 ```{r}
 #===============================================================================
 #TODO: 
@@ -38,6 +41,7 @@ knitr::opts_knit$set(root.dir = root)
 ```
 
 # 0.2 Set Package Dependencies + Set Environment Variables, Set up data keys
+
 ```{r}
 library(tidycensus)
 library(tidyverse)
@@ -75,6 +79,7 @@ keys.rpa <- mapcdatakeys::all_muni_data_keys |>
 ```
 
 # 1.0 Load Reweighter Output Data
+
 ```{r}
 # Set a column of years corresponding to the projection years considered
 years <- c(2020,2030,2035,2040,2045,2050)

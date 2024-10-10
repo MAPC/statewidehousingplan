@@ -181,11 +181,43 @@ for (i in years) {
 #===============================================================================
 # .1 UrbanSim Household Income Groupings
 
+tbl.1 <- sf1.df |> 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
+  group_by(
+    rpa_acr,
+    year,
+    
+  )
+
 #===============================================================================
 # .2 5-year Age Groupings (ageCAT6)
 
+tbl.2 <- s1.df |> 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
+  group_by(
+    rpa_acr,
+    year,
+    ageCAT6
+  ) |> 
+  summarise(
+    hhds = sum(new_WGTP)
+  ) |> 
+  ungroup()
+
 #===============================================================================
 # .3 Household Type
+
+tbl.3 <- s1.df |> 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
+  group_by(
+    rpa_acr,
+    year,
+    HHtype
+  ) |> 
+  summarise(
+    hhds = sum(new_WGTP)
+  ) |> 
+  ungroup()
 ```
 
 #3.0 Output Tables for Statewide Housing Plan Deliverables

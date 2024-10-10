@@ -172,10 +172,37 @@ for (i in years) {
 }
 
 ```
+
 # 2.0 Output Tables For UrbanSim
+- .1 UrbanSim Household Income Groupings
+- .2 5-year Age Groupings (ageCAT6)
+- .3 Household Type
 ```{r}
+#===============================================================================
+# .1 UrbanSim Household Income Groupings
+
+#===============================================================================
+# .2 5-year Age Groupings (ageCAT6)
+
+#===============================================================================
+# .3 Household Type
 ```
 
 #3.0 Output Tables for Statewide Housing Plan Deliverables
+- .1 Number of Children in a Household
+- .2 Size of Household
+- .3 Tenure
+- .4 Number of Workers in a Household
 ```{r}
+#===============================================================================
+# .1 Number of Children in a Household
+
+#===============================================================================
+# .2 Size of Household
+
+#===============================================================================
+# .3 Tenure
+
+#===============================================================================
+# .4 Number of Workers in a Household
 ```

@@ -95,6 +95,8 @@ s3.sf <- NULL
 s4.df <- NULL
 
 # Standardized function for reading reweighted PUMS data for each scenario and projection year.
+# - scenario: data that is generated to reflect population and headship rate scenarios. See xx for further detail
+# - year: a year in a list of years created earlier in this code block. Typically in 5-year or 10-year intervals.
 read_rwt.files <- function(scenario, year){
   read.csv(
       paste0(rwt_path, "reweighted_PUMS_",scen,"_MAPC101_",i,".csv")
@@ -108,49 +110,72 @@ for (i in years) {
     
     if (scen == "Scenario_1"){
     
-      tmp <- read_rwt.files(scenario = scen, year = i) |> mutate(year = i)
+      # Reads in the reweighted PUMS data by year.
+      tmp <- read_rwt.files(scenario = scen, year = i)
     
+      # Appends to dataframe.
       s1.df <- bind_rows(s1.df, tmp)
     
+      # Removes the temporary file.
       rm(tmp)
     
+      # Print statement when loop has completed running.
       print(paste0("Finished Reading and Appending Scenario: ", scen, " for Year: ", i))
   
   }
     else if (scen == "Scenario_2"){
     
-      tmp <- read_rwt.files(scenario = scen, year = i) |> mutate(year = i)
+      # Reads in the reweighted PUMS data by year.
+      tmp <- read_rwt.files(scenario = scen, year = i)
     
+      # Appends to dataframe.
       s2.df <- bind_rows(s2.df, tmp)
     
+      # Removes the temporary file.
       rm(tmp)
     
+      # Print statement when loop has completed running.
       print(paste0("Finished Reading and Appending Scenario: ", scen, " for Year: ", i))
     
   }
     else if (scen == "Scenario_3"){
     
-      tmp <- read_rwt.files(scenario = scen, year = i) |> mutate(year = i)
+      # Reads in the reweighted PUMS data by year.
+      tmp <- read_rwt.files(scenario = scen, year = i)
     
+      # Appends to dataframe.
       s3.df <- bind_rows(s3.df, tmp)
     
+      # Removes the temporary file.
       rm(tmp)
     
+      # Print statement when loop has completed running.
       print(paste0("Finished Reading and Appending Scenario: ", scen, " for Year: ", i))
     
   }
    else{
     
-      tmp <- read_rwt.files(scenario = scen, year = i) |> mutate(year = i)
+      # Reads in the reweighted PUMS data by year.
+      tmp <- read_rwt.files(scenario = scen, year = i)
     
+      # Appends to dataframe.
       s4.df <- bind_rows(s4.df, tmp)
     
+      # Removes the temporary file.
       rm(tmp)
     
+      # Print statement when loop has completed running.
       print(paste0("Finished Reading and Appending Scenario: ", scen, " for Year: ", i))
     
   }
  }
 }
 
+```
+# 2.0 Output Tables For UrbanSim
+```{r}
+```
+
+#3.0 Output Tables for Statewide Housing Plan Deliverables
+```{r}
 ```

@@ -1,0 +1,240 @@
+---
+title: "03_Reweighter.Output.Summaries"
+format: html
+editor: visual
+---
+
+# 0.0 Environment Set Up
+
+# 0.1 Filepath Set Up
+
+```{r}
+#===============================================================================
+#TODO: 
+# 1. Create a way to loop through scenarios and headship rates based on a list
+
+#===============================================================================
+### Set Scenario Names ###
+#Population Scenario
+scen <- 'Scenario_1'
+#Headship rate Scenario
+hdshp <- 'acs1721'
+
+#Use when Rproject is open
+#root <- '../../../../Data/Working/Regional_Control_Totals/'
+
+# Base root. Toggle between S: and K: drive depedning on mapped paths on your computer
+base <- "K:/DataServices/Projects/Current_Projects/"
+#base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
+
+# General K drive filepath
+root <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/")
+
+# Set output filepath
+output_path <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/", scen, "/")
+
+# Reweighter files path
+rwt_path <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Reweighter/", scen, "/Output_Files/")
+
+# Set knitr path
+knitr::opts_knit$set(root.dir = root)
+```
+
+# 0.2 Set Package Dependencies + Set Environment Variables, Set up data keys
+
+```{r}
+library(tidycensus)
+library(tidyverse)
+library(data.table)
+library(reticulate)
+library(mapcdatakeys)
+library(janitor)
+library(readxl)
+
+##get rid of scientific notation
+options(scipen = 999)
+#Set random seed
+set.seed(351)
+
+#Set up muni data keys
+#MPO Data Keys
+keys.mpo <- mapcdatakeys::all_muni_data_keys |> 
+  select(
+    muni_id, muni_name, mpo
+  ) |> 
+  mutate(
+    muni_id = as.character(muni_id),
+    muni_name = ifelse(muni_name == "Manchester-by-the-Sea", "Manchester", muni_name)
+  )
+
+#RPA Data Keys
+keys.rpa <- mapcdatakeys::all_muni_data_keys |> 
+  select(
+    muni_id, muni_name, rpa_acr
+  ) |> 
+  mutate(
+    muni_id = as.character(muni_id),
+    muni_name = ifelse(muni_name == "Manchester-by-the-Sea", "Manchester", muni_name)
+  )
+```
+
+# 1.0 Load Reweighter Output Data
+
+```{r}
+# Set a column of years corresponding to the projection years considered
+years <- c(2020,2030,2035,2040,2045,2050)
+
+# Create null objects for each scenario's full reweighted PUMS dataset. 
+# One will be used per script run depending on the value given to "scen" at the outset of the script.
+s1.df <- NULL
+
+s2.sf <- NULL
+
+s3.sf <- NULL
+
+s4.df <- NULL
+
+# Standardized function for reading reweighted PUMS data for each scenario and projection year.
+# - scenario: data that is generated to reflect population and headship rate scenarios. See xx for further detail
+# - year: a year in a list of years created earlier in this code block. Typically in 5-year or 10-year intervals.
+read_rwt.files <- function(scenario, year){
+  read.csv(
+      paste0(rwt_path, "reweighted_PUMS_",scen,"_MAPC101_",i,".csv")
+    )
+}
+
+# Loads in reweighted PUMS data for each year and scenario.
+# Compiles data into a single dataframe which is generated earlier.
+for (i in years) {
+  for (j in scen){
+    
+    if (scen == "Scenario_1"){
+    
+      # Reads in the reweighted PUMS data by year.
+      tmp <- read_rwt.files(scenario = scen, year = i)
+    
+      # Appends to dataframe.
+      s1.df <- bind_rows(s1.df, tmp)
+    
+      # Removes the temporary file.
+      rm(tmp)
+    
+      # Print statement when loop has completed running.
+      print(paste0("Finished Reading and Appending Scenario: ", scen, " for Year: ", i))
+  
+  }
+    else if (scen == "Scenario_2"){
+    
+      # Reads in the reweighted PUMS data by year.
+      tmp <- read_rwt.files(scenario = scen, year = i)
+    
+      # Appends to dataframe.
+      s2.df <- bind_rows(s2.df, tmp)
+    
+      # Removes the temporary file.
+      rm(tmp)
+    
+      # Print statement when loop has completed running.
+      print(paste0("Finished Reading and Appending Scenario: ", scen, " for Year: ", i))
+    
+  }
+    else if (scen == "Scenario_3"){
+    
+      # Reads in the reweighted PUMS data by year.
+      tmp <- read_rwt.files(scenario = scen, year = i)
+    
+      # Appends to dataframe.
+      s3.df <- bind_rows(s3.df, tmp)
+    
+      # Removes the temporary file.
+      rm(tmp)
+    
+      # Print statement when loop has completed running.
+      print(paste0("Finished Reading and Appending Scenario: ", scen, " for Year: ", i))
+    
+  }
+   else{
+    
+      # Reads in the reweighted PUMS data by year.
+      tmp <- read_rwt.files(scenario = scen, year = i)
+    
+      # Appends to dataframe.
+      s4.df <- bind_rows(s4.df, tmp)
+    
+      # Removes the temporary file.
+      rm(tmp)
+    
+      # Print statement when loop has completed running.
+      print(paste0("Finished Reading and Appending Scenario: ", scen, " for Year: ", i))
+    
+  }
+ }
+}
+
+```
+
+# 2.0 Output Tables For UrbanSim
+- .1 UrbanSim Household Income Groupings
+- .2 5-year Age Groupings (ageCAT6)
+- .3 Household Type
+```{r}
+#===============================================================================
+# .1 UrbanSim Household Income Groupings
+
+tbl.1 <- sf1.df |> 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
+  group_by(
+    rpa_acr,
+    year,
+    
+  )
+
+#===============================================================================
+# .2 5-year Age Groupings (ageCAT6)
+
+tbl.2 <- s1.df |> 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
+  group_by(
+    rpa_acr,
+    year,
+    ageCAT6
+  ) |> 
+  summarise(
+    hhds = sum(new_WGTP)
+  ) |> 
+  ungroup()
+
+#===============================================================================
+# .3 Household Type
+
+tbl.3 <- s1.df |> 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
+  group_by(
+    rpa_acr,
+    year,
+    HHtype
+  ) |> 
+  summarise(
+    hhds = sum(new_WGTP)
+  ) |> 
+  ungroup()
+```
+
+#3.0 Output Tables for Statewide Housing Plan Deliverables
+- .1 Number of Children in a Household
+- .2 Size of Household
+- .3 Tenure
+- .4 Number of Workers in a Household
+```{r}
+#===============================================================================
+# .1 Number of Children in a Household
+
+#===============================================================================
+# .2 Size of Household
+
+#===============================================================================
+# .3 Tenure
+
+#===============================================================================
+# .4 Number of Workers in a Household
+```

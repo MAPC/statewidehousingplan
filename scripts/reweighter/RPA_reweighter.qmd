@@ -30,7 +30,7 @@ reb <- 'MAPC101'
  root <- 'S:/Network Shares/K Drive/DataServices/Projects/'
 # root <- 'K:/DataServices/Projects/'
 
-ctrltotal.path <- paste0(root, 'Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/', scen, '/')
+ctrltotal.path <- paste0(root, 'Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Vacants/', scen, '/')
 
 workpath <- paste0(root, 'Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Reweighter/')
 
@@ -364,21 +364,41 @@ for (yr in c(2020,2030,2035,2040,2045,2050)){
 
 # 8 - Vacancy and Unit Demand post-model calculations
 
-Let RVRY = Regional Target Vacancy Rate for region R in year Y Avail_units_2020 = hu_occ 2020 + (total_vacant_2020 \* (1-unavail_rate)) Vacrate_avail_2020 = 1 - ( hu_occ 2020/ Avail_units_2020)
+Let RVRY = Regional Target Vacancy Rate for region R in year Y
 
-Calculate Housing Shortage/Surplus for 2020: Hous_short_2020 = (RVR2020 - \[vacrate_avail_2020\]) \* Avail_units_2020 This may be positive (shortage) or negative (surplus)
+Avail_units_2020 = hu_occ 2020 + (total_vacant_2020 \* (1-unavail_rate))
 
-Calculate vacated units – number of units freed up due to HH decline VacatedHU_20_30 = Max(0, (-1 \* HHchg_20_30))
+Vacrate_avail_2020 = 1 - ( hu_occ 2020/ Avail_units_2020)
 
-Calculate vacant units associated with HH growth HHgrowth_vac_20_30 =MAX(HHchg_20_30\* RVR2030, 0)
+Calculate Housing Shortage/Surplus for 2020:
 
-Discount production needed to close existing shortage Shortage_units_20_30 = IF (Hous_short_2020 \> HHchg_20_30, MAX(HHchg_20_30, (Hous_short_2020 \*0.5)), Hous_short_2020)
+Hous_short_2020 = (RVR2020 - \[vacrate_avail_2020\]) \* Avail_units_2020
 
-Calculate total vacant units needed TotVac_20_30 = Shortage_units_20_30 + HHgrowth_vac_20_30
+This may be positive (shortage) or negative (surplus)
 
-Calculate total Housing Unit Demand Tot_HU_20_30 = max(max(HHchg_20_30, 0) + TotVac_20_30, 0)
+Calculate vacated units – number of units freed up due to HH decline
 
-Calculate remaining shortfall for subsequent decade Hous_short_2030 = Hous_short_2020 – Shortage_units_20_30
+VacatedHU_20_30 = Max(0, (-1 \* HHchg_20_30))
+
+Calculate vacant units associated with HH growth
+
+HHgrowth_vac_20_30 =MAX(HHchg_20_30\* RVR2030, 0)
+
+Discount production needed to close existing shortage
+
+Shortage_units_20_30 = IF (Hous_short_2020 \> HHchg_20_30, MAX(HHchg_20_30, (Hous_short_2020 \*0.5)), Hous_short_2020)
+
+Calculate total vacant units needed
+
+TotVac_20_30 = Shortage_units_20_30 + HHgrowth_vac_20_30
+
+Calculate total Housing Unit Demand
+
+Tot_HU_20_30 = max(max(HHchg_20_30, 0) + TotVac_20_30, 0)
+
+Calculate remaining shortfall for subsequent decade
+
+Hous_short_2030 = Hous_short_2020 – Shortage_units_20_30
 
 ```{r}
 
@@ -407,7 +427,7 @@ ns <- vars[grepl('VACANCY', concept), gsub(':', '', gsub(' ', '_', (gsub(
   ))))
 ))))]
 
-ten <- c('H10_002N','H10_010N') # Total owner-occupied units, Total renter-occupied units
+ten <- c('H10_002N','H10_010N') # Vacant owner-occupied units, Vacant renter-occupied units
 
 vs <- c('H1_001N', 'P20_001N', vs, ten)
 
@@ -422,29 +442,30 @@ d1 <-
   pivot_wider(names_from = 'variable') %>%
   select(-NAME) %>%
   setDT()
-setnames(d1, c('GEOID', 'dhc_units_2020', 'dhc_households_2020', ns, 'own_occ_units', 'rent_occ_units'))
+setnames(d1, c('GEOID', 'dhc_units_2020', 'dhc_households_2020', gsub('Vacant','Vacant',ns), 'own_occ_units', 'rent_occ_units'))
 
 m2 <- munis %>% select(GEOID, muni_id, muni_name, mpo, rpa_acr, cmtyp08)
 dhc <- d1 %>%
   left_join(m2, by = 'GEOID') %>%
   filter(!is.na(muni_id)) %>% 
   mutate(
-    total_available_units = dhc_households_2020 + Total_For_rent + Total_Rented_not_occupied + Total_For_sale_only + Total_Sold_not_occupied,
-    total_available_rental_units = Total_For_rent + Total_Rented_not_occupied + rent_occ_units,
-    total_available_owner_units = Total_For_sale_only + Total_Sold_not_occupied + own_occ_units,
-    total_available_vacant_units = Total_For_sale_only + Total_For_rent,
+    total_units = dhc_units_2020,
+    total_available_units = dhc_households_2020 + Vacant_For_rent + Vacant_Rented_not_occupied + Vacant_For_sale_only + Vacant_Sold_not_occupied,
+    total_available_rental_units = Vacant_For_rent + Vacant_Rented_not_occupied + rent_occ_units,
+    total_available_owner_units = Vacant_For_sale_only + Vacant_Sold_not_occupied + own_occ_units,
+    total_available_vacant_units = Vacant_For_sale_only + Vacant_For_rent,
     vac_rate = round(total_available_vacant_units / total_available_units, 3),
-    rent_vac_rate = round(Total_For_rent / total_available_rental_units,3),
-    own_vac_rate = round(Total_For_sale_only / total_available_owner_units,3)
+    rent_vac_rate = round(Vacant_For_rent / total_available_rental_units,3),
+    own_vac_rate = round(Vacant_For_sale_only / total_available_owner_units,3)
     ) %>% 
-  rename(total_vacant_units=Total,
-         vacant_available_to_rent=Total_For_rent,
-         vacant_rented_not_occ=Total_Rented_not_occupied,
-         vacant_available_to_own=Total_For_sale_only,
-         vacant_sold_not_occ=Total_Sold_not_occupied,
-         vacant_seasonal=Total_For_seasonal_recreational_or_occasional_use,
-         vacant_migrant=Total_For_migrant_workers,
-         vacant_other=Total_Other_vacant)
+  rename(total_vacant_units=Vacant,
+         vacant_available_to_rent=Vacant_For_rent,
+         vacant_rented_not_occ=Vacant_Rented_not_occupied,
+         vacant_available_to_own=Vacant_For_sale_only,
+         vacant_sold_not_occ=Vacant_Sold_not_occupied,
+         vacant_seasonal=Vacant_For_seasonal_recreational_or_occasional_use,
+         vacant_migrant=Vacant_For_migrant_workers,
+         vacant_other=Vacant_Other_vacant)
  
 cs <- c(
   'dhc_units_2020',
@@ -486,7 +507,7 @@ uw[units_short_2020 > HHchg_20_30, Shortage_units_20_30 := max(HHchg_20_30, (uni
                                                                                0.5)), muni_id]
 uw[units_short_2020 <= HHchg_20_30, Shortage_units_20_30 := units_short_2020]
 uw[, Vacant_Units_Needed_20_30 := Shortage_units_20_30 + HHgrowth_vac_20_30]
-uw[, Total_Housing_Unit_Demand_20_30 := max(max(HHchg_20_30, 0) + Vacant_Units_Needed_20_30, 0), muni_id]
+uw[, Vacant_Housing_Unit_Demand_20_30 := max(max(HHchg_20_30, 0) + Vacant_Units_Needed_20_30, 0), muni_id]
 uw[, units_short_2030 := units_short_2020 - Shortage_units_20_30]
 
 # 2030 to 2040
@@ -496,7 +517,7 @@ uw[units_short_2030 > HHchg_30_40, Shortage_units_30_40 := max(HHchg_30_40, (uni
                                                                                0.5)), muni_id]
 uw[units_short_2030 <= HHchg_30_40, Shortage_units_30_40 := units_short_2030]
 uw[, Vacant_Units_Needed_30_40 := Shortage_units_30_40 + HHgrowth_vac_30_40]
-uw[, Total_Housing_Unit_Demand_30_40 := max(max(HHchg_30_40, 0) + Vacant_Units_Needed_30_40, 0), muni_id]
+uw[, Vacant_Housing_Unit_Demand_30_40 := max(max(HHchg_30_40, 0) + Vacant_Units_Needed_30_40, 0), muni_id]
 uw[, units_short_2040 := units_short_2030 - Shortage_units_30_40]
 
 # 2040 to 2050
@@ -506,12 +527,12 @@ uw[units_short_2040 > HHchg_40_50, Shortage_units_40_50 := max(HHchg_40_50, (uni
                                                                                0.5)), muni_id]
 uw[units_short_2040 <= HHchg_40_50, Shortage_units_40_50 := units_short_2040]
 uw[, Vacant_Units_Needed_40_50 := Shortage_units_40_50 + HHgrowth_vac_40_50]
-uw[, Total_Housing_Unit_Demand_40_50 := max(max(HHchg_40_50, 0) + Vacant_Units_Needed_40_50, 0), muni_id]
+uw[, Vacant_Housing_Unit_Demand_40_50 := max(max(HHchg_40_50, 0) + Vacant_Units_Needed_40_50, 0), muni_id]
 uw[, units_short_2050 := units_short_2040 - Shortage_units_40_50]
 uw <- uw %>% relocate(
-  Total_Housing_Unit_Demand_20_30,
-  Total_Housing_Unit_Demand_30_40,
-  Total_Housing_Unit_Demand_40_50,
+  Vacant_Housing_Unit_Demand_20_30,
+  Vacant_Housing_Unit_Demand_30_40,
+  Vacant_Housing_Unit_Demand_40_50,
   .after = total_residential_units_2050
 )
 

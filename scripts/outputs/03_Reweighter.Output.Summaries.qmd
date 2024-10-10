@@ -97,28 +97,55 @@ read_rwt.files <- function(scenario, year){
 }
 
 # Loads in reweighted PUMS data for each year and scenario.
-# Compiles data into a single dataframe.
+# Compiles data into a single dataframe which is generated earlier.
 for (i in years) {
-  if (scen == "Scenario_1"){
+  for (j in scen){
     
-    tmp <- read_rwt.files(scenario = scen, year = i) |> mutate(year = i)
+    if (scen == "Scenario_1"){
     
-    s1.df <- bind_rows(s1.df, tmp)
+      tmp <- read_rwt.files(scenario = scen, year = i) |> mutate(year = i)
     
-    rm(tmp)
+      s1.df <- bind_rows(s1.df, tmp)
     
-    print(paste0("Finished Reading and Appending Scenario: ", scen, " for Year: ", i))
+      rm(tmp)
+    
+      print(paste0("Finished Reading and Appending Scenario: ", scen, " for Year: ", i))
   
   }
-  else if (scen == "Scenario_2"){
+    else if (scen == "Scenario_2"){
+    
+      tmp <- read_rwt.files(scenario = scen, year = i) |> mutate(year = i)
+    
+      s2.df <- bind_rows(s2.df, tmp)
+    
+      rm(tmp)
+    
+      print(paste0("Finished Reading and Appending Scenario: ", scen, " for Year: ", i))
     
   }
-  else if (scen == "Scenario_3"){
+    else if (scen == "Scenario_3"){
+    
+      tmp <- read_rwt.files(scenario = scen, year = i) |> mutate(year = i)
+    
+      s3.df <- bind_rows(s3.df, tmp)
+    
+      rm(tmp)
+    
+      print(paste0("Finished Reading and Appending Scenario: ", scen, " for Year: ", i))
     
   }
-  else{
+   else{
+    
+      tmp <- read_rwt.files(scenario = scen, year = i) |> mutate(year = i)
+    
+      s4.df <- bind_rows(s4.df, tmp)
+    
+      rm(tmp)
+    
+      print(paste0("Finished Reading and Appending Scenario: ", scen, " for Year: ", i))
     
   }
+ }
 }
 
 ```

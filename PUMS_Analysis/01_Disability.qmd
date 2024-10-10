@@ -130,11 +130,24 @@ gc()
 # 0.4 PUMS Data Cleaning
 
 ```{r}
-#Joining the PUMA to RPA crosswalk to the PUMS data. - not working right now
-#converting puma to numeric 
+#Other data cleaning first 
+pums <- pums %>%
+  mutate(
+    HINCP_adj = HINCP * ADJINC,  # Create the adjusted income column
+    HH.Income.Grp = case_when(
+      HINCP_adj <= 35000 ~ "$35,000 or less",
+      HINCP_adj > 35000 & HINCP_adj <= 75000 ~ "$35,001-$75,000",
+      HINCP_adj > 75000 & HINCP_adj <= 125000 ~ "$75,001-$125,000",
+      HINCP_adj > 125000 & HINCP_adj <= 225000 ~ "$125,001-$225,000",
+      HINCP_adj > 225000 ~ "$225,000 or more",
+      TRUE ~ "0")) 
+
+
+##Joining the PUMA to RPA crosswalk to the PUMS data
+#converting puma to numeric to join
 xw$PUMA <- as.numeric(xw$PUMA)
 
-#join RPA croswalk to pums data
+#join RPA crosswalk to pums data for RPA data set
 pums_RPA <- left_join(
   pums,
   xw,
@@ -770,28 +783,30 @@ Housing tenure
 
 Age of housing stock
 
-Over-crowding
-
 Cost-burden
 
 ```{r}
 #Household Income for households with disability 
 
 #To replicate income groups that mapc used
-
-SFN = replace_na(SFN, 0)
     # Adjust Household income (HINCP) to constant dollars (USD2021)
-    HINCP_adj = HINCP*ADJINC
-    # Household Income Groupings consistent with UrbanSim groupings
-    HH.Income.Grp = case_when(
-      HINCP_adj <= 35000 ~ "<=$35,000",
-      HINCP_adj > 35000 & HINCP_adj <= 75000 ~ "$35,001-$75,000",
-      HINCP_adj > 75000 & HINCP_adj <= 125000 ~ "$75,001-$125,000",
-      HINCP_adj > 125000 & HINCP_adj <= 225000 ~ "$125,001-$225,000",
-      HINCP_adj > 225000 ~ ">$225,000",
-      .default = "0")
 
-
+household_income_disability <- people_with_disability %>%
+  group_by(SERIALNO) %>% # group by household 
+  summarise(first_weight = first(WGTP, na.rm = TRUE), # get the first person's weight for hhld
+    HH.Income.Grp = first(HH.Income.Grp), .groups = "drop") %>%          # get the income for the first person                          
+  group_by(HH.Income.Grp) %>%                                  # group by income to calculate total weights for each income type
+  summarise(total_by_income = sum(first_weight, na.rm = TRUE), # Sum the weights by income
+    .groups = "drop") %>%   
+  mutate(HH.Income.Grp = factor(HH.Income.Grp, levels = c(    #order income groups in correct order
+      "$35,000 or less", 
+      "$35,001-$75,000", 
+      "$75,001-$125,000", 
+      "$125,001-$225,000", 
+      "$225,000 or more", 
+      "0"))) %>%
+  arrange(HH.Income.Grp) %>% 
+  mutate(percentage_of_total = (total_by_income / total_households_with_disability) * 100)  # Calculate percent of disabled households
 ```
 
 ```{r}
@@ -802,37 +817,99 @@ household_tenure_disability <- people_with_disability %>%
   summarise(first_weight = first(WGTP, na.rm = TRUE), # get the first person's weight for hhld
     TEN = first(TEN), .groups = "drop") %>%          # get the tenure for the first person                          
   group_by(TEN) %>%                                  # group by TEN to calculate total weights for each tenure type
-  summarise(total_weight_by_tenure = sum(first_weight, na.rm = TRUE), # Sum the weights by tenure
-    .groups = "drop")                                       
-
-household_tenure_disability_table <- household_tenure_disability %>%
-  mutate(TEN = case_when(
-    TEN == 1 ~ "Owned with mortgage or loan (include home equity loans)",
-    TEN == 2 ~ "Owned free and clear",
+  summarise(total_by_tenure = sum(first_weight, na.rm = TRUE), # Sum the weights by tenure
+    .groups = "drop") %>%                                       
+  mutate(TEN = case_when(                  #Rename tenure variables 
+    TEN == 1 ~ "Owned with mortgage",
+    TEN == 2 ~ "Owned without mortgage",
     TEN == 3 ~ "Rented",
     TEN == 4 ~ "Occupied without payment of rent",
-    TRUE ~ "Unknown"))
-
-#may want to add a percent column for tenure 
-
+    TRUE ~ NA_character_)) %>%
+  filter(!is.na(TEN)) %>%
+  mutate(percentage_of_total = (total_by_tenure / total_households_with_disability) * 100)  # Calculate percent of disabled households
 ```
 
 ```{r}
-#Age of housing stock for households with disability 
+#Age of housing stock for households with disability - YRBLT
 
-
+household_age_of_housing_disability <- people_with_disability %>%
+  mutate(Housing.Age = case_when(                                         #create age of housing groups 
+      YRBLT < 1940 ~ "Pre-1940",
+      YRBLT >= 1940 & YRBLT <= 1969 ~ "1940 to 1969",
+      YRBLT >= 1970 & YRBLT <= 1999 ~ "1970 to 1999",
+      YRBLT >= 2000  ~ "2000 and later",
+      TRUE ~ "0")) %>%
+  group_by(SERIALNO) %>% # group by household 
+  summarise(first_weight = first(WGTP, na.rm = TRUE), # get the first person's weight for hhld
+    Housing.Age = first(Housing.Age), .groups = "drop") %>%          # get the tenure for the first person                          
+  group_by(Housing.Age) %>%                                  # group by TEN to calculate total weights for each tenure type
+  summarise(total_by_house_age = sum(first_weight, na.rm = TRUE), # Sum the weights by tenure
+    .groups = "drop") %>%  
+  mutate(Housing.Age = factor(Housing.Age, levels = c(    #order groups in correct order
+      "Pre-1940", 
+      "1940 to 1969", 
+      "1970 to 1999", 
+      "2000 and later"))) %>%
+  arrange(Housing.Age) %>% 
+  mutate(percentage_of_total = (total_by_house_age / total_households_with_disability) * 100)  # Calculate percent of disabled households
 ```
 
 ```{r}
-#Cost burden for households with disability 
+#Cost burden for households with disability - GRPIP and OCPIP 
+
+#Renter cost burden 
+household_cost_burden_renter_disability <- people_with_disability %>%
+  filter(TEN == 3) %>%                 # filter for just renters
+  mutate(Cost.Burden = case_when(      # create cost burden groups 
+      GRPIP <= 30 ~ "No cost burden",
+      GRPIP > 30 & GRPIP <= 50 ~ "Cost burden",
+      GRPIP > 50 ~ "Severe cost burden",
+      TRUE ~ "0")) %>%
+  group_by(SERIALNO) %>% # group by household 
+  summarise(first_weight = first(WGTP, na.rm = TRUE),                # get the first person's weight for hhld
+    Cost.Burden = first(Cost.Burden), .groups = "drop") %>%          # get the cost burden for the first person                          
+  group_by(Cost.Burden) %>%                                  
+  summarise(total_by_cost_burden = sum(first_weight, na.rm = TRUE),  # sum the weights by cost burden group
+    .groups = "drop") %>%  
+  mutate(percent_of_total = total_by_cost_burden / sum(total_by_cost_burden) * 100) %>%  # calculate percent out of renter disabled hhlds
+  mutate (Cost.Burden = factor(Cost.Burden, levels = c(                              # order groups in correct order
+      "No cost burden", 
+      "Cost burden", 
+      "Severe cost burden"))) %>%
+  arrange(Cost.Burden)  
 
 
+#Owner cost burden 
+household_cost_burden_owner_disability <- people_with_disability %>%
+  filter(TEN == 1 | TEN == 2) %>%                 # filter for just owners
+  mutate(Cost.Burden = case_when(                 # create cost burden groups 
+      OCPIP <= 30 ~ "No cost burden",
+      OCPIP > 30 & OCPIP <= 50 ~ "Cost burden",
+      OCPIP > 50 ~ "Severe cost burden",
+      TRUE ~ "0")) %>%
+  group_by(SERIALNO) %>% # group by household 
+  summarise(first_weight = first(WGTP, na.rm = TRUE),                # get the first person's weight for hhld
+    Cost.Burden = first(Cost.Burden), .groups = "drop") %>%          # get the cost burden for the first person                          
+  group_by(Cost.Burden) %>%                                  
+  summarise(total_by_cost_burden = sum(first_weight, na.rm = TRUE),  # sum the weights by cost burden group
+    .groups = "drop") %>%  
+  mutate(percent_of_total = total_by_cost_burden / sum(total_by_cost_burden) * 100) %>%  # calculate percent out of owner disabled hhlds
+  mutate (Cost.Burden = factor(Cost.Burden, levels = c(                              # order groups in correct order
+      "No cost burden", 
+      "Cost burden", 
+      "Severe cost burden"))) %>%
+  arrange(Cost.Burden)  
 
 ```
 
 ```{r}
 #Export other household data 
-
+ write.xlsx(list('Income' = household_income_disability, 
+                 'Tenure' = household_tenure_disability,
+                 'Age of Housing Stock' = household_age_of_housing_disability, 
+                 'Renter Cost Burden' = household_cost_burden_renter_disability,
+                 'Owner Cost Burden' = household_cost_burden_owner_disability),
+           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/dis_hhld_addtl_variables.xlsx") 
 
 ```
 

@@ -381,7 +381,7 @@ detailed_disability_table_person <- rbind(ambulatory_summary_table_person, self_
 ```
 
 
-# 3) Age distribution of people living with disability statewide
+# 3) Age distribution of people living with disability statewide, not in GQ
 ```{r}
 #Create age ranges for people with disability data set
 age_people_with_disability <- people_with_disability %>% 

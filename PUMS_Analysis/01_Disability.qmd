@@ -20,8 +20,6 @@ library(knitr)
 library(readxl)
 library(writexl)
 library(openxlsx)
-
-install.packages("devtools")
 library(devtools)
 
 ```
@@ -143,7 +141,7 @@ pums <- pums %>%
       HINCP_adj > 75000 & HINCP_adj <= 125000 ~ "$75,001-$125,000",
       HINCP_adj > 125000 & HINCP_adj <= 225000 ~ "$125,001-$225,000",
       HINCP_adj > 225000 ~ "$225,000 or more",
-      TRUE ~ "0")) 
+      TRUE ~ NA_character_)) 
 
 
 ##Joining the PUMA to RPA crosswalk to the PUMS data
@@ -800,7 +798,31 @@ household_income_disability <- people_with_disability %>%
       "$225,000 or more", 
       "0"))) %>%
   arrange(HH.Income.Grp) %>% 
-  mutate(percentage_of_total = (total_by_income / total_households_with_disability) * 100)  # Calculate percent of all disabled hhlds
+  mutate(percentage_of_total = (total_by_income / total_households_with_disability) * 100) %>%   # Calculate percent of all disabled hhlds
+  mutate(description = "MA households with disability") %>%
+  select(description, everything())                            # move new description column to the front
+  
+#Household income for all households statewide for comparison in same income groups
+household_income_state <- pums %>%
+  group_by(SERIALNO) %>% # group by household 
+  summarise(first_weight = first(WGTP, na.rm = TRUE), # get the first person's weight for hhld
+    HH.Income.Grp = first(HH.Income.Grp), .groups = "drop") %>%          # get the income for the first person                          
+  group_by(HH.Income.Grp) %>%                                  # group by income to calculate total weights for each income type
+  summarise(total_by_income = sum(first_weight, na.rm = TRUE), # Sum the weights by income group
+    .groups = "drop") %>%   
+  mutate(HH.Income.Grp = factor(HH.Income.Grp, levels = c(     # order income groups in correct order
+      "$35,000 or less", 
+      "$35,001-$75,000", 
+      "$75,001-$125,000", 
+      "$125,001-$225,000", 
+      "$225,000 or more", 
+      "0"))) %>%
+  arrange(HH.Income.Grp) %>% 
+  mutate(percentage_of_total = (total_by_income / total_weighted_households) * 100) %>%  # Calculate percent of all hhlds
+  mutate(description = "All MA households") %>%
+  select(description, everything())                      # move new description column to the front
+  
+hhld_income_dis_summary_table <- rbind(household_income_disability, household_income_state)
 
 ```
 
@@ -847,7 +869,35 @@ household_age_of_housing_disability <- people_with_disability %>%
       "1970 to 1999", 
       "2000 and later"))) %>%
   arrange(Housing.Age) %>% 
-  mutate(percentage_of_total = (total_by_house_age / total_households_with_disability) * 100) # percent out of all disabled hhlds
+  mutate(percentage_of_total = (total_by_house_age / total_households_with_disability) * 100) %>% # percent out of all disabled hhlds
+  mutate(description = "MA households with disability") %>%
+  select(description, everything()) 
+    
+#Calculate for whole state for comparison in the same housing age groups
+household_age_of_housing_state <- pums %>%
+  mutate(Housing.Age = case_when(                                     #create age of housing groups 
+      YRBLT < 1940 ~ "Pre-1940",
+      YRBLT >= 1940 & YRBLT <= 1969 ~ "1940 to 1969",
+      YRBLT >= 1970 & YRBLT <= 1999 ~ "1970 to 1999",
+      YRBLT >= 2000  ~ "2000 and later",
+      TRUE ~ "0")) %>%
+  group_by(SERIALNO) %>% # group by household 
+  summarise(first_weight = first(WGTP, na.rm = TRUE),               # get the first person's weight for hhld
+    Housing.Age = first(Housing.Age), .groups = "drop") %>%         # get the housing age for the first person                          
+  group_by(Housing.Age) %>%                                         # group by age to calculate total weights for each age group
+  summarise(total_by_house_age = sum(first_weight, na.rm = TRUE),   # sum the weights by housing age groups
+    .groups = "drop") %>%  
+  mutate(Housing.Age = factor(Housing.Age, levels = c(    # order groups in correct order
+      "Pre-1940", 
+      "1940 to 1969", 
+      "1970 to 1999", 
+      "2000 and later"))) %>%
+  arrange(Housing.Age) %>% 
+  mutate(percentage_of_total = (total_by_house_age / total_weighted_households) * 100) %>% # percent out of all disabled hhlds
+  mutate(description = "All MA households") %>%
+  select(description, everything()) 
+
+hhld_age_housing_summary_table <- rbind(household_age_of_housing_disability, household_age_of_housing_state)
 
 ```
 
@@ -873,10 +923,41 @@ household_cost_burden_renter_disability <- people_with_disability %>%
       "No cost burden", 
       "Cost burden", 
       "Severe cost burden"))) %>%
-  arrange(Cost.Burden)  
+  arrange(Cost.Burden) %>%
+  mutate(description = "MA households with disability") %>%
+  select(description, everything()) 
+  
+#Renter cost burden for all hhlds in the state for comparison 
+household_cost_burden_renter_state <- pums %>%
+  filter(TEN == 3) %>%                 # filter for just renters
+  mutate(Cost.Burden = case_when(      # create cost burden groups 
+      GRPIP <= 30 ~ "No cost burden",
+      GRPIP > 30 & GRPIP <= 50 ~ "Cost burden",
+      GRPIP > 50 ~ "Severe cost burden",
+      TRUE ~ "0")) %>%
+  group_by(SERIALNO) %>% # group by household 
+  summarise(first_weight = first(WGTP, na.rm = TRUE),                # get the first person's weight for hhld
+    Cost.Burden = first(Cost.Burden), .groups = "drop") %>%          # get the cost burden for the first person                          
+  group_by(Cost.Burden) %>%                                  
+  summarise(total_by_cost_burden = sum(first_weight, na.rm = TRUE),  # sum the weights by cost burden group
+    .groups = "drop") %>%  
+  mutate(percent_of_total = total_by_cost_burden / sum(total_by_cost_burden) * 100) %>%  # calculate percent out of renter disabled hhlds
+  mutate (Cost.Burden = factor(Cost.Burden, levels = c(                                  # order groups in correct order
+      "No cost burden", 
+      "Cost burden", 
+      "Severe cost burden"))) %>%
+  arrange(Cost.Burden) %>%
+  mutate(description = "All MA households") %>%
+  select(description, everything()) 
+
+#combine tables
+hhld_renter_cost_burden__dis_summary_table <- rbind(household_cost_burden_renter_disability, household_cost_burden_renter_state) 
+
+```
 
 
-#Owner cost burden 
+```{r}
+#Owner cost burden - OCPIP for owners
 household_cost_burden_owner_disability <- people_with_disability %>%
   filter(TEN == 1 | TEN == 2) %>%                 # filter for just owners
   mutate(Cost.Burden = case_when(                 # create cost burden groups 
@@ -895,17 +976,45 @@ household_cost_burden_owner_disability <- people_with_disability %>%
       "No cost burden", 
       "Cost burden", 
       "Severe cost burden"))) %>%
-  arrange(Cost.Burden)  
+  arrange(Cost.Burden) %>%
+  mutate(description = "MA households with disability") %>%
+  select(description, everything()) 
+
+#Owner cost burden for all hhlds in the state for comparison 
+household_cost_burden_owner_state <- pums %>%
+  filter(TEN == 1 | TEN == 2) %>%                 # filter for just owners
+  mutate(Cost.Burden = case_when(                 # create cost burden groups 
+      OCPIP <= 30 ~ "No cost burden",
+      OCPIP > 30 & OCPIP <= 50 ~ "Cost burden",
+      OCPIP > 50 ~ "Severe cost burden",
+      TRUE ~ "0")) %>%
+  group_by(SERIALNO) %>% # group by household 
+  summarise(first_weight = first(WGTP, na.rm = TRUE),                # get the first person's weight for hhld
+    Cost.Burden = first(Cost.Burden), .groups = "drop") %>%          # get the cost burden for the first person                          
+  group_by(Cost.Burden) %>%                                  
+  summarise(total_by_cost_burden = sum(first_weight, na.rm = TRUE),  # sum the weights by cost burden group
+    .groups = "drop") %>%  
+  mutate(percent_of_total = total_by_cost_burden / sum(total_by_cost_burden) * 100) %>%  # calculate percent out of owner disabled hhlds
+  mutate (Cost.Burden = factor(Cost.Burden, levels = c(                                  # order groups in correct order
+      "No cost burden", 
+      "Cost burden", 
+      "Severe cost burden"))) %>%
+  arrange(Cost.Burden) %>%  
+  mutate(description = "All MA households") %>%
+  select(description, everything()) 
+
+#combine tables
+hhld_owner_cost_burden__dis_summary_table <- rbind(household_cost_burden_owner_disability, household_cost_burden_owner_state) 
 
 ```
 
 ```{r}
 #Export other household data 
- write.xlsx(list('Income' = household_income_disability, 
+ write.xlsx(list('Income' = hhld_income_dis_summary_table, 
                  'Tenure' = household_tenure_disability,
-                 'Age of Housing Stock' = household_age_of_housing_disability, 
-                 'Renter Cost Burden' = household_cost_burden_renter_disability,
-                 'Owner Cost Burden' = household_cost_burden_owner_disability),
+                 'Age of Housing Stock' = hhld_age_housing_summary_table, 
+                 'Renter Cost Burden' = hhld_renter_cost_burden__dis_summary_table,
+                 'Owner Cost Burden' = hhld_owner_cost_burden__dis_summary_table),
            file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/dis_hhld_addtl_variables.xlsx") 
 
 ```
@@ -926,11 +1035,152 @@ household_cost_burden_owner_disability <- people_with_disability %>%
 12 MARTHA'S VINEYARD COMMISSION	MVC
 13 NANTUCKET PLANNING & ECONOMIC DEVELOPMENT COMMISSION	NPEDC
 
-# 8) Number of households in each RPA with a person with any disability
+# 8) Number of individuals in each RPA with a person with any disability
 ```{r}
 #Analysis by RPA 
+#Number of hhlds in each RPA with a person with any disability - non-institutionalized population 
+people_with_disability_by_RPA <- pums_RPA %>%
+  group_by(uniq_obs) %>%
+  filter(DIS == 1) %>% #filtering for disability flag, will only include person-level data not hhld data
+  filter(TYPEHUGQ != 2) #filtering out institutional group quarters
+  
+people_with_disability_by_RPA_summary_table <- people_with_disability_by_RPA %>%
+  group_by(rpa_acr) %>%
+  summarise(dis_weighted_sum = sum(PWGTP)) 
+
+#Calculate the total number of people in sample in each RPA
+person_data_RPA <- pums_RPA %>%
+  filter(RT == "P") %>% #filtering for only people not hhlds 
+  filter(TYPEHUGQ != 2) %>% #filtering out institutional group quarters
+  group_by(rpa_acr) %>%
+  summarise(total_weighted_sum = sum(PWGTP)) 
+
+RPA_person_dis_table <- left_join(
+  people_with_disability_by_RPA_summary_table,
+  person_data_RPA,
+  by = c("rpa_acr"))
+
+RPA_person_dis_table <- RPA_person_dis_table %>%
+  mutate(percentage = (dis_weighted_sum / total_weighted_sum) * 100)
+
+```
+
+```{r}
+#Number of people in each RPA with a person with any disability in institutionalized population
+people_with_disability_by_RPA_GQ <- pums_RPA %>%
+  group_by(uniq_obs) %>%
+  filter(DIS == 1) %>% #filtering for disability flag, will only include person-level data not hhld data
+  filter(TYPEHUGQ == 2) %>% #filtering out institutional group quarters
+  group_by(rpa_acr) %>%
+  summarise(dis_weighted_sum = sum(PWGTP)) 
+
+#Calculate the total number of people in sample in each RPA, not in GQ 
+person_data_RPA_GQ <- pums_RPA %>%
+  filter(RT == "P") %>% #filtering for only people not hhlds 
+  filter(TYPEHUGQ == 2) %>% #filtering out institutional group quarters
+  group_by(rpa_acr) %>%
+  summarise(total_weighted_sum = sum(PWGTP)) 
+
+RPA_person_dis_table_GQ <- left_join(
+  people_with_disability_by_RPA_GQ,
+  person_data_RPA_GQ,
+  by = c("rpa_acr"))
+
+RPA_person_dis_table_GQ <- RPA_person_dis_table_GQ %>%
+  mutate(percentage = (dis_weighted_sum / total_weighted_sum) * 100)
+```
+
+```{r}
+ write.xlsx(list('RPA_person_dis' = RPA_person_dis_table, 
+                 'RPA_person_dis_GQ' = RPA_person_dis_table_GQ),
+           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/dis_person_RPA.xlsx") 
+```
+
+# 9) Number and share of households in each RPA with a person with any disability
+```{r}
+#Aggregate person-level data to household level
+hhlds_with_disability_by_RPA <- people_with_disability_by_RPA %>%
+  group_by(SERIALNO, rpa_acr) %>%
+  summarise(first_weight = first(WGTP, na.rm = TRUE),                # get the first person's weight for hhld
+  rpa_acr = first(rpa_acr), .groups = "drop") %>%                    # get the rpa for the first person in hhld                       
+  group_by(rpa_acr) %>%                                  
+  summarise(dis_weighted_sum = sum(first_weight, na.rm = TRUE),  # sum the weights by rpa
+    .groups = "drop")  
+
+#Calculate the total number of households in sample by RPA
+household_data_RPA <- pums_RPA %>%
+  filter(RT == "H") %>%
+  filter(TYPEHUGQ != 2) %>%
+  group_by(rpa_acr) %>%
+  summarise(total_weighted_sum = sum(WGTP)) 
+
+#combine tables
+RPA_hhld_dis_table <- left_join(
+  hhlds_with_disability_by_RPA,
+  household_data_RPA,
+  by = c("rpa_acr"))
+
+#calculate percentage of total hhlds by rpa 
+RPA_hhld_dis_table <- RPA_hhld_dis_table %>%
+  mutate(percentage = (dis_weighted_sum / total_weighted_sum) * 100)
+
+```
+
+```{r}
+write.xlsx(list('RPA_hhld_dis' = RPA_hhld_dis_table),
+           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/dis_hhld_RPA.xlsx") 
+```
+
+# 10 RPA - Age distribution of disability
+```{r}
+#Calculate sum of weights for each age group and percentage - share of each age group with a disability 
+
+#Calculate sum of weights for each age group for people with disability by RPA
+dis_age_group_RPA <- pums_RPA %>%
+  filter(TYPEHUGQ != 2) %>%  #filter out institutionalized population
+  select(uniq_obs, PUMA, PWGTP, AGEP, DIS, rpa_acr) %>% 
+  mutate(age_range = case_when(
+    AGEP >= 0 & AGEP < 5 ~ "Under 5",
+    AGEP >= 5 & AGEP < 18 ~ "5-17",
+    AGEP >= 18 & AGEP < 35 ~ "18-34",
+    AGEP >= 35 & AGEP < 65 ~ "35-64", 
+    AGEP >= 65 & AGEP < 75 ~ "65-74",
+    AGEP >= 75 ~ "75 and over")) %>%
+  filter(!is.na(age_range)) %>%
+  group_by(age_range, rpa_acr) %>%
+  summarise(dis_age_sum = sum(PWGTP * (DIS == 1), na.rm = TRUE)) %>%
+  mutate(age_range = factor(age_range, levels = c("Under 5", "5-17", "18-34", "35-64", "65-74", "75 and over"))) %>%
+  arrange(rpa_acr, age_range)
+
+#Calculate total number in each age group by RPA
+total_people_by_age_RPA <- pums_RPA %>% 
+  filter(TYPEHUGQ != 2) %>%
+  filter(RT == "P") %>%
+  select(uniq_obs, PUMA, PWGTP, AGEP, DIS, rpa_acr) %>% 
+  mutate(age_range = case_when(
+    AGEP >= 0 & AGEP < 5 ~ "Under 5",
+    AGEP >= 5 & AGEP < 18 ~ "5-17",
+    AGEP >= 18 & AGEP < 35 ~ "18-34",
+    AGEP >= 35 & AGEP < 65 ~ "35-64", 
+    AGEP >= 65 & AGEP < 75 ~ "65-74",
+    AGEP >= 75 ~ "75 and over")) %>%
+  filter(!is.na(age_range)) %>% 
+  group_by(age_range, rpa_acr) %>%
+  summarise(age_ranges_sum = sum(PWGTP, na.rm = TRUE)) %>%
+  mutate(age_range = factor(age_range, levels = c("Under 5", "5-17", "18-34", "35-64", "65-74", "75 and over"))) %>%
+  arrange(rpa_acr, age_range)
 
 
+#combine tables  
+RPA_age_dis_table <- dis_age_group_RPA %>%
+  left_join(total_people_by_age_RPA, by = c("age_range", "rpa_acr")) %>%
+  mutate(percentage = (dis_age_sum / age_ranges_sum) * 100) %>%
+  arrange(rpa_acr, age_range)
 
+```
+
+```{r}
+write.xlsx(list('RPA_dis_age' = RPA_age_dis_table),
+           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/dis_age_RPA.xlsx") 
 ```
 

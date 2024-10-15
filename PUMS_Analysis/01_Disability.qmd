@@ -1126,7 +1126,7 @@ write.xlsx(list('RPA_hhld_dis' = RPA_hhld_dis_table),
            file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/dis_hhld_RPA.xlsx") 
 ```
 
-# 10 RPA - Age distribution of disability
+# 10) RPA - Age distribution of disability
 ```{r}
 #Calculate sum of weights for each age group and percentage - share of each age group with a disability 
 

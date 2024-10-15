@@ -21,25 +21,24 @@ library(readxl)
 library(writexl)
 library(openxlsx)
 library(devtools)
-
 ```
 
 # 0.1 - Set knitr path + root for inputs
 
 ```{r}
-#copied from MAPC work - not sure if we want to set up this way - 
+#Optional - Set up project using MAPC's organization method
 
 #Use when Rproject is open
-#root <- '../../../../Data/Working/Regional_Control_Totals/'
+#root <- 
 
 #General J drive filepath
 #root <-"J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI"
 
 #PUMS J drive filepath
-pums_path <- "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI"
+#pums_path <- "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI"
 
 #Set output filepath
-output_path <- ":/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output"
+#output_path <- ":/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output"
 
 #Set knitr path
 #knitr::opts_knit$set(root.dir = pums_path)
@@ -48,9 +47,7 @@ output_path <- ":/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UM
 # 0.2 - Set package dependencies, set environment, set up data keys
 
 ```{r}
-#source("J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI")
-
-#Load PUMS variables
+#Load PUMS variables - old version
 #pums <- read.csv("J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/pums_disab_hh_2021_V_2024-10-02.csv")
 
 #Load PUMS data - new  version
@@ -61,7 +58,7 @@ pums <- read.xlsx("J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pum
 
 ```{r}
 #Load in PUMA crosswalk - didn't end up using this one but here if needed
-RPA_crosswalk <- read.csv ("J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/PUMA10_RPA_crosswalk.csv")
+#RPA_crosswalk <- read.csv ("J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/PUMA10_RPA_crosswalk.csv")
 
 #install mapc package for geographies
 devtools::install_github("MAPC/mapcdatakeys", force = TRUE)
@@ -70,12 +67,12 @@ library(mapcdatakeys)
 
 
 ```{r}
-#Load in puma crosswalk and use mapc to match geos 
+#Load in puma crosswalk and use mapc package to match geos 
 ma_muni_puma10_join <- read_csv("ma_muni_puma10_join.csv")
 
 mkeys <- mapcdatakeys::all_muni_data_keys |>  select(muni_id,rpa_acr,mpo)
 
-#Load in the municipality to PUMA crosswalk.
+#Load in the municipality to PUMA crosswalk - using MAPC code to create same regions
 psf <- ma_muni_puma10_join|>
   dplyr::rename(
     muni_id=TOWN_ID,

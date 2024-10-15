@@ -122,7 +122,7 @@ gc()
 # 0.4 PUMS Data Cleaning
 
 ```{r}
-#Other data cleaning first 
+#Other data cleaning first before joining RPA
 
 #To replicate income groups that mapc used
     # Adjust Household income (HINCP) to constant dollars (USD2021)

@@ -65,7 +65,6 @@ devtools::install_github("MAPC/mapcdatakeys", force = TRUE)
 library(mapcdatakeys)
 ```
 
-
 ```{r}
 #Load in puma crosswalk and use mapc package to match geos 
 ma_muni_puma10_join <- read_csv("ma_muni_puma10_join.csv")
@@ -159,14 +158,14 @@ pums_RPA <- left_join(
 
 1)  Number of individuals living with any disability, outside of GQ and those living in GQ
 
-2)  Number of individuals for each detailed disability (6 types) 
+2)  Number of individuals for each detailed disability (6 types)
 
 3)  Age distribution of people living with disability
 
 4)  Age distribution of people living with each detailed disability type
 
-
 # 1) Number of people with a disability statewide, inside and outside of GQ
+
 ```{r}
 #Create data set with people who have a disability outside of group quarters
 people_with_disability <- pums %>%
@@ -237,10 +236,10 @@ dis_summary_table_person_level <- rbind(dis_summary_table_person, dis_summary_ta
 
 This is for the non-institutionalized population and note that children under 5 are not included in the disability measures for cognitive difficulty, ambulatory difficulty, and self-care difficulty.
 
-In the institutionalized population, 73% have a disability, which is over 45,000 people. 
-
+In the institutionalized population, 73% have a disability, which is over 45,000 people.
 
 # 2) Detailed disability data of people statewide, not in GQ
+
 ```{r}
 # 2.1) Ambulatory disability - DPHY
 ambulatory_people <- people_with_disability %>%
@@ -265,7 +264,7 @@ ambulatory_summary_table_person <- data.frame(
   Total_Population = total_people_5_and_over) 
 ```
 
-Around 6% of people in the state have an ambulatory disability, meaning they have a condition that substantially limits one or more basic physical activities, such as walking, climbing stairs, reaching, lifting, or carrying. This is around 375,000 people. This data is for the non-institutionalized population that is age 5 and above. 
+Around 6% of people in the state have an ambulatory disability, meaning they have a condition that substantially limits one or more basic physical activities, such as walking, climbing stairs, reaching, lifting, or carrying. This is around 375,000 people. This data is for the non-institutionalized population that is age 5 and above.
 
 ```{r}
 # 2.2) Self-care disability - DDRS
@@ -284,7 +283,7 @@ self_care_summary_table_person <- data.frame(
   Total_Population = total_people_5_and_over) 
 ```
 
-Approximately 155,000 people in the state, or 2% of people, have a self-care disability. This means they have a physical or mental health condition that has lasted at least 6 months and makes it difficult for them to take care of their own personal needs, such as bathing, dressing, or getting around inside the home. This does not include temporary health conditions, such as broken bones or pregnancies. This data is for the non-institutionalized population that is age 5 and above. 
+Approximately 155,000 people in the state, or 2% of people, have a self-care disability. This means they have a physical or mental health condition that has lasted at least 6 months and makes it difficult for them to take care of their own personal needs, such as bathing, dressing, or getting around inside the home. This does not include temporary health conditions, such as broken bones or pregnancies. This data is for the non-institutionalized population that is age 5 and above.
 
 ```{r}
 # 2.3) Cognitive disability - DREM
@@ -303,7 +302,7 @@ cognitive_summary_table_person <- data.frame(
   Total_Population = total_people_5_and_over) 
 ```
 
-Five percent, or about 330,000, have a cognitive disability in the state. Cognitive disabilities include difficulties learning, remembering, concentrating, or making decisions because of a physical, mental, or emotional condition. This data is for the non-institutionalized population that is age 5 and above. 
+Five percent, or about 330,000, have a cognitive disability in the state. Cognitive disabilities include difficulties learning, remembering, concentrating, or making decisions because of a physical, mental, or emotional condition. This data is for the non-institutionalized population that is age 5 and above.
 
 ```{r}
 # 2.4) Independent living disability - DOUT
@@ -329,7 +328,7 @@ independent_living_summary_table_person <- data.frame(
   Total_Population = total_people_16_and_over) 
 ```
 
-Just over 300,000 people, or 5%, in the state have an independent living disability. This includes physical, mental, or emotional conditions lasting six months or more that makes it difficult or impossible to perform basic activities outside the home alone. This does not include temporary health problems. This data is calculated for the population 16 and older. 
+Just over 300,000 people, or 5%, in the state have an independent living disability. This includes physical, mental, or emotional conditions lasting six months or more that makes it difficult or impossible to perform basic activities outside the home alone. This does not include temporary health problems. This data is calculated for the population 16 and older.
 
 ```{r}
 # 2.5) Hearing disability - DEAR
@@ -366,7 +365,7 @@ vision_summary_table_person <- data.frame(
   Total_Population = total_weighted_sample) 
 ```
 
-Two percent, or 125,000, in the state have a vision disability, meaning they are blind or have serious difficulty seeing even with corrective lenses. 
+Two percent, or 125,000, in the state have a vision disability, meaning they are blind or have serious difficulty seeing even with corrective lenses.
 
 ```{r}
 #Create table with detailed disability data 
@@ -377,8 +376,8 @@ detailed_disability_table_person <- rbind(ambulatory_summary_table_person, self_
            file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/detailed_dis_person.xlsx") 
 ```
 
-
 # 3) Age distribution of people living with disability statewide, not in GQ
+
 ```{r}
 #Create age ranges for people with disability data set
 age_people_with_disability <- people_with_disability %>% 
@@ -387,7 +386,7 @@ mutate(age_range = case_when(
     AGEP >= 0 & AGEP < 5 ~ "Under 5",
     AGEP >= 5 & AGEP < 18 ~ "5-17",
     AGEP >= 18 & AGEP < 35 ~ "18-34",
-    AGEP >= 35 & AGEP < 65 ~ "35-64", #do 65+ or 75+ ?? 
+    AGEP >= 35 & AGEP < 65 ~ "35-64", 
     AGEP >= 65 & AGEP < 75 ~ "65-74",
     AGEP >= 75 ~ "75 and over"))
 
@@ -400,14 +399,14 @@ disability_by_age_table <- age_people_with_disability %>%
   arrange(age_range)
 ```
 
-The majority of people with disabilities are adults, especially older adults. One in four of people with a disability in the state are age 75 and older. A total of 43% of people with a disability are age 65 and older (17% is 64-74 and 26% is age 75+).
+The majority of people with disabilities are adults, especially older adults. One in four of people with a disability in the state are age 75 and older. 
 
 A little over a third of people with a disability are in the age range of 35 to 64. Only 14% are in the 18-34 age range and only 8% in the 5-17 category.
 
-Note that children under 5 are excluded in the disability measures for cognitive difficulty, ambulatory difficulty, and self-care difficulty. The independent living variable is only for people 16 and older. 
+Note that children under 5 are excluded in the disability measures for cognitive difficulty, ambulatory difficulty, and self-care difficulty. The independent living variable is only for people 16 and older.
 
 ```{r}
-#Share of age group that has a disability 
+#Share of each age group that has a disability 
 #calculate the number of people in each age group 
 
 #create new data set with all person-level data and age ranges 
@@ -425,7 +424,7 @@ mutate(age_range = case_when(
 dis_share_of_age_group <- age_person_data %>%
   group_by(age_range) %>%
    summarise(dis_age_sum = sum(ifelse(DIS == 1, PWGTP, 0)),  # sum weights where DIS == 1
-    age_ranges_sum = sum(PWGTP)) %>% #total sum of each age group
+    age_ranges_sum = sum(PWGTP)) %>% # total sum of each age group
   mutate(percentage = (dis_age_sum / age_ranges_sum) * 100) %>%
   mutate(age_range = factor(age_range, levels = c("Under 5", "5-17", "18-34", "35-64", "65-74", "75 and over"))) %>%
   arrange(age_range)
@@ -438,8 +437,8 @@ dis_share_of_age_group <- age_person_data %>%
            file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/dis_person_age_new.xlsx") 
 ```
 
+# 4) Age distribution of people living with each detailed disability type
 
-# 4)  Age distribution of people living with each detailed disability type
 ```{r}
 # 4.1) Ambulatory disability by age - DPHY
 ambulatory_people_age <- age_people_with_disability %>%
@@ -518,15 +517,14 @@ vision_people_age <- age_people_with_disability %>%
            file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/detailed_dis_person_age.xlsx") 
 ```
 
-
 ```{r}
-#############Calculate share of each age group that has each disability type
+############New age analysis - calculate share of each age group that has each disability type
 
 # 4.7) Share of age groups with ambulatory disability - DPHY
 ambulatory_people_age_new <- age_person_data %>%
   group_by(age_range) %>%
   summarise(dis_age_sum = sum(ifelse(DPHY == 1, PWGTP, 0)),  # sum weights where DPHY == 1
-    age_ranges_sum = sum(PWGTP)) %>% #total sum of each age group
+    age_ranges_sum = sum(PWGTP)) %>% # total sum of each age group
   mutate(percentage = (dis_age_sum / age_ranges_sum) * 100) %>%
   mutate(age_range = factor(age_range, levels = c("Under 5", "5-17", "18-34", "35-64", "65-74", "75 and over"))) %>%
   arrange(age_range)
@@ -538,7 +536,7 @@ ambulatory_people_age_new <- age_person_data %>%
 self_care_people_age_new <- age_person_data %>%
   group_by(age_range) %>%
   summarise(dis_age_sum = sum(ifelse(DDRS == 1, PWGTP, 0)),  # sum weights where DDRS == 1
-    age_ranges_sum = sum(PWGTP)) %>% #total sum of each age group
+    age_ranges_sum = sum(PWGTP)) %>% # total sum of each age group
   mutate(percentage = (dis_age_sum / age_ranges_sum) * 100) %>%
   mutate(age_range = factor(age_range, levels = c("Under 5", "5-17", "18-34", "35-64", "65-74", "75 and over"))) %>%
   arrange(age_range)
@@ -549,7 +547,7 @@ self_care_people_age_new <- age_person_data %>%
 cognitive_people_age_new <- age_person_data %>%
   group_by(age_range) %>%
   summarise(dis_age_sum = sum(ifelse(DREM == 1, PWGTP, 0)),  # sum weights where DREM == 1
-    age_ranges_sum = sum(PWGTP)) %>% #total sum of each age group
+    age_ranges_sum = sum(PWGTP)) %>% # total sum of each age group
   mutate(percentage = (dis_age_sum / age_ranges_sum) * 100) %>%
   mutate(age_range = factor(age_range, levels = c("Under 5", "5-17", "18-34", "35-64", "65-74", "75 and over"))) %>%
   arrange(age_range)
@@ -560,7 +558,7 @@ cognitive_people_age_new <- age_person_data %>%
 independent_living_people_age_new <- age_person_data %>%
   group_by(age_range) %>%
   summarise(dis_age_sum = sum(ifelse(DOUT == 1, PWGTP, 0)),  # sum weights where DOUT == 1
-    age_ranges_sum = sum(PWGTP)) %>% #total sum of each age group
+    age_ranges_sum = sum(PWGTP)) %>% # total sum of each age group
   mutate(percentage = (dis_age_sum / age_ranges_sum) * 100) %>%
   mutate(age_range = factor(age_range, levels = c("Under 5", "5-17", "18-34", "35-64", "65-74", "75 and over"))) %>%
   arrange(age_range)
@@ -571,7 +569,7 @@ independent_living_people_age_new <- age_person_data %>%
 hearing_people_age_new <- age_person_data %>%
   group_by(age_range) %>%
   summarise(dis_age_sum = sum(ifelse(DEAR == 1, PWGTP, 0)),  # sum weights where DEAR == 1
-    age_ranges_sum = sum(PWGTP)) %>% #total sum of each age group
+    age_ranges_sum = sum(PWGTP)) %>% # total sum of each age group
   mutate(percentage = (dis_age_sum / age_ranges_sum) * 100) %>%
   mutate(age_range = factor(age_range, levels = c("Under 5", "5-17", "18-34", "35-64", "65-74", "75 and over"))) %>%
   arrange(age_range)
@@ -582,7 +580,7 @@ hearing_people_age_new <- age_person_data %>%
 vision_people_age_new <- age_person_data %>%
   group_by(age_range) %>%
   summarise(dis_age_sum = sum(ifelse(DEYE == 1, PWGTP, 0)),  # sum weights where DEYE == 1
-    age_ranges_sum = sum(PWGTP)) %>% #total sum of each age group
+    age_ranges_sum = sum(PWGTP)) %>% # total sum of each age group
   mutate(percentage = (dis_age_sum / age_ranges_sum) * 100) %>%
   mutate(age_range = factor(age_range, levels = c("Under 5", "5-17", "18-34", "35-64", "65-74", "75 and over"))) %>%
   arrange(age_range)
@@ -600,16 +598,16 @@ vision_people_age_new <- age_person_data %>%
            file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/detailed_dis_person_age_new.xlsx") 
 ```
 
-
 # State-level, household level analysis
 
-5) Number and share of hhlds with a member who has a disability statewide 
+5)  Number and share of hhlds with a member who has a disability statewide
 
-6) Number and share of hhlds with a member who has a disability by type of disability e.g. With an ambulatory disability, etc.
+6)  Number and share of hhlds with a member who has a disability by type of disability e.g. With an ambulatory disability, etc.
 
-7) Additional hhld data on households with a member who has a disability such as income, cost burden, tenure, etc. 
- 
+7)  Additional hhld data on households with a member who has a disability such as income, cost burden, tenure, etc.
+
 # 5) Number and share of hhlds with a member who has a disability statewide
+
 ```{r}
 #Aggregate person-level data to household level
 households_with_disability <- people_with_disability %>% #GQ is already filtered out in person-level data
@@ -645,6 +643,7 @@ dis_summary_table_hhld <- data.frame(
 ```
 
 # 6) Number of hhlds with detailed disability
+
 ```{r}
 # 6.1) Ambulatory disabilities - DPHY
 ambulatory_households <- people_with_disability %>% #GQ is already filtered out in person-level data
@@ -950,7 +949,6 @@ hhld_renter_cost_burden__dis_summary_table <- rbind(household_cost_burden_renter
 
 ```
 
-
 ```{r}
 #Owner cost burden - OCPIP for owners
 household_cost_burden_owner_disability <- people_with_disability %>%
@@ -1016,21 +1014,10 @@ hhld_owner_cost_burden__dis_summary_table <- rbind(household_cost_burden_owner_d
 
 # Analysis by RPA
 
-1	BERKSHIRE REGIONAL PLANNING COMMISSION	BRPC
-2	FRANKLIN REGIONAL COUNCIL OF GOVERNMENTS	FRCOG
-3	PIONEER VALLEY PLANNING COMMISSION	PVPC
-4	MONTACHUSETT REGIONAL PLANNING COMMISSION	MRPC
-5	CENTRAL MASSACHUSETTS REGIONAL PLANNING COMMISSION	CMRPC
-6	NORTHERN MIDDLESEX COUNCIL OF GOVERNMENTS	NMCOG
-7	MERRIMACK VALLEY PLANNING COMMISSION	MVPC
-8	METROPOLITAN AREA PLANNING COUNCIL	MAPC
-9	OLD COLONY PLANNING COUNCIL	OCPC
-10 SOUTHEAST REGIONAL PLANNING & ECONOMIC DEVELOPMENT DISTRICT	SRPEDD
-11 CAPE COD COMMISSION	CCC
-12 MARTHA'S VINEYARD COMMISSION	MVC
-13 NANTUCKET PLANNING & ECONOMIC DEVELOPMENT COMMISSION	NPEDC
+1 BERKSHIRE REGIONAL PLANNING COMMISSION BRPC 2 FRANKLIN REGIONAL COUNCIL OF GOVERNMENTS FRCOG 3 PIONEER VALLEY PLANNING COMMISSION PVPC 4 MONTACHUSETT REGIONAL PLANNING COMMISSION MRPC 5 CENTRAL MASSACHUSETTS REGIONAL PLANNING COMMISSION CMRPC 6 NORTHERN MIDDLESEX COUNCIL OF GOVERNMENTS NMCOG 7 MERRIMACK VALLEY PLANNING COMMISSION MVPC 8 METROPOLITAN AREA PLANNING COUNCIL MAPC 9 OLD COLONY PLANNING COUNCIL OCPC 10 SOUTHEAST REGIONAL PLANNING & ECONOMIC DEVELOPMENT DISTRICT SRPEDD 11 CAPE COD COMMISSION CCC 12 MARTHA'S VINEYARD COMMISSION MVC 13 NANTUCKET PLANNING & ECONOMIC DEVELOPMENT COMMISSION NPEDC
 
 # 8) Number of individuals in each RPA with a person with any disability
+
 ```{r}
 #Analysis by RPA 
 #Number of hhlds in each RPA with a person with any disability - non-institutionalized population 
@@ -1092,6 +1079,7 @@ RPA_person_dis_table_GQ <- RPA_person_dis_table_GQ %>%
 ```
 
 # 9) Number and share of households in each RPA with a person with any disability
+
 ```{r}
 #Aggregate person-level data to household level
 hhlds_with_disability_by_RPA <- people_with_disability_by_RPA %>%
@@ -1127,6 +1115,7 @@ write.xlsx(list('RPA_hhld_dis' = RPA_hhld_dis_table),
 ```
 
 # 10) RPA - Age distribution of disability
+
 ```{r}
 #Calculate sum of weights for each age group and percentage - share of each age group with a disability 
 
@@ -1178,4 +1167,3 @@ RPA_age_dis_table <- dis_age_group_RPA %>%
 write.xlsx(list('RPA_dis_age' = RPA_age_dis_table),
            file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/dis_age_RPA.xlsx") 
 ```
-

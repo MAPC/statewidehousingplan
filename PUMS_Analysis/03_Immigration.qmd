@@ -19,24 +19,26 @@ library(dplyr)
 library(knitr)
 library(readxl)
 library(writexl)
+library(openxlsx)
+library(devtools)
 ```
 
 # 0.1 - Set knitr path + root for inputs
 
 ```{r}
-#copied from MAPC work - not sure if we want to set up this way - 
+#Optional - Set up project using MAPC's organization method
 
 #Use when Rproject is open
-#root <- '../../../../Data/Working/Regional_Control_Totals/'
+#root <- 
 
 #General J drive filepath
 #root <-"J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI"
 
 #PUMS J drive filepath
-pums_path <- "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI"
+#pums_path <- "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI"
 
 #Set output filepath
-output_path <- ":/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output"
+#output_path <- ":/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output"
 
 #Set knitr path
 #knitr::opts_knit$set(root.dir = pums_path)
@@ -45,16 +47,116 @@ output_path <- ":/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UM
 # 0.2 - Set package dependencies, set environment, set up data keys
 
 ```{r}
-#source("J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI")
+#Load PUMS data - new  version
+pums <- read.xlsx("J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/pums_immig_hh_2021_V_2024-10-09.xlsx")
+```
 
-#Load PUMS variables
-pums <- read.csv(
+# 0.3 PUMA to RPA Crosswalk
+
+```{r}
+#Load in PUMA crosswalk - didn't end up using this one but here if needed
+#RPA_crosswalk <- read.csv ("J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/PUMA10_RPA_crosswalk.csv")
+
+#install mapc package for geographies
+devtools::install_github("MAPC/mapcdatakeys", force = TRUE)
+library(mapcdatakeys)
 ```
 
 
+```{r}
+#Load in puma crosswalk and use mapc package to match geos 
+ma_muni_puma10_join <- read_csv("ma_muni_puma10_join.csv")
+
+mkeys <- mapcdatakeys::all_muni_data_keys |>  select(muni_id,rpa_acr,mpo)
+
+#Load in the municipality to PUMA crosswalk - using MAPC code to create same regions
+psf <- ma_muni_puma10_join|>
+  dplyr::rename(
+    muni_id=TOWN_ID,
+    PUMA = PUMACE10
+  ) |>
+  left_join(
+    mkeys,
+    by = c('muni_id')
+  ) |> 
+  select(-c(muni_id)) |> 
+  distinct(
+    PUMA,
+    .keep_all = TRUE
+  ) |> 
+  mutate(
+    PUMA = str_pad(PUMA, 5, side = "left", pad = "0")
+  )
+
+#Manufacturing MVC and NPEDC RPAs manually
+#Create an empty matrix with 2x1 dimenstions
+matrix <- matrix(nrow = 1, ncol = 3)
+#Set the column names to match the PUMA to RPA/MPO crosswalk
+col_names <- c("rpa_acr", "mpo", "PUMA")
+
+#Create dataframes with matrix dimensions for both RPAs
+mvc <- data.frame(matrix = matrix)
+ccc <- data.frame(matrix = matrix)
+
+#Assign column names to the dataframes
+colnames(mvc) <- col_names
+colnames(ccc) <- col_names
+
+#Populate data into the MVC and MPEDC dataframes
+mvc[[1]] <- "MVC"
+mvc[[2]] <- "MVC"
+mvc[[3]] <- "04800"
+ccc[[1]] <- "CCC"
+ccc[[2]] <- "CCC"
+ccc[[3]] <- "04800"
+
+#Append MVC and NPEDC data to PUMA to RPA/MPO crosswalk
+xw <- bind_rows(psf, mvc, ccc)
+
+#Remove intermediate dataframes.
+rm(matrix, col_names, mvc, ccc, psf)
+gc()
+
+```
+
+# 0.4 PUMS Data Cleaning
+
+```{r}
+#Other data cleaning first 
+
+#To replicate income groups that mapc used
+    # Adjust Household income (HINCP) to constant dollars (USD2021)
+pums <- pums %>%
+  mutate(
+    HINCP_adj = HINCP * ADJINC,  # Create the adjusted income column
+    HH.Income.Grp = case_when(
+      HINCP_adj <= 35000 ~ "$35,000 or less",
+      HINCP_adj > 35000 & HINCP_adj <= 75000 ~ "$35,001-$75,000",
+      HINCP_adj > 75000 & HINCP_adj <= 125000 ~ "$75,001-$125,000",
+      HINCP_adj > 125000 & HINCP_adj <= 225000 ~ "$125,001-$225,000",
+      HINCP_adj > 225000 ~ "$225,000 or more",
+      TRUE ~ NA_character_)) 
+
+
+##Joining the PUMA to RPA crosswalk to the PUMS data
+#converting puma to numeric to join
+xw$PUMA <- as.numeric(xw$PUMA)
+
+#join RPA crosswalk to pums data for RPA data set
+pums_RPA <- left_join(
+  pums,
+  xw,
+  by = c("PUMA"))
+
+```
+
 # PUMS Analysis
 
-# State-level, person level analysis
+# State-level
+
+```{r}
+
+```
 
 ```{r}
 

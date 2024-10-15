@@ -380,7 +380,7 @@ detailed_disability_table_person <- rbind(ambulatory_summary_table_person, self_
 
 ```{r}
 #Create age ranges for people with disability data set
-age_people_with_disability <- people_with_disability %>% 
+age_people_with_disability <- people_with_disability %>%  # note GQ is already filtered out in this data set
 select(uniq_obs, PUMA, PWGTP, AGEP, DREM, DPHY, DEYE, DEAR, DOUT, DDRS) %>% 
 mutate(age_range = case_when(
     AGEP >= 0 & AGEP < 5 ~ "Under 5",
@@ -410,7 +410,7 @@ Note that children under 5 are excluded in the disability measures for cognitive
 #calculate the number of people in each age group 
 
 #create new data set with all person-level data and age ranges 
-age_person_data <- person_data %>% 
+age_person_data <- person_data %>%              # note GQ is already filtered out in this data set
 select(uniq_obs, PUMA, PWGTP, AGEP, DIS, DREM, DPHY, DEYE, DEAR, DOUT, DDRS) %>% 
 mutate(age_range = case_when(
     AGEP >= 0 & AGEP < 5 ~ "Under 5",
@@ -784,7 +784,7 @@ household_income_disability <- people_with_disability %>%
   group_by(HH.Income.Grp) %>%                                  # group by income to calculate total weights for each income type
   summarise(total_by_income = sum(first_weight, na.rm = TRUE), # Sum the weights by income group
     .groups = "drop") %>%   
-  mutate(HH.Income.Grp = factor(HH.Income.Grp, levels = c(    #order income groups in correct order
+  mutate(HH.Income.Grp = factor(HH.Income.Grp, levels = c(    # order income groups in correct order
       "$35,000 or less", 
       "$35,001-$75,000", 
       "$75,001-$125,000", 
@@ -792,7 +792,7 @@ household_income_disability <- people_with_disability %>%
       "$225,000 or more", 
       "0"))) %>%
   arrange(HH.Income.Grp) %>% 
-  mutate(percentage_of_total = (total_by_income / total_households_with_disability) * 100) %>%   # Calculate percent of all disabled hhlds
+  mutate(percentage_of_total = (total_by_income / total_households_with_disability) * 100) %>%   # Calculate % of all disabled hhlds
   mutate(description = "MA households with disability") %>%
   select(description, everything())                            # move new description column to the front
   

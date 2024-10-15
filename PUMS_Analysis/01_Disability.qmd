@@ -196,7 +196,7 @@ dis_summary_table_person <- data.frame(
 
 ###Repeat above steps for people with disability in GQ
 
-#Create data set with people who have a disability IN group quarters
+#Create data set with people who have a disability IN institutional group quarters
 people_with_disability_GQ <- pums %>%
   group_by(uniq_obs) %>%
   filter(DIS == 1) %>% #filtering for disability flag
@@ -417,7 +417,7 @@ mutate(age_range = case_when(
     AGEP >= 0 & AGEP < 5 ~ "Under 5",
     AGEP >= 5 & AGEP < 18 ~ "5-17",
     AGEP >= 18 & AGEP < 35 ~ "18-34",
-    AGEP >= 35 & AGEP < 65 ~ "35-64", #do 65+ or 75+ ?? 
+    AGEP >= 35 & AGEP < 65 ~ "35-64",
     AGEP >= 65 & AGEP < 75 ~ "65-74",
     AGEP >= 75 ~ "75 and over"))
 
@@ -439,7 +439,7 @@ dis_share_of_age_group <- age_person_data %>%
 ```
 
 
-# 4)  Age distribution of people living with each detailed disability type, not in GQ
+# 4)  Age distribution of people living with each detailed disability type
 ```{r}
 # 4.1) Ambulatory disability by age - DPHY
 ambulatory_people_age <- age_people_with_disability %>%
@@ -603,15 +603,13 @@ vision_people_age_new <- age_person_data %>%
 
 # State-level, household level analysis
 
-Number of hhlds with a member who has a disability statewide and by RPA
+5) Number and share of hhlds with a member who has a disability statewide 
 
-Share of hhlds with a member who has a disability statewide and by RPA
+6) Number and share of hhlds with a member who has a disability by type of disability e.g. With an ambulatory disability, etc.
 
-Number of hhlds with a member who has a disability by type of disability e.g. With an ambulatory disability, etc.
-
-Share of hhlds with a member who has a disability by type of disability e.g. With an ambulatory disability, etc.
-
-# 5) Number of hhlds with a member who has a disability statewide
+7) Additional hhld data on households with a member who has a disability such as income, cost burden, tenure, etc. 
+ 
+# 5) Number and share of hhlds with a member who has a disability statewide
 ```{r}
 #Aggregate person-level data to household level
 households_with_disability <- people_with_disability %>% #GQ is already filtered out in person-level data

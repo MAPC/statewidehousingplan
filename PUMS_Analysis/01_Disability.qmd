@@ -812,7 +812,7 @@ household_income_state <- pums %>%
       "$225,000 or more", 
       "0"))) %>%
   arrange(HH.Income.Grp) %>% 
-  mutate(percentage_of_total = (total_by_income / total_weighted_households) * 100) %>%  # Calculate percent of all hhlds
+  mutate(percentage_of_total = (total_by_income / total_weighted_households) * 100) %>%  # Calculate % of all hhlds
   mutate(description = "All MA households") %>%
   select(description, everything())                      # move new description column to the front
   
@@ -845,7 +845,7 @@ household_tenure_disability <- people_with_disability %>%
 #Age of housing stock for households with disability - YRBLT
 
 household_age_of_housing_disability <- people_with_disability %>%
-  mutate(Housing.Age = case_when(                                     #create age of housing groups 
+  mutate(Housing.Age = case_when(                                     # create age of housing groups 
       YRBLT < 1940 ~ "Pre-1940",
       YRBLT >= 1940 & YRBLT <= 1969 ~ "1940 to 1969",
       YRBLT >= 1970 & YRBLT <= 1999 ~ "1970 to 1999",
@@ -869,7 +869,7 @@ household_age_of_housing_disability <- people_with_disability %>%
     
 #Calculate for whole state for comparison in the same housing age groups
 household_age_of_housing_state <- pums %>%
-  mutate(Housing.Age = case_when(                                     #create age of housing groups 
+  mutate(Housing.Age = case_when(                                     # create age of housing groups 
       YRBLT < 1940 ~ "Pre-1940",
       YRBLT >= 1940 & YRBLT <= 1969 ~ "1940 to 1969",
       YRBLT >= 1970 & YRBLT <= 1999 ~ "1970 to 1999",

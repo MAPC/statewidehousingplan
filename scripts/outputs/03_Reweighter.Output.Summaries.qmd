@@ -31,7 +31,7 @@ base <- "K:/DataServices/Projects/Current_Projects/"
 root <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/")
 
 # Set output filepath
-output_path <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/", scen, "/")
+output_path <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Final_Outputs/", scen, "/")
 
 # Reweighter files path
 rwt_path <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Reweighter/", scen, "/Output_Files/")
@@ -55,20 +55,6 @@ library(readxl)
 options(scipen = 999)
 #Set random seed
 set.seed(351)
-
-#Set PUMS vintage final year for {tidycensus} API query.
-vintage <- 2021
-
-# Load CPI time series for deflating income variable
-cpi <- read.csv(paste0(root,'cpi_deflators_by_year.csv'))
-# Create variable for the 2013 CPI index
-cpi.13 <- cpi |> filter(year == 2013) |> pull(index)
-# Create variable for the Vintage year (the last year in the 5-year ACS) CPI Index
-cpi.current <- cpi |> filter(year == vintage) |> pull(index)
-# Calculate the CPI delfator
-cpi.deflator <-  cpi.13 / cpi.current
-# Remove CPI data no longer in use
-rm(cpi.13,cpi.current)
 
 #Set up muni data keys
 #MPO Data Keys
@@ -187,29 +173,7 @@ for (i in years) {
 
 ```
 
-# 2.0 Re-create Grouping Variables in the PUMS Data
-- .1 Create UrbanSim Household Income Groupings
-
-```{r}
-#===============================================================================
-# .1 UrbanSim Housing Income Groupings
-
-s1.df <- s1.df |> 
-  mutate(
-     # Adjust income first to the highest year in the 5-year vintage using included adjustment field (ADJINC) and then deflate back to 2013, using the cpi deflator calculated in the previous code chunk
-
-    ADJINC = as.numeric(ADJINC),
-    HINCP = round((as.numeric(HINCP) * ADJINC) * cpi.deflator, 0),
-    WAGPALLC_US =
-      cut(
-        HINCP,
-        breaks = c(-Inf, 35000, 75000, 125000, 225000, Inf),
-        labels = c("1", "2", "3", "4", "5")
-  )
-
-```
-
-# 3.0 Output Tables For UrbanSim
+# 2.0 Output Tables For UrbanSim
 
 -   .1 UrbanSim Household Income Groupings
 -   .2 5-year Age Groupings (ageCAT6)
@@ -218,18 +182,43 @@ s1.df <- s1.df |>
 ```{r}
 #===============================================================================
 # .1 UrbanSim Household Income Groupings
-
-tbl.1 <- sf1.df |> 
+tbl.1 <- s1.df |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   group_by(
     rpa_acr,
     year,
-    
+    WAGPALLC_US
+  ) |> 
+  summarise(
+    hhds = sum(new_WGTP)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    Income_Group = case_when(
+      WAGPALLC_US == 1 ~ "<=$35,000",
+      WAGPALLC_US == 2 ~ "$35,001 - $75,000",
+      WAGPALLC_US == 3 ~ "$75,001 - $125,000",
+      WAGPALLC_US == 4 ~ "$125,001 - $225,000",
+      WAGPALLC_US == 5 ~ ">$225,000",
+      .default = "Unknown"
+    )
+  ) |> 
+  select(
+    -c(WAGPALLC_US)
+  ) |> relocate(
+    Income_Group,
+    .before = hhds
   )
+
+#Write Output tables to K Drive
+write.csv(
+  tbl.1,
+  paste0(output_path,"/output.tbl_Households.by.IncomeGroups.csv"),
+  row.names = FALSE
+)
 
 #===============================================================================
 # .2 5-year Age Groupings (ageCAT6)
-
 tbl.2 <- s1.df |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   group_by(
@@ -240,11 +229,46 @@ tbl.2 <- s1.df |>
   summarise(
     hhds = sum(new_WGTP)
   ) |> 
-  ungroup()
+  ungroup() |> 
+  mutate(
+    Age_Group = case_when(
+      ageCAT6 == 1 ~ "00-04",
+      ageCAT6 == 2 ~ "05-09",
+      ageCAT6 == 3 ~ "10-14",
+      ageCAT6 == 4 ~ "15-19",
+      ageCAT6 == 5 ~ "20-24",
+      ageCAT6 == 6 ~ "25-29",
+      ageCAT6 == 7 ~ "30-34",
+      ageCAT6 == 8 ~ "35-39",
+      ageCAT6 == 9 ~ "40-44",
+      ageCAT6 == 10 ~ "45-49",
+      ageCAT6 == 11 ~ "50-54",
+      ageCAT6 == 12 ~ "55-59",
+      ageCAT6 == 13 ~ "60-64",
+      ageCAT6 == 14 ~ "65-69",
+      ageCAT6 == 15 ~ "70-74",
+      ageCAT6 == 16 ~ "75-79",
+      ageCAT6 == 17 ~ "80-84",
+      ageCAT6 == 18 ~ "85 plus",
+      .default = "Unknown"
+    )
+  ) |> 
+  select(
+    -c(ageCAT6)
+  ) |> relocate(
+    Age_Group,
+    .before = hhds
+  )
+
+#Write Output Tables ot K Drive
+write.csv(
+  tbl.2,
+  paste0(output_path,"/output.tbl_Households.by.AgeGroups.csv"),
+  row.names = FALSE
+)
 
 #===============================================================================
 # .3 Household Type
-
 tbl.3 <- s1.df |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   group_by(
@@ -255,10 +279,32 @@ tbl.3 <- s1.df |>
   summarise(
     hhds = sum(new_WGTP)
   ) |> 
-  ungroup()
+  ungroup() |> 
+  mutate(
+    HHtype_Group = case_when(
+      HHtype == 1 ~ "Household w Children",
+      HHtype == 3 ~ "Household w 2 plus Adults wo Children",
+      HHtype == 5 ~ "Single Person Household",
+      .default = "Unknown"
+    )
+  ) |> 
+  select(
+    -c(HHtype)
+  ) |> relocate(
+    HHtype_Group,
+    .before = hhds
+  )
+
+# Write output tables to K drive
+write.csv(
+  tbl.3,
+  paste0(output_path,"/output.tbl_Households.by.HHtypeGroups.csv"),
+  row.names = FALSE
+)
+
 ```
 
-#4.0 Output Tables for Statewide Housing Plan Deliverables - .1 Number of Children in a Household - .2 Size of Household - .3 Tenure - .4 Number of Workers in a Household
+#3.0 Output Tables for Statewide Housing Plan Deliverables - .1 Number of Children in a Household - .2 Size of Household - .3 Tenure - .4 Number of Workers in a Household
 
 ```{r}
 #===============================================================================

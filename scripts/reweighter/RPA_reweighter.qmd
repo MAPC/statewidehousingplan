@@ -451,12 +451,22 @@ dhc <- d1 %>%
   mutate(
     total_units = dhc_units_2020,
     total_available_units = dhc_households_2020 + Vacant_For_rent + Vacant_Rented_not_occupied + Vacant_For_sale_only + Vacant_Sold_not_occupied,
+    total_unavailable_units = total_units - total_available_units,
     total_available_rental_units = Vacant_For_rent + Vacant_Rented_not_occupied + rent_occ_units,
     total_available_owner_units = Vacant_For_sale_only + Vacant_Sold_not_occupied + own_occ_units,
+    rent_ratio = total_available_rental_units / total_available_units,
+    own_ratio = total_available_owner_units / total_available_units,
+    total_unavailable_rental_units = total_unavailable_units * rent_ratio,
+    total_unavailable_owner_units = total_unavailable_units * own_ratio,
+    total_rental_units = total_available_rental_units + total_unavailable_rental_units,
+    total_owner_units = total_available_owner_units + total_unavailable_owner_units,
     total_available_vacant_units = Vacant_For_sale_only + Vacant_For_rent,
-    vac_rate = round(total_available_vacant_units / total_available_units, 3),
-    rent_vac_rate = round(Vacant_For_rent / total_available_rental_units,3),
-    own_vac_rate = round(Vacant_For_sale_only / total_available_owner_units,3)
+    vac_rate_avail = round(total_available_vacant_units / total_available_units, 3),
+    rent_vac_rate_avail = round(Vacant_For_rent / total_available_rental_units,3),
+    own_vac_rate_avail = round(Vacant_For_sale_only / total_available_owner_units,3),
+    vac_rate_total = round(total_available_vacant_units / total_units, 3),
+    rent_vac_rate_total = round(Vacant_For_rent / total_rental_units,3),
+    own_vac_rate_total = round(Vacant_For_sale_only / total_owner_units,3)
     ) %>% 
   rename(total_vacant_units=Vacant,
          vacant_available_to_rent=Vacant_For_rent,
@@ -477,17 +487,25 @@ cs <- c(
   'total_available_rental_units',
   'vacant_available_to_rent',
   'total_available_owner_units',
-  'vacant_available_to_own'
+  'vacant_available_to_own',
+  'total_rental_units',
+  'total_owner_units',
+  
 )
 
 
 dsum101 <- dhc[,lapply(.SD,sum),rpa_acr,.SDcols=(cs)] %>% 
   mutate(
-    vac_rate_2020 = round(total_available_vacant_units / total_available_units, 3),
-    rent_vac_rate_2020 = round(vacant_available_to_rent / total_available_rental_units,3),
-    own_vac_rate_2020 = round(vacant_available_to_own / total_available_owner_units,3)
-  )
+    vac_rate_avail = round(total_available_vacant_units / total_available_units, 3),
+    rent_vac_rate_avail = round(vacant_available_to_rent / total_available_rental_units,3),
+    own_vac_rate_avail = round(vacant_available_to_own / total_available_owner_units,3),
+    vac_rate_total = round(total_available_vacant_units / total_units, 3),
+    rent_vac_rate_total = round(vacant_available_to_rent / total_rental_units,3),
+    own_vac_rate_total = round(vacant_available_to_own / total_owner_units,3)
+    )
 fwrite(dsum101,paste0(workpath,'MAPC101_all_RPA_available_vacancy_rates_by_tenure.csv'))
+
+
 
 dsum97 <- dhc[,lapply(.SD,sum),rpa_acr,.SDcols=(cs)] %>% 
   mutate(

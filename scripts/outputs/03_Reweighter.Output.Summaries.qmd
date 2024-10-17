@@ -313,7 +313,7 @@ write.csv(
 ```{r}
 #===============================================================================
 # .4 Number of Children in a Household
-tbl.5 <- s1.df |>
+tbl.4 <- s1.df |>
   filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   group_by(
     rpa_acr,
@@ -330,7 +330,7 @@ tbl.5 <- s1.df |>
       Child_Total == 1 ~ "One Child",
       Child_Total == 2 ~ "Two Children",
       Child_Total == 3 ~ "Three Children",
-      Child_Total >= 4 ~ "Four of More Children"
+      Child_Total >= 4 ~ "Four of More Children",
       .default = "Unknown"
     )
   ) |> 

@@ -304,18 +304,158 @@ write.csv(
 
 ```
 
-#3.0 Output Tables for Statewide Housing Plan Deliverables - .1 Number of Children in a Household - .2 Size of Household - .3 Tenure - .4 Number of Workers in a Household
+#3.0 Output Tables for Statewide Housing Plan Deliverables 
+- .4 Number of Children in a Household 
+- .5 Size of Household 
+- .6 Tenure 
+- .7 Number of Workers in a Household
 
 ```{r}
 #===============================================================================
-# .1 Number of Children in a Household
+# .4 Number of Children in a Household
+tbl.5 <- s1.df |>
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
+  group_by(
+    rpa_acr,
+    year,
+    Child_Total
+  ) |> 
+  summarise(
+    hhds = sum(new_WGTP)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    CHILDHH_Group = case_when(
+      Child_Total == 0 ~ "No Children",
+      Child_Total == 1 ~ "One Child",
+      Child_Total == 2 ~ "Two Children",
+      Child_Total == 3 ~ "Three Children",
+      Child_Total >= 4 ~ "Four of More Children"
+      .default = "Unknown"
+    )
+  ) |> 
+  select(
+    -c(Child_Total)
+  ) |> relocate(
+    CHILDHH_Group,
+    .before = hhds
+  )
+
+# Write output tables to K drive
+write.csv(
+  tbl.4,
+  paste0(output_path,"/output.tbl_Households.by.NumberOfChildren.csv"),
+  row.names = FALSE
+)
 
 #===============================================================================
-# .2 Size of Household
+# .5 Size of Household
+tbl.5 <- s1.df |> 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
+  group_by(
+    rpa_acr,
+    year,
+    size
+  ) |> 
+  summarise(
+    hhds = sum(new_WGTP)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    Size_Group = case_when(
+      size == 1 ~ "One Person",
+      size == 2 ~ "Two person",
+      size == 3 ~ "Three Person",
+      size == 4 ~ "Four Person",
+      size == 5 ~ "Five Person",
+      size == 6 ~ "Six Person",
+      size >= 7 ~ "Seven or More Person",
+      .default = "Unknown"
+    )
+  ) |> 
+  select(
+    -c(size)
+  ) |> relocate(
+    Size_Group,
+    .before = hhds
+  )
+
+# Write output tables to K drive
+write.csv(
+  tbl.5,
+  paste0(output_path,"/output.tbl_Households.by.HHsize.csv"),
+  row.names = FALSE
+)
 
 #===============================================================================
-# .3 Tenure
+# .6 Tenure
+tbl.6 <- s1.df |> 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
+  group_by(
+    rpa_acr,
+    year,
+    TEN
+  ) |> 
+  summarise(
+    hhds = sum(new_WGTP)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    TEN_Group = case_when(
+      TEN == 1 ~ "Owned with mortgage or loan (include home equity loans)",
+      TEN == 2 ~ "Owned free and clear",
+      TEN == 3 ~ "Rented",
+      TEN == 4 ~ "Occupied without payment of rent",
+      .default = "Unknown"
+    )
+  ) |> 
+  select(
+    -c(TEN)
+  ) |> relocate(
+    TEN_Group,
+    .before = hhds
+  )
+
+# Write output tables to K drive
+write.csv(
+  tbl.6,
+  paste0(output_path,"/output.tbl_Households.by.Tenure.csv"),
+  row.names = FALSE
+)
 
 #===============================================================================
-# .4 Number of Workers in a Household
+# .7 Number of Workers in a Household
+tbl.7 <- s1.df |> 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
+  group_by(
+    rpa_acr,
+    year,
+    WRKHH
+  ) |> 
+  summarise(
+    hhds = sum(new_WGTP)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    WRKHH_Group = case_when(
+      WRKHH == 0 ~ "No Workers",
+      WRKHH == 1 ~ "One Worker",
+      WRKHH == 2 ~ "Two Workers",
+      WRKHH >= 3 ~ "Three or More Workers",
+      .default = "Unknown"
+    )
+  ) |> 
+  select(
+    -c(WRKHH)
+  ) |> relocate(
+    WRKHH_Group,
+    .before = hhds
+  )
+
+# Write output tables to K drive
+write.csv(
+  tbl.7,
+  paste0(output_path,"/output.tbl_Households.by.NumberOfWorkers.csv"),
+  row.names = FALSE
+)
 ```

@@ -56,6 +56,20 @@ options(scipen = 999)
 #Set random seed
 set.seed(351)
 
+#Set PUMS vintage final year for {tidycensus} API query.
+vintage <- 2021
+
+# Load CPI time series for deflating income variable
+cpi <- read.csv(paste0(root,'cpi_deflators_by_year.csv'))
+# Create variable for the 2013 CPI index
+cpi.13 <- cpi |> filter(year == 2013) |> pull(index)
+# Create variable for the Vintage year (the last year in the 5-year ACS) CPI Index
+cpi.current <- cpi |> filter(year == vintage) |> pull(index)
+# Calculate the CPI delfator
+cpi.deflator <-  cpi.13 / cpi.current
+# Remove CPI data no longer in use
+rm(cpi.13,cpi.current)
+
 #Set up muni data keys
 #MPO Data Keys
 keys.mpo <- mapcdatakeys::all_muni_data_keys |> 
@@ -173,10 +187,34 @@ for (i in years) {
 
 ```
 
-# 2.0 Output Tables For UrbanSim
-- .1 UrbanSim Household Income Groupings
-- .2 5-year Age Groupings (ageCAT6)
-- .3 Household Type
+# 2.0 Re-create Grouping Variables in the PUMS Data
+- .1 Create UrbanSim Household Income Groupings
+
+```{r}
+#===============================================================================
+# .1 UrbanSim Housing Income Groupings
+
+s1.df <- s1.df |> 
+  mutate(
+     # Adjust income first to the highest year in the 5-year vintage using included adjustment field (ADJINC) and then deflate back to 2013, using the cpi deflator calculated in the previous code chunk
+
+    ADJINC = as.numeric(ADJINC),
+    HINCP = round((as.numeric(HINCP) * ADJINC) * cpi.deflator, 0),
+    WAGPALLC_US =
+      cut(
+        HINCP,
+        breaks = c(-Inf, 35000, 75000, 125000, 225000, Inf),
+        labels = c("1", "2", "3", "4", "5")
+  )
+
+```
+
+# 3.0 Output Tables For UrbanSim
+
+-   .1 UrbanSim Household Income Groupings
+-   .2 5-year Age Groupings (ageCAT6)
+-   .3 Household Type
+
 ```{r}
 #===============================================================================
 # .1 UrbanSim Household Income Groupings
@@ -220,11 +258,8 @@ tbl.3 <- s1.df |>
   ungroup()
 ```
 
-#3.0 Output Tables for Statewide Housing Plan Deliverables
-- .1 Number of Children in a Household
-- .2 Size of Household
-- .3 Tenure
-- .4 Number of Workers in a Household
+#4.0 Output Tables for Statewide Housing Plan Deliverables - .1 Number of Children in a Household - .2 Size of Household - .3 Tenure - .4 Number of Workers in a Household
+
 ```{r}
 #===============================================================================
 # .1 Number of Children in a Household

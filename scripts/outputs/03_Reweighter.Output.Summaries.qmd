@@ -315,31 +315,25 @@ write.csv(
 # .4 Number of Children in a Household
 tbl.4 <- s1.df |>
   filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
-  group_by(
-    rpa_acr,
-    year,
-    Child_Total
-  ) |> 
-  summarise(
-    hhds = sum(new_WGTP)
-  ) |> 
-  ungroup() |> 
   mutate(
     CHILDHH_Group = case_when(
       Child_Total == 0 ~ "No Children",
       Child_Total == 1 ~ "One Child",
       Child_Total == 2 ~ "Two Children",
       Child_Total == 3 ~ "Three Children",
-      Child_Total >= 4 ~ "Four of More Children",
+      Child_Total >= 4 ~ "Four or More Children",
       .default = "Unknown"
     )
   ) |> 
-  select(
-    -c(Child_Total)
-  ) |> relocate(
-    CHILDHH_Group,
-    .before = hhds
-  )
+  group_by(
+    rpa_acr,
+    year,
+    CHILDHH_Group
+  ) |> 
+  summarise(
+    hhds = sum(new_WGTP)
+  ) |> 
+  ungroup()
 
 # Write output tables to K drive
 write.csv(
@@ -369,7 +363,7 @@ tbl.5 <- s1.df |>
       size == 4 ~ "Four Person",
       size == 5 ~ "Five Person",
       size == 6 ~ "Six Person",
-      size >= 7 ~ "Seven or More Person",
+      size >= 7 ~ "Seven or More Persons",
       .default = "Unknown"
     )
   ) |> 

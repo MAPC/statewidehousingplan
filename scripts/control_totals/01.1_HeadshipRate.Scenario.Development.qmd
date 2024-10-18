@@ -53,28 +53,8 @@ set.seed(351)
 source("C:/Project_Work/statewidehousingplan/PUMS_Analysis/PUMS_Helper_Functions.R")
 
 # Load PUMA x RPA Crosswalk
-xw <- read.csv(paste0(rwt_path, "PUMS_data/PUMA10_RPA_crosswalk.csv"))
-
-# Set up muni data keys
-# MPO Data Keys
-keys.mpo <- mapcdatakeys::all_muni_data_keys |> 
-  select(
-    muni_id, muni_name, mpo
-  ) |> 
-  mutate(
-    muni_id = as.character(muni_id),
-    muni_name = ifelse(muni_name == "Manchester-by-the-Sea", "Manchester", muni_name)
-  )
-
-#RPA Data Keys
-keys.rpa <- mapcdatakeys::all_muni_data_keys |> 
-  select(
-    muni_id, muni_name, rpa_acr
-  ) |> 
-  mutate(
-    muni_id = as.character(muni_id),
-    muni_name = ifelse(muni_name == "Manchester-by-the-Sea", "Manchester", muni_name)
-  )
+xw <- read.csv(paste0(rwt_path, "PUMS_data/PUMA10_RPA_crosswalk.csv")) |> 
+  mutate(PUMA = str_pad(PUMA, 5, "left", pad = 0))
 
 ```
 
@@ -87,8 +67,11 @@ NOTE: We use the CPI deflator time series to adjust PUMS income to 2013 dollars 
 vintage <- 2021
 
 #List of PUMS variables
-variable_list <- c("PUMA", "TYPEHUGQ", "SEX", "AGEP", "RAC1P", "HISP", "ESR",
-                   "WKHP", "SCHL", "WAGP", "SEMP", "ADJINC", "SPORDER", "HINCP", "TEN")
+variable_list <- c('RT', 'PUMA', 'ADJHSG','ADJINC','NP','TYPEHUGQ','BDSP','RMSP','CPLT','HHLDRAGEP',
+                   'HHLDRRAC1P','HHLDRHISP', 'HHT', 'HHT2', 'HINCP', 'HUGCL', 'HUPAC', 'HUPAOC',
+                   'HUPARC', 'LNGI', 'MULTG', 'NPF', 'NPP', 'NR','NRC', 'PARTNER', 'PSF','R18',
+                   'AGEP','RELSHIPP','RAC1P','OC','SFN','SFR','TEN')
+
 #SEMP bottom coding has changed from $1 to $4 like WAGP
 
 # Load CPI time series for deflating income variable
@@ -104,17 +87,13 @@ cpi.present <- cpi |> filter(year == vintage) |> pull(index)
 cpi.deflator <- cpi.2013 / cpi.present
 
 #Query {tidycensus} for 2017-2021 5-Year PUMS data
-pums_data <- get_pums(
-    state = "MA",
-    survey = "acs5",
-    year = vintage,
-    variables = variable_list
-  ) |>
+pums_data <- pums_query(var.list = variable_list, yr = vintage, srvy = "acs5") |>
+  # Join the PUMA to RPA ceosswalk to the PUMS data
   left_join(
     xw,
     by = c('PUMA')
   ) |> 
-  # General
+  # General Data Cleaning
   # Create a household flag for whether there is a child in a household.
   mutate(
     child = case_when(

@@ -9,32 +9,27 @@ editor: visual
 # 0.1 - Set knitr path + root for inputs
 
 ```{r}
-
-# Set Scenario Names
-
-#Population Scenario
-scen <- 'Scenario_1'
-#Headship rate Scenario
-hdshp <- 'acs1721'
-
 #Use when Rproject is open
 #root <- '../../../../Data/Working/Regional_Control_Totals/'
 
-# base <- "K:/DataServices/Projects/Current_Projects/"
-base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
+# Base root. Toggle between S: and K: drive depedning on mapped paths on your computer
+base <- "K:/DataServices/Projects/Current_Projects/"
+#base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
 
 #General K drive filepath
-root <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/")
-
-#Set output filepath
-output_path <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/", scen, "/")
+root <- paste0(base, "/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/")
 
 # Reweighter files path
-
 rwt_path <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Reweighter/")
 
+#PUMS K drive filepath
+pums_path <- paste0(base, "/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS/ipums_2021/")
+
+#Set output filepath
+output_path <- paste0(base, "/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS/outputs/")
+
 #Set knitr path
-knitr::opts_knit$set(root.dir = root)
+knitr::opts_knit$set(root.dir = pums_path)
 ```
 
 # 0.2 - Set package dependencies, set environment, set up data keys
@@ -48,13 +43,20 @@ library(mapcdatakeys)
 library(janitor)
 library(readxl)
 
-##get rid of scientific notation
+# Remove scientific notation
 options(scipen = 999)
-#Set random seed
+# Set random seed
 set.seed(351)
 
-#Set up muni data keys
-#MPO Data Keys
+# Load Libraries for PUMS Analysis and PUMS API query functions
+# Sets seed and removes scientific notation
+source("C:/Project_Work/statewidehousingplan/PUMS_Analysis/PUMS_Helper_Functions.R")
+
+# Load PUMA x RPA Crosswalk
+xw <- read.csv(paste0(rwt_path, "PUMS_data/PUMA10_RPA_crosswalk.csv"))
+
+# Set up muni data keys
+# MPO Data Keys
 keys.mpo <- mapcdatakeys::all_muni_data_keys |> 
   select(
     muni_id, muni_name, mpo
@@ -74,88 +76,9 @@ keys.rpa <- mapcdatakeys::all_muni_data_keys |>
     muni_name = ifelse(muni_name == "Manchester-by-the-Sea", "Manchester", muni_name)
   )
 
-#Municipal GEOIDs for 2010 Decennial Census
-GEOID.10 <- mapcdatakeys::all_muni_data_keys |>  
-  select(muni_id, cosub_cn10) |> 
-  mutate(
-    GEOID = as.character(cosub_cn10)
-  ) |> 
-  select(GEOID, muni_id)
-
-#Municipal GEOIDs for 2020 Decennial Census
-GEOID.20 <- mapcdatakeys::all_muni_data_keys |>  
-  select(muni_id, cosub_cn20) |> 
-  mutate(
-    GEOID = as.character(cosub_cn20)
-  ) |> 
-  select(GEOID, muni_id)
-
-#County GEOIDs for 2010 Decennial Census
-GEOID.cn.10 <- mapcdatakeys::all_muni_data_keys |>  
-  mutate(
-    GEOID = as.character(str_sub(cosub_cn10, 1, 5))
-  ) |> 
-  select(county_id, GEOID) |> 
-  distinct(
-    GEOID,
-    .keep_all = TRUE
-  )
-
-#County GEOIDs for 2020 Decennial Census
-GEOID.cn.20 <- mapcdatakeys::all_muni_data_keys |>  
-  mutate(
-    GEOID = as.character(str_sub(cosub_cn20, 1, 5))
-  ) |> 
-  select(county_id, GEOID) |> 
-  distinct(
-    GEOID,
-    .keep_all = TRUE
-  )
-
-
 ```
 
-# 6.0 - Load and process PUMS Data
-
-# 6.1 - Create PUMA to RPA/MPO Crosswalk for 2010 PUMAs
-
-```{r}
-
-#Set up datakeys for future joins.
-mkeys <- mapcdatakeys::all_muni_data_keys %>%
-  select(muni_id, rpa_acr, mpo)
-
-# PUMA crosswalk
-#Load in the municipality to PUMA crosswalk.
-psf <- fread(paste0(root, 'pums_muni_inter.csv')) %>%
-  select(TOWN_ID, PUMACE10, Shape_Area) %>%
-  dplyr::rename(muni_id = TOWN_ID, PUMA = PUMACE10) %>%
-  left_join(mkeys, by = c('muni_id')) %>%
-  setDT()
-
-#Generate RPA to PUMA crosswalk.
-lsf <- psf[, lapply(.SD, sum, na.rm = T), .(rpa_acr, PUMA), .SDcols = 'Shape_Area']
-lsf[, mx := max(Shape_Area), PUMA]
-xw <- lsf[Shape_Area == mx, .(rpa_acr, PUMA)]
-xw[, PUMA := sprintf("%05d", PUMA)]
-
-# Manufacturing MVC and NPEDC RPAs manually
-
-cc <- data.table(rpa_acr = c('MVC', 'NPEDC'),
-                 PUMA = c('04800', '04800'))
-
-#Append MVC and NPEDC data to PUMA to RPA/MPO crosswalk
-xw <- rbind(xw, cc)
-
-fwrite(xw, paste0(output_path, 'PUMA10_RPA_crosswalk.csv'))
-fwrite(xw, paste0(rwt_path, 'PUMS_data/PUMA10_RPA_crosswalk.csv'))
-
-#Remove intermediate dataframes.
-gc()
-
-```
-
-# 6.2 - ACS 5-year PUMS data + categorize data
+# 1.0 - Load and process PUMS Data
 
 NOTE: We use the CPI deflator time series to adjust PUMS income to 2013 dollars (for UrbanSim). ACS uses the Consumer Price Index for All Urban Consumers Retroactive Series (R-CPI-U-RS, details here: <https://www.bls.gov/cpi/research-series/r-cpi-u-rs-home.htm>) as opposed to the ASEC/Census which uses C-CPI-U (details here: [*https://www.census.gov/topics/income-poverty/income/guidance/current-vs-constant-dollars.html*](https://www.census.gov/topics/income-poverty/income/guidance/current-vs-constant-dollars.html){.uri}*)*
 
@@ -163,19 +86,22 @@ NOTE: We use the CPI deflator time series to adjust PUMS income to 2013 dollars 
 #Set PUMS vintage final year for {tidycensus} API query.
 vintage <- 2021
 
-#List of all ACS PUMS Variables
-allvars <- pums_variables |>  filter(year==vintage) |>  select(var_code) |>  unique()
-
 #List of PUMS variables
 variable_list <- c("PUMA", "TYPEHUGQ", "SEX", "AGEP", "RAC1P", "HISP", "ESR",
                    "WKHP", "SCHL", "WAGP", "SEMP", "ADJINC", "SPORDER", "HINCP", "TEN")
 #SEMP bottom coding has changed from $1 to $4 like WAGP
 
 # Load CPI time series for deflating income variable
-
 cpi <- fread(paste0(root,'cpi_deflators_by_year.csv'))
-cpi.deflator <- cpi[year==2013, index] / cpi[year==vintage, index]
 
+# Creat variable which is CPI index for 2013
+cpi.2013 <- cpi |> filter(year == 2013) |> pull(index)
+
+# Create variable which is CPI index for ACS vintage year
+cpi.present <- cpi |> filter(year == vintage) |> pull(index)
+
+# Calculate the CPI deflator for ACS Vintage year
+cpi.deflator <- cpi.2013 / cpi.present
 
 #Query {tidycensus} for 2017-2021 5-Year PUMS data
 pums_data <- get_pums(
@@ -184,158 +110,131 @@ pums_data <- get_pums(
     year = vintage,
     variables = variable_list
   ) |>
-  #Join RPA to PUMA crosswalk to PUMS data
-  # pums_data <- fread(paste0(root,'pums2021_basic.csv')) |>
-  #   mutate(PUMA = sprintf("%05d", PUMA)) |> 
   left_join(
     xw,
     by = c('PUMA')
-  ) |>  
+  ) |> 
+  # General
+  # Create a household flag for whether there is a child in a household.
   mutate(
-    #Generate five-year age groupings to match UMDI population projections data.
-    ageCAT6 = cut(AGEP, breaks = c(-Inf, seq(4, 84, 5), Inf), labels = 1:18),
-    # Consolidated Age Category
-    # NOTE: Levels are (0) 0-14; (4) 15 to 19; (5) 20 to 24; (6) 25 to 34; (7) 35 to 44; (8) 45 to 54; (9) 55 to 64 (10) 65 to 74 (11) 75+
-    PAGEC2 = cut(AGEP, breaks = c(-Inf, 14, 19, 24, 34, 44, 54, 64, 74, 79, 84, Inf),
-                 labels = c(0, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13)),
-    # ageCAT4 is the 2020 decennial census age breaks for age of householder - used for 2020 base year control total reweighter targets
-    ageCAT4 = case_when(
-      AGEP %in% 15:24 ~ 1,
-      AGEP %in% 25:34 ~ 2,
-      AGEP %in% 35:44 ~ 3,
-      AGEP %in% 45:54 ~ 4,
-      AGEP %in% 55:59 ~ 5,
-      AGEP %in% 60:64 ~ 6,
-      AGEP %in% 65:74 ~ 7,
-      AGEP %in% 75:84 ~ 8,
-      AGEP >= 85 ~ 9
-    ), 
-    AgeCat = ageCAT6,
-    # Categorizing employment status
-    empstat = case_when(
-      ESR == "b" ~ "Under 16 not eligible for work",
-      ESR == 1 ~ "Employed",
-      ESR == 2 ~ "Employed but not at work",
-      ESR == 3 ~ "Unemployed",
-      ESR == 4 ~ "Armed forces",
-      ESR == 5 ~ "Armed forces but not at work",
-      ESR == 6 ~ "Not in labor force"
-    ),
-    
-    # Categorizing Civilian Labor Force or not
-    # NOTE: Categories are (0) under 16 or non-civilian, (1) in labor force, (2) not in labor force
-    lf = case_when(
-      ESR == "b" | ESR == 4 | ESR == 5  ~ 0,
-      ESR == 1 | ESR == 2 | ESR == 3  ~ 1,
-      ESR == 6 ~ 2,
-      is.na(ESR) ~ 0
-    ),
-    
-    # Counts as Worker
-    # NOTE: Categories are (0) under 16 or not in labor force, or (1) in labor force or non-civilian worker
-    worker = case_when(
-      (ESR == "b" | ESR == 6) ~ 0,
-      (ESR == 1 | ESR == 2 | ESR == 3 | ESR == 4 | ESR == 5) ~ 1,
-      is.na(ESR) ~ 0
-    ),
-    
-    # Categorizing full or part-time work
-    wrkfull = case_when(
-      WKHP < 35 ~ "Part time (less than 35 hrs)",
-      WKHP >= 35 ~ "Full time (35 hrs or more)",
-      is.na(WKHP) ~ "Under 16, unemployed, or not in labor force"
-    ),
-    
-    # Categorizing educational attainment
-    # NOTE: Categories are (1) High school degree or less, (2) Associate's degree or some college, (3) Bachelor's, and (4) MA or higher
-    SCHL = as.numeric(SCHL),
-    eduattn = case_when(
-      SCHL <= 17 ~ 1,
-      SCHL %in% 18:20 ~ 2,
-      SCHL == 21 ~ 3,
-      SCHL >= 22 ~ 4,
-      is.na(SCHL) ~ 0
-    ),
-    
-    # Determine if person is head of household
-    HousHder = case_when(
-      SPORDER == 1 ~ 1,
-      SPORDER > 1 ~ 2
-      ),
-    
-    # Determine if case counts as person
-    person = case_when(
-      SPORDER != 0 ~ 1,
-      SPORDER == 0 ~ 0
-      ),
-    
-    # Determine if case counts as child
     child = case_when(
       AGEP < 18 ~ 1,
-      AGEP >= 18 ~ 0
-      )
-  ) |> 
-  
-  #Generating Household Variables
-  group_by(SERIALNO,rpa_acr) |> 
+      AGEP >= 18 ~ 0,
+      .default = 0
+    ),
+    # Create a grouping variable for types of relationships to the householder.
+    RELSHIPP_TYPE = case_when(
+      # 1 indicates a person in a household that is related in some way to the householder.
+      RELSHIPP %in% c(21,22,23,24,25,26,27,28,29,30,31,32,33) ~ 0,
+      # 2 indicates a person in a household unrelated to the householder.
+      RELSHIPP %in% c(34,35,36) ~ 1,
+      # Set a default flag for householders.
+      .default = 0
+    ),
+    TEN.desc = case_when(
+      TEN == "1" ~ "Owned with mortgage or loan",
+      TEN == "2" ~ "Owned free and clear",
+      TEN == "3" ~ "Rented",
+      TEN == "4" ~ "Occupied without payment of rent"
+    ),
+    # Create a "Studio/Non-Defined Bedroom" variable to denote where households do
+    # not have a bedroom number.
+    studio_flag = case_when(
+      BDSP == 0 ~ "Studio/No Defined Bedroom",
+      BDSP != 0 ~ "Defined Bedroom",
+      .default = "Unknown"
+    ),
+    # Redefine BDSP to label studios/non-defined bedroom units as One-Bedrooms
+    # For purpose of calculating the number of people per bedrooms.
+    BDSP = if_else(BDSP == 0, 1, BDSP),
+    # Calculate the number of people per bedroom in a housing unit.
+    PPB = NP/BDSP,
+    # Categorize each housing unit as overcrowded or not based on PPB.
+    overcrowded.ppb = case_when(
+      PPB > 2.0 ~ "1",
+      PPB <= 2.0 ~ "0"
+    ),
+    # Convert SFN into a numeric column. Introduces NAs for people not in subfamilies
+    SFN = as.numeric(SFN),
+    # Replace the NA for non-subfamily members with 0.
+    SFN = replace_na(SFN, 0),
+    # Adjust Household income (HINCP) to constant dollars (USD2021)
+    HINCP_adj = HINCP*ADJINC,
+    # Household Income Groupings consistent with UrbanSim groupings
+    HH.Income.Grp = case_when(
+      HINCP_adj <= 35000 ~ "<=$35,000",
+      HINCP_adj > 35000 & HINCP_adj <= 75000 ~ "$35,001-$75,000",
+      HINCP_adj > 75000 & HINCP_adj <= 125000 ~ "$75,001-$125,000",
+      HINCP_adj > 125000 & HINCP_adj <= 225000 ~ "$125,001-$225,000",
+      HINCP_adj > 225000 ~ ">$225,000",
+      .default = "0"
+    ),
+    # Householder Race Groupings. 
+    HHLDER.RACE.Grp = case_when(
+      HHLDRRAC1P == "1" ~ "White Alone",
+      HHLDRRAC1P == "2" ~ "Black or African American Alone",
+      HHLDRRAC1P %in% c("3", "4", "5") ~ "AIAN Alone",
+      HHLDRRAC1P == "6" ~ "Asian Alone",
+      HHLDRRAC1P == "7" ~ "NHPI Alone",
+      HHLDRRAC1P == "8" ~ "SOR Alone",
+      HHLDRRAC1P == "9" ~ "Two or More Races Alone",
+      .default = "Unknown"
+    ),
+    # Householder Latinx Groupings
+    HHDER.HISP.Grp = case_when(
+      HHLDRHISP == "01" ~ "Non-Hispanic",
+      HHLDRHISP != "01" ~ "Hispanic",
+      .default = "Unknown"
+    ),
+    # Create a flag for whether a person in a household is a roommate or housemate
+    roommate.flag = case_when(
+      RELSHIPP == 34 ~ 1,
+      RELSHIPP != 34 ~ 0,
+      .default = 0
+    )
+  ) |>
+  # Creating household flags for person variables.
+  group_by(SERIALNO) |> 
   mutate(
-    Worker_Total = sum(worker),
-    Person_Total = sum(person),
-    Child_Total = sum(child)
+    # Create a variable which is the sum of the number of children in a household
+    child_count = sum(child),
+    # Create a variable which is the sum of the number of non-relatives in the household
+    NONRELATIVE_count = sum(RELSHIPP_TYPE),
+    # Create a variable that is the sum of roommates in a household
+    roommate_count = sum(roommate.flag),
+    # Create a column which denotes the presence of subfamilies for a household.
+    SFN.num = sum(SFN),
   ) |> 
   ungroup() |> 
-  # Categorizing household sizes by number of persons (1) one person, (2) two persons, (3) three persons, (4) four or more persons
   mutate(
-    HHSize = case_when(
-      Person_Total == 1 ~ 1,
-      Person_Total == 2 ~ 2,
-      Person_Total == 3 ~ 3,
-      Person_Total >= 4 ~ 4
+  # Create a variable that is a household flag for whether or not a household has 
+  # Children. 
+   child_flag = case_when(
+      child_count > 0 ~ "1",
+      child_count == 0 ~ "0",
+      .default = "0"
     ),
-    size = case_when(
-      Person_Total == 1 ~ 1,
-      Person_Total == 2 ~ 2,
-      Person_Total == 3 ~ 3,
-      Person_Total == 4 ~ 4,
-      Person_Total == 5 ~ 5,
-      Person_Total == 6 ~ 6,
-      Person_Total >= 7 ~ 7,
+   # Create a household flag for whether or not the household contains a subfamily.
+   SFN.flag = if_else(SFN.num > 0, 1, 0),
+   # Create a household flag for presence of a non-relative in the household.
+   NONRELATIVE.flag = if_else(NONRELATIVE_count > 0, 1, 0)
+  ) |> 
+  mutate(
+    # Non-multigenerational household WITH at least one (1) subfamily WITH at least one (1) child
+    subset.flag.1 = case_when(
+      MULTG == 1 & SFN.flag > 0 & child_flag > 0 ~ 1,
+      .default = 0
     ),
-    # Categorizing worker categories (0) no workers, (1) one worker, (2) two workers, (3) three or more workers
-    WRKHH = case_when(
-      Worker_Total == 0 ~ 0,
-      Worker_Total == 1 ~ 1,
-      Worker_Total == 2 ~ 2,
-      Worker_Total >= 3 ~ 3
-      ),
-    
-    # Determine if person is not hhder vs hhder of 0- wrk, 1wrk, 2 wrk, 3+wrk
-    HHder = case_when(
-      SPORDER == 1 & WRKHH == 0 ~ 0,
-      SPORDER == 1 & WRKHH == 1 ~ 1,
-      SPORDER == 1 & WRKHH == 2 ~ 2,
-      SPORDER == 1 & WRKHH == 3 ~ 3,
-      SPORDER > 1 ~ 99
+    # Multigenerational households WITH at least one (1) subfamily WITH at least one (1) child AND is overcrowded
+    subset.flag.2 = case_when(
+      MULTG == 2 & SFN.flag > 0 & child_flag > 0 & overcrowded.ppb == "1" ~ 1,
+      .default = 0
     ),
-    # Determine what type of household the person is heading or not heading (1) head child, (2) child, (3) head not child, (4) not head no child, (5) head single
-    HHtype = case_when(
-      Child_Total >= 1 & Person_Total > 1 & HHder != 99 ~ 1,
-      Child_Total >= 1 & Person_Total > 1 & HHder == 99 ~ 2,
-      Child_Total == 0 & Person_Total > 1 & HHder != 99 ~ 3,
-      Child_Total == 0 & Person_Total > 1 & HHder == 99 ~ 4,
-      Person_Total == 1 & HHder != 99 ~ 5
-    ),
-      
-    # Adjust income first to the highest year in the 5-year vintage using included adjustment field (ADJINC) and then deflate back to 2013, using the cpi deflator calculated in the previous code chunk
-
-    ADJINC = as.numeric(ADJINC),
-    HINCP = round((as.numeric(HINCP) * ADJINC) * cpi.deflator, 0),
-    WAGPALLC_US =
-      cut(
-        HINCP,
-        breaks = c(-Inf, 35000, 75000, 125000, 225000, Inf),
-        labels = c("1", "2", "3", "4", "5")
-      )
+    # Households with at least one (1) subfamily WITH at least one (1) child AND is overcrowded
+    subset.flag.3 = case_when(
+      SFN.flag > 0 & child_flag > 0 & overcrowded.ppb == "1" ~ 1,
+      .default = 0
+    )
   )
 
 #Check to make sure all RPAs have been included in the PUMA-RPA Crosswalk.

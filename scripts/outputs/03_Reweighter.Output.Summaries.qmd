@@ -190,7 +190,7 @@ tbl.1 <- s1.df |>
     WAGPALLC_US
   ) |> 
   summarise(
-    hhds = sum(new_WGTP)
+    hhds = round(sum(new_WGTP), 0)
   ) |> 
   ungroup() |> 
   mutate(
@@ -227,7 +227,7 @@ tbl.2 <- s1.df |>
     ageCAT6
   ) |> 
   summarise(
-    hhds = sum(new_WGTP)
+    hhds = round(sum(new_WGTP),0)
   ) |> 
   ungroup() |> 
   mutate(
@@ -277,7 +277,7 @@ tbl.3 <- s1.df |>
     HHtype
   ) |> 
   summarise(
-    hhds = sum(new_WGTP)
+    hhds = round(sum(new_WGTP), 0)
   ) |> 
   ungroup() |> 
   mutate(
@@ -331,7 +331,7 @@ tbl.4 <- s1.df |>
     CHILDHH_Group
   ) |> 
   summarise(
-    hhds = sum(new_WGTP)
+    hhds = round(sum(new_WGTP), 0)
   ) |> 
   ungroup()
 
@@ -352,7 +352,7 @@ tbl.5 <- s1.df |>
     size
   ) |> 
   summarise(
-    hhds = sum(new_WGTP)
+    hhds = round(sum(new_WGTP), 0)
   ) |> 
   ungroup() |> 
   mutate(
@@ -391,7 +391,7 @@ tbl.6 <- s1.df |>
     TEN
   ) |> 
   summarise(
-    hhds = sum(new_WGTP)
+    hhds = round(sum(new_WGTP), 0)
   ) |> 
   ungroup() |> 
   mutate(
@@ -427,7 +427,7 @@ tbl.7 <- s1.df |>
     WRKHH
   ) |> 
   summarise(
-    hhds = sum(new_WGTP)
+    hhds = round(sum(new_WGTP), 0)
   ) |> 
   ungroup() |> 
   mutate(

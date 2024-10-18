@@ -11,9 +11,15 @@ editor: visual
 ```{r}
 #===============================================================================
 #TODO: 
-# 1. Create a way to loop through scenarios and headship rates based on a list
-
+# 1. Create a way to loop through:
+# - Scenarios
+# - Headship rates
+# - MAPC vintages (101 or 97)
+# 2. QA/QC of Tables based on reweighter inputs
+# 3. Writing to workbook
+# 4. Data Visualizations
 #===============================================================================
+
 ### Set Scenario Names ###
 #Population Scenario
 scen <- 'Scenario_1'

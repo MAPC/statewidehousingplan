@@ -257,7 +257,7 @@ subset.1 <- pums_data |>
   )
 
 # Printing the sum of new households slated to be created by splitting up households in subset one.
-print(paste0("Splitting non-multigenerational households with children, with at least one subfamily will create ", sum(subset.2$new.hhds), " new households."))
+print(paste0("Splitting non-multigenerational households with children, with at least one subfamily will create ", sum(subset.1$new.hhds), " new households."))
 
 #===============================================================================
 # -.2 Calculate the number of multigenerational households with children with at least one subfamily which are overcrowded (> 2.0 persons per bedroom). Estimate the number of new households created by splitting subfamilies into independent household units. A household with one subfamily will become two households. A household with two subfamilies will become three households. And so on and so forth.

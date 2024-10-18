@@ -138,7 +138,7 @@ pums_data <- pums_query(var.list = variable_list, yr = vintage, srvy = "acs5") |
     # Replace the NA for non-subfamily members with 0.
     SFN = replace_na(SFN, 0),
     # Adjust Household income (HINCP) to constant dollars (USD2021)
-    HINCP_adj = HINCP*ADJINC,
+    HINCP_adj = as.numeric(HINCP)*as.numeric(ADJINC),
     # Household Income Groupings consistent with UrbanSim groupings
     HH.Income.Grp = case_when(
       HINCP_adj <= 35000 ~ "<=$35,000",
@@ -181,8 +181,10 @@ pums_data <- pums_query(var.list = variable_list, yr = vintage, srvy = "acs5") |
     NONRELATIVE_count = sum(RELSHIPP_TYPE),
     # Create a variable that is the sum of roommates in a household
     roommate_count = sum(roommate.flag),
-    # Create a column which denotes the presence of subfamilies for a household.
+    # Create a variable which denotes the presence of subfamilies for a household.
     SFN.num = sum(SFN),
+    # Create a variable which denotes the total number of subfamilies in a household.
+    SFN.max = max(SFN)
   ) |> 
   ungroup() |> 
   mutate(
@@ -224,3 +226,74 @@ if (length(unique(pums_data$rpa_acr)) != 13){
 }
 
 ```
+
+# 2.0 Check Size of Subsets Being Used to Create New Households and Generate Estimates of the Number of New Households Created by Splitting Households.
+```{r}
+#===============================================================================
+# -.1 Calculate the number of non-multigenerational households with children with at least one subfamily. Estimate the number of new households created by splitting subfamilies into independent household units. A household with one subfamily will become two households. A household with two subfamilies will become three households. And so on and so forth.
+subset.1 <- pums_data |> 
+  # Filter for a single household row and non-GQ households.
+  filter(SPORDER == 1 & TYPEHUGQ == 1) |> 
+  group_by(
+    subset.flag.1,
+    SFN.max
+  ) |> 
+  # Summarize the number of households.
+  summarise(
+   hhds = sum(WGTP)   
+  ) |> 
+  ungroup() |>
+  # FIlter for the first subset of households described above.
+  filter(subset.flag.1 == 1) |> 
+  mutate(
+    new.hhds = case_when(
+      SFN.max == 1 ~ hhds*2,
+      SFN.max == 2 ~ hhds*3,
+      SFN.max == 3 ~ hhds*4,
+      SFN.max == 4 ~ hhds*5,
+      .default = hhds
+    ),
+    new.hhds = new.hhds - hhds
+  )
+
+# Printing the sum of new households slated to be created by splitting up households in subset one.
+print(paste0("Splitting non-multigenerational households with children, with at least one subfamily will create ", sum(subset.2$new.hhds), " new households."))
+
+#===============================================================================
+# -.2 Calculate the number of multigenerational households with children with at least one subfamily which are overcrowded (> 2.0 persons per bedroom). Estimate the number of new households created by splitting subfamilies into independent household units. A household with one subfamily will become two households. A household with two subfamilies will become three households. And so on and so forth.
+subset.2 <- pums_data |> 
+  # Filter for a single household row and non-GQ households.
+  filter(SPORDER == 1 & TYPEHUGQ == 1) |> 
+  group_by(
+    subset.flag.2,
+    SFN.max
+  ) |> 
+  # Summarize the number of households.
+  summarise(
+   hhds = sum(WGTP)   
+  ) |> 
+  ungroup() |> 
+  # Filter for the second subset of households, described above.
+  filter(subset.flag.2 == 1) |> 
+  mutate(
+    new.hhds = case_when(
+      SFN.max == 1 ~ hhds*2,
+      SFN.max == 2 ~ hhds*3,
+      SFN.max == 3 ~ hhds*4,
+      SFN.max == 4 ~ hhds*5,
+      .default = hhds
+    ),
+    new.hhds = new.hhds - hhds
+  )
+
+# Printing the sum of new households slated to be created by splitting up households in subset two.
+print(paste0("Splitting multigenerational households with children, with at least one subfamily, and which are overcrowded will create ", sum(subset.2$new.hhds), " new households."))
+
+# Printing the sum of new households slated to be created by splitting up households in subset one and subset two.
+print(paste0("The housheold splitting process will generate ", sum(subset.1$new.hhds) + sum(subset.2$new.hhds), " new households overall."))
+```
+
+# 3.0
+```{r}
+```
+

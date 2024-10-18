@@ -4,13 +4,115 @@ format: html
 editor: visual
 ---
 
+# 0.0 Setup - Define helper functions, set knitr path, load necessary packages, set muni data keys
 
-
-You can add options to executable code like this
+# 0.1 - Set knitr path + root for inputs
 
 ```{r}
-#| echo: false
-2 * 2
+
+# Set Scenario Names
+
+#Population Scenario
+scen <- 'Scenario_1'
+#Headship rate Scenario
+hdshp <- 'acs1721'
+
+#Use when Rproject is open
+#root <- '../../../../Data/Working/Regional_Control_Totals/'
+
+# base <- "K:/DataServices/Projects/Current_Projects/"
+base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
+
+#General K drive filepath
+root <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/")
+
+#Set output filepath
+output_path <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/", scen, "/")
+
+# Reweighter files path
+
+rwt_path <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Reweighter/")
+
+#Set knitr path
+knitr::opts_knit$set(root.dir = root)
+```
+
+# 0.2 - Set package dependencies, set environment, set up data keys
+
+```{r}
+library(tidycensus)
+library(tidyverse)
+library(data.table)
+library(reticulate)
+library(mapcdatakeys)
+library(janitor)
+library(readxl)
+
+##get rid of scientific notation
+options(scipen = 999)
+#Set random seed
+set.seed(351)
+
+#Set up muni data keys
+#MPO Data Keys
+keys.mpo <- mapcdatakeys::all_muni_data_keys |> 
+  select(
+    muni_id, muni_name, mpo
+  ) |> 
+  mutate(
+    muni_id = as.character(muni_id),
+    muni_name = ifelse(muni_name == "Manchester-by-the-Sea", "Manchester", muni_name)
+  )
+
+#RPA Data Keys
+keys.rpa <- mapcdatakeys::all_muni_data_keys |> 
+  select(
+    muni_id, muni_name, rpa_acr
+  ) |> 
+  mutate(
+    muni_id = as.character(muni_id),
+    muni_name = ifelse(muni_name == "Manchester-by-the-Sea", "Manchester", muni_name)
+  )
+
+#Municipal GEOIDs for 2010 Decennial Census
+GEOID.10 <- mapcdatakeys::all_muni_data_keys |>  
+  select(muni_id, cosub_cn10) |> 
+  mutate(
+    GEOID = as.character(cosub_cn10)
+  ) |> 
+  select(GEOID, muni_id)
+
+#Municipal GEOIDs for 2020 Decennial Census
+GEOID.20 <- mapcdatakeys::all_muni_data_keys |>  
+  select(muni_id, cosub_cn20) |> 
+  mutate(
+    GEOID = as.character(cosub_cn20)
+  ) |> 
+  select(GEOID, muni_id)
+
+#County GEOIDs for 2010 Decennial Census
+GEOID.cn.10 <- mapcdatakeys::all_muni_data_keys |>  
+  mutate(
+    GEOID = as.character(str_sub(cosub_cn10, 1, 5))
+  ) |> 
+  select(county_id, GEOID) |> 
+  distinct(
+    GEOID,
+    .keep_all = TRUE
+  )
+
+#County GEOIDs for 2020 Decennial Census
+GEOID.cn.20 <- mapcdatakeys::all_muni_data_keys |>  
+  mutate(
+    GEOID = as.character(str_sub(cosub_cn20, 1, 5))
+  ) |> 
+  select(county_id, GEOID) |> 
+  distinct(
+    GEOID,
+    .keep_all = TRUE
+  )
+
+
 ```
 
 The `echo: false` option disables the printing of code (only output is displayed).

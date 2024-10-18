@@ -99,7 +99,7 @@ s4.df <- NULL
 # - year: a year in a list of years created earlier in this code block. Typically in 5-year or 10-year intervals.
 read_rwt.files <- function(scenario, year){
   read.csv(
-      paste0(rwt_path, "reweighted_PUMS_",scen,"_MAPC101_",i,".csv")
+      paste0(rwt_path, "reweighted_PUMS_",scen,"_MAPC101_",hdshp,"_",i,".csv")
     )
 }
 
@@ -173,7 +173,7 @@ for (i in years) {
 
 ```
 
-# 2.0 Output Tables For UrbanSim
+# 2.0 Univariate Output Tables For UrbanSim
 
 -   .1 UrbanSim Household Income Groupings
 -   .2 5-year Age Groupings (ageCAT6)
@@ -304,7 +304,7 @@ write.csv(
 
 ```
 
-#3.0 Output Tables for Statewide Housing Plan Deliverables 
+#3.0 Univariate Output Tables for Statewide Housing Plan Deliverables 
 - .4 Number of Children in a Household 
 - .5 Size of Household 
 - .6 Tenure 
@@ -452,4 +452,15 @@ write.csv(
   paste0(output_path,"/output.tbl_Households.by.NumberOfWorkers.csv"),
   row.names = FALSE
 )
+```
+# 4.0 Mutlivariate Output Tables for UrbanSim
+- .8 Household Type by Household Income Groups
+- .9 Household Type by Householder Age Group
+- .10 Household Income Groups by Householder Age Groups
+- .11 Household Type by Household Income Groups by Householder Age Groups
+```{r}
+```
+
+# 5.0 Multivariate Output Tables for Statewide Housing Plan
+```{r}
 ```

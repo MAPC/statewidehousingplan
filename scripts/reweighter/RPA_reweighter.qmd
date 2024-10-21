@@ -533,8 +533,11 @@ uw[, rent_vacated20_35 := min(0, rent20_35), mpo]
 uw[, own_growth_vac20_35 := own20_35 * own_vac_rate_total, mpo]
 uw[, rent_growth_vac20_35 := rent20_35 * rent_vac_rate_total, mpo]
 uw[, own_units_needed_2035 := own_2035 * (1 + own_vac_rate_total)]
+uw[, own_units_needed_2050 := own_2050 * (1 + own_vac_rate_total)]
+uw[, rent_units_needed_2035 := rent_2035 * (1 + rent_vac_rate_total)]
+uw[, rent_units_needed_2050 := rent_2050 * (1 + rent_vac_rate_total)]
 
-
+uw[,new_owner_units_2035 := own_units_needed_2035 - t]
 uw[units_short_2020 <= HHchg_20_30, Shortage_units_20_30 := units_short_2020]
 uw[, Vacant_Units_Needed_20_30 := Shortage_units_20_30 + HHgrowth_vac_20_30]
 uw[, Vacant_Housing_Unit_Demand_20_30 := max(max(HHchg_20_30, 0) + Vacant_Units_Needed_20_30, 0), muni_id]

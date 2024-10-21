@@ -339,13 +339,16 @@ pums_data.adj.test <- pums_data.adj |>
     # Create a new SPORDER variable based on the order of people in the new households (if they are split into new households).
     SPORDER.adj = rank(ID, na.last = TRUE, ties.method = "first")
   ) |> 
+  # mutate(
+  #   refperson.sex = if_else(SPORDER.adj == 1, Sex, "This didn't work!")
+  # ) |> 
   ungroup() |> 
   mutate(
     # Adjusting the RELSHIPP variable to reflect the new SPORDER for split households.
     RELSHIPP.adj = case_when(
       SPORDER.adj == 1 ~ "20",
       SPORDER.adj != 1 & adj.flag == "0" ~ RELSHIPP,
-      SPORDER.adj != 1 & adj.flag %in% c("1","2") & SFR %in% c("1","2","3") ~ ~"21.22.23.24"
+      SPORDER.adj != 1 & adj.flag %in% c("1","2") & SFR %in% c("1","2","3") ~ "21.22.23.24",
       SPORDER.adj != 1 & adj.flag %in% c("1","2") & SFR %in% c("4","5","6") ~ "25.26.27.35",
       .default = "Something's Wrong!"
     ),
@@ -366,18 +369,35 @@ test.df <- pums_data.adj.test |>
     SERIALNO == "2020HU0758154"
   )
 
+# List of assumptions:
+# 1. Cant determine the kind of spouse or child non-reference persons are in the new, split households. Could distinguish same or opposite sex spousal relationship with "SEX" variable added to the PUMS data.
+# 2. Can we use RELSHIPP to help us be more correct? What about for people who are non-relatives?
 ```
 
 # 3.3 Re-create households variables for split households
 ```{r}
 pums_data.adj <- pums_data.adj |> 
-  group_by(
-    SERIALNO.adj
-  ) |> 
+  group_by(SERIALNO.adj) |> 
   mutate(
+    NP.adj = n(),
     
   ) |> 
   ungroup()
+
+# List of meaningful recalculations:
+# 1. NP - summing the number of persons present in original and split subfamily households
+# 2. HINCP - summing the individual incomes of household members to generate a new household income.
+# 3. HHDERAGEP - Redefine as for split subfamily households.
+# 4. PPB - recalculate the overcrowding indicator based on the new number of people in the household. CAVEAT - we're not updating the housing unit characteristics to reflect a change in unit type. We assume the split subfamilies will not intentionally become overcrowded and, therefore, a smaller numerator with constant denominator calculation will reflect, essentially, their reality. 
+# 5. Calculations of number of children in a household - sum the number of children in each housing unit to reflect the new compositions of households.
+# 6. Calculation of household type - redefine the household type of original and split subfamily households to reflect their new composition. This could mean a household with children will become a household without children (with 2+ adults) and a household with children (and vice versa, depending on the composition of the split subfamily).
+# zzz. MULTG - splitting 
+
+# List of assumptions:
+# 1. Tenure remains the same. A split subfamily lived in a house owned by the householder, we assume they've also purchased a home. If they were in a rental household, they rent.
+# 2. Number of rooms in the house remain the same, even if the number of rooms and bedrooms doesn't necessarily make sense for the split subfamily household. Easier to not make assumptions about the types of housing they rent or buy after splitting out.
+# 3. Household income is the sum of incomes of the individuals within the household. Incomes are recalculated for the original household and the new split subfamily household.
+# 4. 
 ```
 
 # 3.3 QA/QC - Check Split Households are Equal to 

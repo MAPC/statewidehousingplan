@@ -332,17 +332,38 @@ pums_data.adj <- pums_data |>
 
 # 3.2 Redefine SPORDER and Relationship Variables
 ```{r}
-
+# Create a test data frame before putting this into production
 pums_data.adj.test <- pums_data.adj |>
   group_by(SERIALNO.adj) |> 
   mutate(
+    # Create a new SPORDER variable based on the order of people in the new households (if they are split into new households).
     SPORDER.adj = rank(ID, na.last = TRUE, ties.method = "first")
   ) |> 
-  ungroup()
+  ungroup() |> 
+  mutate(
+    # Adjusting the RELSHIPP variable to reflect the new SPORDER for split households.
+    RELSHIPP.adj = case_when(
+      SPORDER.adj == 1 ~ "20",
+      SPORDER.adj != 1 & adj.flag == "0" ~ RELSHIPP,
+      SPORDER.adj != 1 & adj.flag %in% c("1","2") & SFR %in% c("1","2","3") ~ ~"21.22.23.24"
+      SPORDER.adj != 1 & adj.flag %in% c("1","2") & SFR %in% c("4","5","6") ~ "25.26.27.35",
+      .default = "Something's Wrong!"
+    ),
+    # Adjusting the Subfamily Number variable to reflect having split subfamilies out from their original household.
+    SFN.ajd = case_when(
+      adj.flag %in% c("1","2") ~ 0,
+      .default = SFN
+    ),
+    # Adjusting the Subfamily Relationship variable to reflect having split subfamilies out from their original household.
+    SFR.adj = case_when(
+      adj.flag %in% c("1","2") ~ "b",
+      .default = SFR
+    )
+  )
 
 test.df <- pums_data.adj.test |> 
   filter(
-    SERIALNO == "2017000008507"
+    SERIALNO == "2020HU0758154"
   )
 
 ```

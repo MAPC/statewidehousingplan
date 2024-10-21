@@ -293,7 +293,95 @@ print(paste0("Splitting multigenerational households with children, with at leas
 print(paste0("The housheold splitting process will generate ", sum(subset.1$new.hhds) + sum(subset.2$new.hhds), " new households overall."))
 ```
 
-# 3.0
+# 3.0 Seperate Households - Redefine SERIALNO to separate subfamilies into separate households
+```{r}
+# Create a new SERIALNO variable that represents subfamilies and original households as distinct households.
+pums_data.adj <- pums_data |> 
+  mutate(
+    SERIALNO.adj = case_when(
+      # First Subset
+      SFN == 0 & subset.flag.1 == 1 ~ paste0(SERIALNO,".1.og"),
+      SFN > 0 & subset.flag.1 == 1 ~ paste0(SERIALNO,".1.adj"),
+      # Second Subset
+      SFN == 0 & subset.flag.2 == 1 ~ paste0(SERIALNO, ".2.og"),
+      SFN > 0 & subset.flag.2 == 1 ~ paste0(SERIALNO, ".2.adj"),
+      # Default to original SERIALNO for all other households.
+      .default = SERIALNO
+    ),
+    og.flag = case_when(
+      # Flag for original household of of subsetted groups
+      # First Subset
+      SFN == 0 & subset.flag.1 == 1 ~ "1",
+      # Second Subset
+      SFN == 0 & subset.flag.2 == 1 ~ "2",
+      .default = "0"
+    ),
+    adj.flag = case_when(
+      # Flag for the adjusted household of the subsetted groups
+      # First Subset
+      SFN > 0 & subset.flag.1 == 1 ~ "1",
+      #Second Subset
+      SFN > 0 & subset.flag.2 == 1 ~ "2",
+      .default = "0"
+    ),
+    # Create a row ID number to loop through later.
+    ID = row_number()
+  )
+
+```
+
+# 3.2 Redefine SPORDER and Relationship Variables
+```{r}
+
+pums_data.adj.test <- pums_data.adj |>
+  group_by(SERIALNO.adj) |> 
+  mutate(
+    SPORDER.adj = rank(ID, na.last = TRUE, ties.method = "first")
+  ) |> 
+  ungroup()
+
+test.df <- pums_data.adj.test |> 
+  filter(
+    SERIALNO == "2017000008507"
+  )
+
+```
+
+# 3.3 Re-create households variables for split households
+```{r}
+pums_data.adj <- pums_data.adj |> 
+  group_by(
+    SERIALNO.adj
+  ) |> 
+  mutate(
+    
+  ) |> 
+  ungroup()
+```
+
+# 3.3 QA/QC - Check Split Households are Equal to 
+```{r}
+
+subset.1.test <- pums_data.adj |> 
+  filter(
+    subset.flag.1 == 1
+  )
+
+print(sum(subset.1.test$WGTP))
+
+subset.2.test <- pums_data.adj |> 
+  filter(
+    subset.flag.2 == 1
+  )
+
+```
+
+# 4.0 Calculate Headship Rates
 ```{r}
 ```
+
+# 5.0 Compare Split Household Headship Rates to Current PUMS Vintage Headships Rates
+```{r}
+```
+
 

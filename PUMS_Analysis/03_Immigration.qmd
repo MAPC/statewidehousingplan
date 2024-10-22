@@ -154,7 +154,32 @@ pums_RPA <- left_join(
 
 # State-level
 
+#Identify households whose head of household is foreign born.
+
 ```{r}
+#Number and share of hhlds in the state where the head of household is foreign born
+####Assuming that the first person in each hhld is the head of hhld ?????????????????
+
+#Calculate weighted total of all hhlds in data set
+household_data <- pums %>%
+filter(RT == "H") %>%
+filter(TYPEHUGQ != 2) # filtering out institutional group quarters
+total_weighted_households <- sum(household_data$WGTP, na.rm = TRUE) # add weights
+
+household_foreign_born <- pums %>%
+  filter(TYPEHUGQ != 2) %>% 
+  group_by(SERIALNO) %>% # group by household 
+  summarise(first_weight = first(WGTP, na.rm = TRUE), # get the first person's weight for hhld
+    NATIVITY = first(NATIVITY), .groups = "drop") %>%           # get the nativity for the first person                          
+  group_by(NATIVITY) %>%                                   # group by nativity to calculate total weights for each type
+  summarise(total_by_nativity= sum(first_weight, na.rm = TRUE), # sum the weights by nativity
+    .groups = "drop") %>%                                       
+  mutate(NATIVITY = case_when(                             # rename variables 
+    NATIVITY == 1 ~ "Native",
+    NATIVITY == 2 ~ "Foreign born",
+    TRUE ~ NA_character_)) %>%
+  #filter(!is.na(NATIVITY)) %>% # filter out NAs? who is in NA
+  mutate(percentage_of_total = (total_by_nativity / total_weighted_households) * 100) # Calculate percent out of all hhlds
 
 ```
 

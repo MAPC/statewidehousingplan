@@ -27,10 +27,10 @@ reb <- 'MAPC101'
 # reb <- 'MAPC97'
 
 # Root Directory
- root <- 'S:/Network Shares/K Drive/DataServices/Projects/'
-# root <- 'K:/DataServices/Projects/'
+  root <- 'S:/Network Shares/K Drive/DataServices/Projects/'
+ # root <- 'K:/DataServices/Projects/'
 
-ctrltotal.path <- paste0(root, 'Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Vacants/', scen, '/')
+ctrltotal.path <- paste0(root, 'Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/', scen, '/')
 
 workpath <- paste0(root, 'Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Reweighter/')
 
@@ -76,8 +76,8 @@ Formatted PUMS data is created by the *create_regional_control_totals.qmd* in se
 
 ```{r}
 
-pums_data <- fread(paste0(workpath, '/PUMS_data/PUMS', vintage, '_formatted.csv'))
-xw <- fread(paste0(workpath, '/PUMS_data/PUMS', vintage, '_formatted.csv'))
+pums_data <- fread(paste0(workpath, '/PUMS_data/PUMS', vintage, '_formatted.csv')) %>% filter(TYPEHUGQ == "1") %>% 
+  mutate(AgeCat = ageCAT6)
 
 # Make Input folders for reweighter by RPA
 dir.create(paste0(workpath, scen, '/Input_Files/'), showWarnings = F)
@@ -88,8 +88,8 @@ for (m in mpos) {
   dir.create(paste0(workpath, scen, '/Output_Files/', m), showWarnings = F)
 }
 
-mapc.pumas <- xw[rpa_acr == 'MAPC', unique(PUMA)]
-swm.pumas <- xw[rpa_acr != 'MAPC', .(rpa_acr, PUMA)] %>% 
+mapc.pumas <- pums_data[rpa_acr == 'MAPC', unique(PUMA)]
+swm.pumas <- pums_data[rpa_acr != 'MAPC', .(rpa_acr, PUMA)] %>% 
   unique()
 
 # MAPC 101 subset
@@ -292,7 +292,7 @@ for (yr in 2020){
     x <- fread(paste0(outpath, '/weights_final_', scen, '_', mid, '_', yr, '.csv')) %>% select(SERIALNO, SPORDER, new_WGTP) %>% mutate(mpo = mid) %>% setDT()
     setkey(x, SERIALNO, SPORDER)
     xp <- pums[x]
-    fwrite(xp, paste0(outpath, '/reweighted_PUMS_', scen, '_', mid, '_', yr, '.csv'))
+    fwrite(xp, paste0(outpath, '/reweighted_PUMS_', scen, '_', reb, '_', mid, '_', hdshp, '_', yr, '.csv'))
     xsum <- xp[SPORDER == 1, lapply(.SD, sum), .(mpo), .SDcols = c('WGTP', 'new_WGTP')]
     xsum[, rw_HH := round(new_WGTP)][, pums_baseline_hh := round(WGTP)]
     rw <- rbind(rw, xsum)
@@ -326,7 +326,7 @@ for (yr in c(2030,2035,2040,2045,2050)){
     x <- fread(paste0(outpath, '/weights_final_', scen, '_', mid, '_', yr, '.csv')) %>% select(SERIALNO, SPORDER, new_WGTP) %>% mutate(mpo = mid) %>% setDT()
     setkey(x, SERIALNO, SPORDER)
     xp <- pums[x]
-    fwrite(xp, paste0(outpath, '/reweighted_PUMS_', scen, '_', reb, '_', mid, '_', yr, '.csv'))
+    fwrite(xp, paste0(outpath, '/reweighted_PUMS_', scen, '_', reb, '_', mid, '_', hdshp, '_', yr, '.csv'))
     xsum <- xp[SPORDER == 1, lapply(.SD, sum), .(mpo), .SDcols = c('WGTP', 'new_WGTP')]
     xsum[, rw_HH := round(new_WGTP)][, pums_baseline_hh := round(WGTP)]
     rw <- rbind(rw, xsum)
@@ -334,7 +334,7 @@ for (yr in c(2030,2035,2040,2045,2050)){
     comp <- tsum[rw]
     comp.out <- comp[,.(year,mpo,pums_baseline_hh, TARGET,rw_HH)]
     comp.out[,diff:= TARGET - rw_HH]
-    fwrite(comp.out,paste0(outpath,'reweighter_QC_', scen, '_', mid, '_', hdshp, '_', yr,' .csv'))
+    fwrite(comp.out,paste0(outpath,'reweighter_QC_', scen, '_', reb, '_', mid, '_', hdshp, '_', yr,' .csv'))
     comp.dt <- rbind(comp.dt,comp.out)
   }
 }
@@ -353,12 +353,11 @@ for (yr in c(2020,2030,2035,2040,2045,2050)){
   sw <- data.table()
   for (mid in mpos){
     outpath <- paste0(workpath, scen, '/Output_Files/', mid, '/')
-  # dt <- fread(paste0(outpath, '/reweighted_PUMS_', scen, '_', reb, '_', mid, '_', yr, '.csv'))
-  dt <- fread(paste0(outpath, '/reweighted_PUMS_', scen, '_', mid, '_', yr, '.csv'))
-  dt[,new_WGTP:=round(new_WGTP)][, year:=yr][,reb:=reb][,hdshp:=hdshp][,scen:=scen]
-  sw <- rbind(sw,dt)
+    dt <- fread(paste0(outpath, '/reweighted_PUMS_', scen, '_', reb, '_', mid, '_', hdshp, '_', yr, '.csv'))
+    dt[, year:=yr][,reb:=reb][,hdshp:=hdshp][,scen:=scen]
+    sw <- rbind(sw,dt)
   }
- fwrite(sw,paste0(workpath,scen,'/Output_Files/reweighted_PUMS_', scen, '_', reb, '_', yr, '.csv'))
+ fwrite(sw,paste0(workpath,scen,'/Output_Files/reweighted_PUMS_', scen, '_', reb, '_', hdshp, '_', yr, '.csv'))
  }
 ```
 
@@ -407,17 +406,7 @@ Hous_short_2030 = Hous_short_2020 – Shortage_units_20_30
 
 munis <- mapcdatakeys::all_muni_data_keys %>%
   select(muni_id, muni_name, cosub_cn20, cmtyp08, mapc, mpo, rpa_acr) %>%
-  mutate(GEOID = as.character(cosub_cn20)) %>%
-  mutate(
-    rvr = case_when(
-      cmtyp08 == 'Inner Core' ~ 0.05,
-      cmtyp08 == 'Developing Suburb' ~ 0.04,
-      cmtyp08 == 'Maturing Suburb' ~ 0.04,
-      cmtyp08 == 'Regional Urban Center' ~ 0.05,
-      cmtyp08 == 'Rural Town' ~ 0.04,
-      TRUE ~ 0.04
-    )
-  )
+  mutate(GEOID = as.character(cosub_cn20)) 
 
 vars <- load_variables(2020, 'dhc') %>% setDT()
 vs <- vars[grepl('VACANCY', concept), name]
@@ -442,21 +431,30 @@ d1 <-
   pivot_wider(names_from = 'variable') %>%
   select(-NAME) %>%
   setDT()
-setnames(d1, c('GEOID', 'dhc_units_2020', 'dhc_households_2020', gsub('Vacant','Vacant',ns), 'own_occ_units', 'rent_occ_units'))
+setnames(d1, c('GEOID', 'total_units', 'total_households', gsub('Total','Vacant',ns), 'own_occ_units', 'rent_occ_units'))
 
 m2 <- munis %>% select(GEOID, muni_id, muni_name, mpo, rpa_acr, cmtyp08)
 dhc <- d1 %>%
   left_join(m2, by = 'GEOID') %>%
   filter(!is.na(muni_id)) %>% 
   mutate(
-    total_units = dhc_units_2020,
-    total_available_units = dhc_households_2020 + Vacant_For_rent + Vacant_Rented_not_occupied + Vacant_For_sale_only + Vacant_Sold_not_occupied,
+    total_available_units = total_households + Vacant_For_rent + Vacant_Rented_not_occupied + Vacant_For_sale_only + Vacant_Sold_not_occupied,
+    total_unavailable_units = total_units - total_available_units,
     total_available_rental_units = Vacant_For_rent + Vacant_Rented_not_occupied + rent_occ_units,
     total_available_owner_units = Vacant_For_sale_only + Vacant_Sold_not_occupied + own_occ_units,
+    rent_ratio = total_available_rental_units / total_available_units,
+    own_ratio = total_available_owner_units / total_available_units,
+    total_unavailable_rental_units = round(total_unavailable_units * rent_ratio),
+    total_unavailable_owner_units = round(total_unavailable_units * own_ratio),
+    total_rental_units = total_available_rental_units + total_unavailable_rental_units,
+    total_owner_units = total_available_owner_units + total_unavailable_owner_units,
     total_available_vacant_units = Vacant_For_sale_only + Vacant_For_rent,
-    vac_rate = round(total_available_vacant_units / total_available_units, 3),
-    rent_vac_rate = round(Vacant_For_rent / total_available_rental_units,3),
-    own_vac_rate = round(Vacant_For_sale_only / total_available_owner_units,3)
+    vac_rate_avail = round(total_available_vacant_units / total_available_units, 3),
+    rent_vac_rate_avail = round(Vacant_For_rent / total_available_rental_units,3),
+    own_vac_rate_avail = round(Vacant_For_sale_only / total_available_owner_units,3),
+    vac_rate_total = round(total_available_vacant_units / total_units, 3),
+    rent_vac_rate_total = round(Vacant_For_rent / total_rental_units,3),
+    own_vac_rate_total = round(Vacant_For_sale_only / total_owner_units,3)
     ) %>% 
   rename(total_vacant_units=Vacant,
          vacant_available_to_rent=Vacant_For_rent,
@@ -468,12 +466,15 @@ dhc <- d1 %>%
          vacant_other=Vacant_Other_vacant)
  
 cs <- c(
-  'dhc_units_2020',
-  'dhc_households_2020',
+  'total_units',
+  'total_households',
+  'total_vacant_units',
   'total_available_units',
   'total_available_vacant_units',
   'own_occ_units',
   'rent_occ_units',
+  'total_rental_units',
+  'total_owner_units',
   'total_available_rental_units',
   'vacant_available_to_rent',
   'total_available_owner_units',
@@ -483,64 +484,63 @@ cs <- c(
 
 dsum101 <- dhc[,lapply(.SD,sum),rpa_acr,.SDcols=(cs)] %>% 
   mutate(
-    vac_rate_2020 = round(total_available_vacant_units / total_available_units, 3),
-    rent_vac_rate_2020 = round(vacant_available_to_rent / total_available_rental_units,3),
-    own_vac_rate_2020 = round(vacant_available_to_own / total_available_owner_units,3)
-  )
+    vac_rate_avail = round(total_available_vacant_units / total_available_units, 3),
+    rent_vac_rate_avail = round(vacant_available_to_rent / total_available_rental_units,3),
+    own_vac_rate_avail = round(vacant_available_to_own / total_available_owner_units,3),
+    vac_rate_total = round(total_available_vacant_units / total_units, 3),
+    rent_vac_rate_total = round(vacant_available_to_rent / total_rental_units,3),
+    own_vac_rate_total = round(vacant_available_to_own / total_owner_units,3),
+    all_unit_rental_vac_rate = round(1 - (rent_occ_units / total_rental_units),3),
+    all_unit_owner_vac_rate = round(1 - (own_occ_units / total_owner_units),3)
+    )
 fwrite(dsum101,paste0(workpath,'MAPC101_all_RPA_available_vacancy_rates_by_tenure.csv'))
 
-dsum97 <- dhc[,lapply(.SD,sum),rpa_acr,.SDcols=(cs)] %>% 
-  mutate(
-    vac_rate_2020 = round(available_vacant_units_2020 / available_units_2020, 3),
-    rent_vac_rate_2020 = round(vacant_available_rental_units / available_rental_units_2020,3),
-    own_vac_rate_2020 = round(vacant_available_owner_units / available_owner_units_2020,3)
-  )
+vax <- dsum101[,.(rpa_acr,total_units, total_households, total_owner_units, vacant_available_to_own, total_rental_units, vacant_available_to_rent, own_vac_rate_total, rent_vac_rate_total)]
 
-uw[, HHchg_20_30 := total_households_2030 - total_households_2020]
-uw[, HHchg_30_40 := total_households_2040 - total_households_2030]
-uw[, HHchg_40_50 := total_households_2050 - total_households_2040]
+# Load reweighted future households data
+dt <- data.table()
 
-# 2020 to 2030
-uw[, VacatedHU_20_30 := min(0, HHchg_20_30), muni_id]
-uw[, HHgrowth_vac_20_30 := HHchg_20_30 * rvr, muni_id]
-uw[units_short_2020 > HHchg_20_30, Shortage_units_20_30 := max(HHchg_20_30, (units_short_2020 *
-                                                                               0.5)), muni_id]
-uw[units_short_2020 <= HHchg_20_30, Shortage_units_20_30 := units_short_2020]
-uw[, Vacant_Units_Needed_20_30 := Shortage_units_20_30 + HHgrowth_vac_20_30]
-uw[, Vacant_Housing_Unit_Demand_20_30 := max(max(HHchg_20_30, 0) + Vacant_Units_Needed_20_30, 0), muni_id]
-uw[, units_short_2030 := units_short_2020 - Shortage_units_20_30]
+for (yr in c(2020,2030,2035,2040,2045,2050)){
+  tmp <- fread(paste0(workpath,scen,'/Output_Files/reweighted_PUMS_', scen, '_', reb, '_',hdshp,'_', yr, '.csv'))
+  dt <- rbind(dt,tmp)
+}
+  setorder(dt,rpa_acr,year)
 
-# 2030 to 2040
-uw[, VacatedHU_30_40 := max(0, (HHchg_30_40) * -1), muni_id]
-uw[, HHgrowth_vac_30_40 := max(HHchg_30_40 * rvr, 0), muni_id]
-uw[units_short_2030 > HHchg_30_40, Shortage_units_30_40 := max(HHchg_30_40, (units_short_2030 *
-                                                                               0.5)), muni_id]
-uw[units_short_2030 <= HHchg_30_40, Shortage_units_30_40 := units_short_2030]
-uw[, Vacant_Units_Needed_30_40 := Shortage_units_30_40 + HHgrowth_vac_30_40]
-uw[, Vacant_Housing_Unit_Demand_30_40 := max(max(HHchg_30_40, 0) + Vacant_Units_Needed_30_40, 0), muni_id]
-uw[, units_short_2040 := units_short_2030 - Shortage_units_30_40]
+  hh <- dt %>% 
+    filter(SPORDER==1) %>% 
+    mutate(tenure = case_when(
+      TEN %in% 1:2 ~ 'own',
+      TEN %in% 3:4 ~ 'rent')) %>% 
+    group_by(year,mpo,tenure) %>% 
+    count(wt=new_WGTP, name='hh') %>% 
+    ungroup() %>% 
+    mutate(hh = round(hh)) %>% 
+    setDT()
+  
+  uw <- hh %>% 
+    pivot_wider(id_cols = 'mpo', names_from = c('tenure','year'), values_from = 'hh') %>%
+    left_join(vax, by=c('mpo'='rpa_acr')) %>% 
+    setDT()
+nm <- names(uw)[2:13]
+setnames(uw,nm,paste0('households_',nm))
 
-# 2040 to 2050
-uw[, VacatedHU_40_50 := max(0, (HHchg_40_50) * -1), muni_id]
-uw[, HHgrowth_vac_40_50 := max(HHchg_40_50 * rvr, 0), muni_id]
-uw[units_short_2040 > HHchg_40_50, Shortage_units_40_50 := max(HHchg_40_50, (units_short_2040 *
-                                                                               0.5)), muni_id]
-uw[units_short_2040 <= HHchg_40_50, Shortage_units_40_50 := units_short_2040]
-uw[, Vacant_Units_Needed_40_50 := Shortage_units_40_50 + HHgrowth_vac_40_50]
-uw[, Vacant_Housing_Unit_Demand_40_50 := max(max(HHchg_40_50, 0) + Vacant_Units_Needed_40_50, 0), muni_id]
-uw[, units_short_2050 := units_short_2040 - Shortage_units_40_50]
-uw <- uw %>% relocate(
-  Vacant_Housing_Unit_Demand_20_30,
-  Vacant_Housing_Unit_Demand_30_40,
-  Vacant_Housing_Unit_Demand_40_50,
-  .after = total_residential_units_2050
-)
+uw[, own_units_needed_2035 := round(households_own_2035 * (1 + own_vac_rate_total))]
+uw[, own_units_needed_2050 := round(households_own_2050 * (1 + own_vac_rate_total))]
+uw[, rent_units_needed_2035 := round(households_rent_2035 * (1 + rent_vac_rate_total))]
+uw[, rent_units_needed_2050 := round(households_rent_2050 * (1 + rent_vac_rate_total))]
+
+uw[,new_owner_units_2035 := max(0, own_units_needed_2035 - total_owner_units),mpo]
+uw[,new_rental_units_2035 := max(0, rent_units_needed_2035 - total_rental_units),mpo]
+uw[,new_owner_units_2050 := max(0, own_units_needed_2050 - total_owner_units),mpo]
+uw[,new_rental_units_2050 := max(0, rent_units_needed_2050 - total_rental_units),mpo]
+uw[,total_new_units_needed_by_2035:=new_owner_units_2035+new_rental_units_2035]
+uw[,total_new_units_needed_by_2050:=new_owner_units_2050+new_rental_units_2050]
+uw[,scenario:=scen]
+
+outfile <- uw[,.(scenario,mpo,total_units,total_owner_units,total_rental_units,vacant_available_to_own,vacant_available_to_rent,own_vac_rate_total,rent_vac_rate_total,households_own_2020,households_rent_2020,households_own_2030,households_rent_2030,households_own_2035,households_rent_2035,households_own_2040,households_rent_2040,households_own_2045,households_rent_2045,households_own_2050,households_rent_2050,new_owner_units_2035,new_rental_units_2035,new_owner_units_2050,new_rental_units_2050,total_new_units_needed_by_2035,total_new_units_needed_by_2050)]
+
+setnames(outfile,c('total_units','total_owner_units','total_rental_units','vacant_available_to_own','vacant_available_to_rent','own_vac_rate_total','rent_vac_rate_total'),c('total_units_2020','total_owner_units_2020','total_rental_units_2020','vacant_available_to_own_2020','vacant_available_to_rent_2020','owner_unit_vacancy_rate_2020','rental_unit_vacancy_rate_2020'))
 
 
-mpo <- munis %>% select(muni_id, mpo, rpa_acr) %>% setDT()
-setkey(uw, muni_id)
-setkey(mpo, muni_id)
-m1 <- mpo[uw]
-
-fwrite(m1, paste0(output, mrun, '_', srun, '_implied_unit_demand_estimates.csv'))
+fwrite(outfile, paste0(workpath, scen, '/Output_Files/',scen,'_unit_demand_estimates.csv'))
 ```

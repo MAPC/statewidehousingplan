@@ -22,8 +22,7 @@ pums_query <- function(var.list, yr, srvy){
     variables = var.list,
     state = "MA",
     year = yr,
-    survey = srvy, 
-    rep_weights = "both"
+    survey = srvy
   )
 }
 

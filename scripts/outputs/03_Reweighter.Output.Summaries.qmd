@@ -219,7 +219,7 @@ tbl.1 <- s1.df |>
 #Write Output tables to K Drive
 write.csv(
   tbl.1,
-  paste0(output_path,"/output.tbl_Households.by.IncomeGroups.csv"),
+  paste0(output_path,"/output.tbl_",scen,"_Households.by.IncomeGroups.csv"),
   row.names = FALSE
 )
 
@@ -269,7 +269,7 @@ tbl.2 <- s1.df |>
 #Write Output Tables ot K Drive
 write.csv(
   tbl.2,
-  paste0(output_path,"/output.tbl_Households.by.AgeGroups.csv"),
+  paste0(output_path,"/output.tbl_",scen,"_Households.by.AgeGroups.csv"),
   row.names = FALSE
 )
 
@@ -304,7 +304,7 @@ tbl.3 <- s1.df |>
 # Write output tables to K drive
 write.csv(
   tbl.3,
-  paste0(output_path,"/output.tbl_Households.by.HHtypeGroups.csv"),
+  paste0(output_path,"/output.tbl_",scen,"_Households.by.HHtypeGroups.csv"),
   row.names = FALSE
 )
 
@@ -344,7 +344,7 @@ tbl.4 <- s1.df |>
 # Write output tables to K drive
 write.csv(
   tbl.4,
-  paste0(output_path,"/output.tbl_Households.by.NumberOfChildren.csv"),
+  paste0(output_path,"/output.tbl_",scen,"_Households.by.NumberOfChildren.csv"),
   row.names = FALSE
 )
 
@@ -383,7 +383,7 @@ tbl.5 <- s1.df |>
 # Write output tables to K drive
 write.csv(
   tbl.5,
-  paste0(output_path,"/output.tbl_Households.by.HHsize.csv"),
+  paste0(output_path,"/output.tbl_",scen,"_Households.by.HHsize.csv"),
   row.names = FALSE
 )
 
@@ -419,7 +419,7 @@ tbl.6 <- s1.df |>
 # Write output tables to K drive
 write.csv(
   tbl.6,
-  paste0(output_path,"/output.tbl_Households.by.Tenure.csv"),
+  paste0(output_path,"/output.tbl_",scen,"_Households.by.Tenure.csv"),
   row.names = FALSE
 )
 
@@ -455,7 +455,7 @@ tbl.7 <- s1.df |>
 # Write output tables to K drive
 write.csv(
   tbl.7,
-  paste0(output_path,"/output.tbl_Households.by.NumberOfWorkers.csv"),
+  paste0(output_path,"/output.tbl_",scen,"_Households.by.NumberOfWorkers.csv"),
   row.names = FALSE
 )
 ```
@@ -469,4 +469,13 @@ write.csv(
 
 # 5.0 Multivariate Output Tables for Statewide Housing Plan
 ```{r}
+test <- s1.df |> 
+  filter(SPORDER == 1 & TYPEHUGQ == 1) |> 
+  group_by(year) |> 
+  summarise(
+    hhd = sum(new_WGTP)
+  ) |> 
+  ungroup()
+
+print(sum(test$new_WGTP))
 ```

@@ -27,8 +27,8 @@ reb <- 'MAPC101'
 # reb <- 'MAPC97'
 
 # Root Directory
- # root <- 'S:/Network Shares/K Drive/DataServices/Projects/'
- root <- 'K:/DataServices/Projects/'
+  root <- 'S:/Network Shares/K Drive/DataServices/Projects/'
+ # root <- 'K:/DataServices/Projects/'
 
 ctrltotal.path <- paste0(root, 'Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/', scen, '/')
 
@@ -518,62 +518,29 @@ for (yr in c(2020,2030,2035,2040,2045,2050)){
     setDT()
   
   uw <- hh %>% 
-    pivot_wider(id_cols = 'mpo', names_from = c('tenure','year'), values_from = 'hh') %>% 
-    mutate(own20_35 = own_2035 - own_2020,
-           own35_50 = own_2050 - own_2035,
-           rent20_35 = rent_2035 - rent_2020,
-           rent35_50 = rent_2050 - rent_2035) %>% 
+    pivot_wider(id_cols = 'mpo', names_from = c('tenure','year'), values_from = 'hh') %>%
     left_join(vax, by=c('mpo'='rpa_acr')) %>% 
     setDT()
+nm <- names(uw)[2:13]
+setnames(uw,nm,paste0('households_',nm))
+
+uw[, own_units_needed_2035 := round(households_own_2035 * (1 + own_vac_rate_total))]
+uw[, own_units_needed_2050 := round(households_own_2050 * (1 + own_vac_rate_total))]
+uw[, rent_units_needed_2035 := round(households_rent_2035 * (1 + rent_vac_rate_total))]
+uw[, rent_units_needed_2050 := round(households_rent_2050 * (1 + rent_vac_rate_total))]
+
+uw[,new_owner_units_2035 := max(0, own_units_needed_2035 - total_owner_units),mpo]
+uw[,new_rental_units_2035 := max(0, rent_units_needed_2035 - total_rental_units),mpo]
+uw[,new_owner_units_2050 := max(0, own_units_needed_2050 - total_owner_units),mpo]
+uw[,new_rental_units_2050 := max(0, rent_units_needed_2050 - total_rental_units),mpo]
+uw[,total_new_units_needed_by_2035:=new_owner_units_2035+new_rental_units_2035]
+uw[,total_new_units_needed_by_2050:=new_owner_units_2050+new_rental_units_2050]
+uw[,scenario:=scen]
+
+outfile <- uw[,.(scenario,mpo,total_units,total_owner_units,total_rental_units,vacant_available_to_own,vacant_available_to_rent,own_vac_rate_total,rent_vac_rate_total,households_own_2020,households_rent_2020,households_own_2030,households_rent_2030,households_own_2035,households_rent_2035,households_own_2040,households_rent_2040,households_own_2045,households_rent_2045,households_own_2050,households_rent_2050,new_owner_units_2035,new_rental_units_2035,new_owner_units_2050,new_rental_units_2050,total_new_units_needed_by_2035,total_new_units_needed_by_2050)]
+
+setnames(outfile,c('total_units','total_owner_units','total_rental_units','vacant_available_to_own','vacant_available_to_rent','own_vac_rate_total','rent_vac_rate_total'),c('total_units_2020','total_owner_units_2020','total_rental_units_2020','vacant_available_to_own_2020','vacant_available_to_rent_2020','owner_unit_vacancy_rate_2020','rental_unit_vacancy_rate_2020'))
 
 
-# 2020 to 2035
-uw[, own_vacated20_35 := min(0, own20_35), mpo]
-uw[, rent_vacated20_35 := min(0, rent20_35), mpo]
-uw[, own_growth_vac20_35 := own20_35 * own_vac_rate_total, mpo]
-uw[, rent_growth_vac20_35 := rent20_35 * rent_vac_rate_total, mpo]
-uw[, own_units_needed_2035 := own_2035 * (1 + own_vac_rate_total)]
-uw[, own_units_needed_2050 := own_2050 * (1 + own_vac_rate_total)]
-uw[, rent_units_needed_2035 := rent_2035 * (1 + rent_vac_rate_total)]
-uw[, rent_units_needed_2050 := rent_2050 * (1 + rent_vac_rate_total)]
-
-uw[,new_owner_units_2035 := own_units_needed_2035 - t]
-uw[units_short_2020 <= HHchg_20_30, Shortage_units_20_30 := units_short_2020]
-uw[, Vacant_Units_Needed_20_30 := Shortage_units_20_30 + HHgrowth_vac_20_30]
-uw[, Vacant_Housing_Unit_Demand_20_30 := max(max(HHchg_20_30, 0) + Vacant_Units_Needed_20_30, 0), muni_id]
-uw[, units_short_2030 := units_short_2020 - Shortage_units_20_30]
-
-# 2030 to 2040
-uw[, VacatedHU_30_40 := max(0, (HHchg_30_40) * -1), muni_id]
-uw[, HHgrowth_vac_30_40 := max(HHchg_30_40 * rvr, 0), muni_id]
-uw[units_short_2030 > HHchg_30_40, Shortage_units_30_40 := max(HHchg_30_40, (units_short_2030 *
-                                                                               0.5)), muni_id]
-uw[units_short_2030 <= HHchg_30_40, Shortage_units_30_40 := units_short_2030]
-uw[, Vacant_Units_Needed_30_40 := Shortage_units_30_40 + HHgrowth_vac_30_40]
-uw[, Vacant_Housing_Unit_Demand_30_40 := max(max(HHchg_30_40, 0) + Vacant_Units_Needed_30_40, 0), muni_id]
-uw[, units_short_2040 := units_short_2030 - Shortage_units_30_40]
-
-# 2040 to 2050
-uw[, VacatedHU_40_50 := max(0, (HHchg_40_50) * -1), muni_id]
-uw[, HHgrowth_vac_40_50 := max(HHchg_40_50 * rvr, 0), muni_id]
-uw[units_short_2040 > HHchg_40_50, Shortage_units_40_50 := max(HHchg_40_50, (units_short_2040 *
-                                                                               0.5)), muni_id]
-uw[units_short_2040 <= HHchg_40_50, Shortage_units_40_50 := units_short_2040]
-uw[, Vacant_Units_Needed_40_50 := Shortage_units_40_50 + HHgrowth_vac_40_50]
-uw[, Vacant_Housing_Unit_Demand_40_50 := max(max(HHchg_40_50, 0) + Vacant_Units_Needed_40_50, 0), muni_id]
-uw[, units_short_2050 := units_short_2040 - Shortage_units_40_50]
-uw <- uw %>% relocate(
-  Vacant_Housing_Unit_Demand_20_30,
-  Vacant_Housing_Unit_Demand_30_40,
-  Vacant_Housing_Unit_Demand_40_50,
-  .after = total_residential_units_2050
-)
-
-
-mpo <- munis %>% select(muni_id, mpo, rpa_acr) %>% setDT()
-setkey(uw, muni_id)
-setkey(mpo, muni_id)
-m1 <- mpo[uw]
-
-fwrite(m1, paste0(output, mrun, '_', srun, '_implied_unit_demand_estimates.csv'))
+fwrite(outfile, paste0(workpath, scen, '/Output_Files/',scen,'_unit_demand_estimates.csv'))
 ```

@@ -1515,10 +1515,13 @@ pums_data <- get_pums(
       Person_Total == 1 & HHder != 99 ~ 5
     ),
       
-    # Adjust income first to the highest year in the 5-year vintage using included adjustment field (ADJINC) and then deflate back to 2013, using the cpi deflator calculated in the previous code chunk
+    # Adjust income first to the highest year in the 5-year vintage using included adjustment field (ADJINC)
+    # For Statewide Housing Plan we stick with the 2021 dollars from the 2017-2021 ACS PUMS files.
+    # Optionally, for UrbanSim we then deflate back to 2013, using the cpi deflator calculated in the previous code chunk
 
     ADJINC = as.numeric(ADJINC),
-    HINCP = round((as.numeric(HINCP) * ADJINC) * cpi.deflator, 0),
+    HINCP = round((as.numeric(HINCP) * ADJINC), 0),
+    #HINCP = round((as.numeric(HINCP) * ADJINC) * cpi.deflator, 0),
     WAGPALLC_US =
       cut(
         HINCP,

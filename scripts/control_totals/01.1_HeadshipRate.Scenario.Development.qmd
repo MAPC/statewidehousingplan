@@ -405,18 +405,19 @@ test <- pums_data.adj |>
 
 # 3.3 QA/QC - Check Split Households are Equal to 
 ```{r}
-
+#===============================================================================
+# 
 subset.1.test <- pums_data.adj |> 
-  filter(
-    subset.flag.1 == 1
-  )
+  filter(SPORDER == 1 & TYPEHUGQ == 1 & subset.flag.1 == 1)
 
 print(sum(subset.1.test$WGTP))
 
+#===============================================================================
+#
 subset.2.test <- pums_data.adj |> 
-  filter(
-    subset.flag.2 == 1
-  )
+  filter(SPORDER == 1 & TYPEHUGQ == 1 & subset.flag.1 == 1)
+
+print(sum(subset.2.test$WGTP))
 
 ```
 
@@ -468,24 +469,15 @@ if (sum(hr_check$flag) > 0){
   print("Proceed!")
 }
 
-#Write an intermediate file for the headship rates from this PUMS vintage
-# write.csv(
-#   headship_rates,
-#   paste0(output_path, "headship_rates.pums",yr,".csv"),
-#   row.names = FALSE
-# )
-
 #Remove QC check dataframe
 rm(hr_check)
-
-#TODO:
-# 1. Compare to 2015-2019 ACS PUMS Headship rates
-# 2. Compare to adjusted headships rates from last projections
 
 ```
 
 # 5.0 Compare Split Household Headship Rates to Current PUMS Vintage Headships Rates
 ```{r}
+
+
 ```
 
 

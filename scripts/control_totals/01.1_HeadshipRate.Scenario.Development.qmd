@@ -287,7 +287,7 @@ pums_data.adj <- pums_data |>
 # 3.2 Redefine SPORDER and Relationship Variables
 ```{r}
 # Create a test data frame before putting this into production
-pums_data.adj.test <- pums_data.adj |>
+pums_data.adj <- pums_data.adj |>
   group_by(SERIALNO.adj) |> 
   mutate(
     # Create a new SPORDER variable based on the order of people in the new households (if they are split into new households).
@@ -324,6 +324,8 @@ pums_data.adj.test <- pums_data.adj |>
 ```{r}
 pums_data.adj <- pums_data.adj |> 
   mutate(
+    # Generate five-year age groupings to match UMDI population projections data.
+    ageCAT6 = cut(AGEP, breaks = c(-Inf, seq(4, 84, 5), Inf), labels = 1:18),
     # Counts as Worker
     # NOTE: Categories are (0) under 16 or not in labor force, or (1) in labor force or non-civilian worker
     worker = case_when(
@@ -349,7 +351,7 @@ pums_data.adj <- pums_data.adj |>
     # Re generate the HINCP (household income) variable
     HINCP.adj = sum(PINCP),
     # Adjust income data to 2021 dollars
-    HINCP.adj.2021USD = as.numeric(HINCP_adj)*as.numeric(ADJINC),
+    HINCP.adj.2021USD = as.numeric(HINCP.adj)*as.numeric(ADJINC),
     # Sum the total number of workers in the household
     Worker_Total = sum(worker),
     # Sum the total number of children in the household
@@ -366,13 +368,13 @@ pums_data.adj <- pums_data.adj |>
       ),
     # Determine if person is not hhder vs hhder of 0- wrk, 1wrk, 2 wrk, 3+wrk
     HHder = case_when(
-      SPORDER == 1 & WRKHH == 0 ~ 0,
-      SPORDER == 1 & WRKHH == 1 ~ 1,
-      SPORDER == 1 & WRKHH == 2 ~ 2,
-      SPORDER == 1 & WRKHH == 3 ~ 3,
-      SPORDER > 1 ~ 99
+      SPORDER.adj == 1 & WRKHH == 0 ~ 0,
+      SPORDER.adj == 1 & WRKHH == 1 ~ 1,
+      SPORDER.adj == 1 & WRKHH == 2 ~ 2,
+      SPORDER.adj == 1 & WRKHH == 3 ~ 3,
+      SPORDER.adj > 1 ~ 99
     ),
-    # Determine what type of household the person is heading or not heading (1) head child, (2) child, (3) head not child, (4) not head no child, (5) head single
+    # Determine what type of household the person is heading or not heading (1) Householder of Household with Children, (2) Non-Householder in a Household with Children, (3) Householder of a Household with Multiple Adults and no children, (4) Non-Householder in a Household with no children, (5) Householder of a Single Person Household
     HHtype = case_when(
       Child_Total >= 1 & NP.adj > 1 & HHder != 99 ~ 1,
       Child_Total >= 1 & NP.adj > 1 & HHder == 99 ~ 2,
@@ -381,6 +383,9 @@ pums_data.adj <- pums_data.adj |>
       NP.adj == 1 & HHder != 99 ~ 5
     )
   )
+
+test <- pums_data.adj |> 
+  filter(SERIALNO == "2017000008507")
 
 # List of meaningful recalculations:
 # 1. NP - summing the number of persons present in original and split subfamily households
@@ -417,6 +422,66 @@ subset.2.test <- pums_data.adj |>
 
 # 4.0 Calculate Headship Rates
 ```{r}
+#Generating headship rates by RPA and 5-year age group for the ACS 2017-2022 PUMS
+headship_rates <- pums_data.adj |> 
+  #Inclues only observations for people in households (omits GQ)                       
+  filter(TYPEHUGQ == "1") |> 
+  #Groups by variables in the dataframe necessary to getting the granularity of
+  #data we're interested in.
+  group_by(rpa_acr, ageCAT6) |> 
+  #Computes the weighted sum of individuals in each HH type category by the groups
+  #assigned above.
+  count(var = HHtype, wt = WGTP) |>
+  #Recodes factor variables as the categories they represent.
+  #Converts numbers into frequencies.                       
+  mutate(
+    var = case_when(
+      var == 1 ~ "hhderchild",
+      var == 2 ~ "nothhderchild",
+      var == 3 ~ "hhdernochild",
+      var == 4 ~ "nothhdernochild",
+      var == 5 ~ "single"),
+    freq = (n/sum(n))) |> 
+  #Removes the level of aggregation set earlier by group_by()
+  ungroup() |> 
+  select(
+    -c(n)
+  )
+
+#QC Check - determine if the frequencies in each RP, Age Group crosstab add to 1
+hr_check <- headship_rates |> 
+  group_by(
+    rpa_acr,
+    ageCAT6
+  ) |> 
+  summarise(
+    freq_check = sum(freq)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    flag = ifelse(freq_check != 1, 1, 0)
+  )
+
+if (sum(hr_check$flag) > 0){
+  print("STOP! Check headship rate calculations!")
+} else{
+  print("Proceed!")
+}
+
+#Write an intermediate file for the headship rates from this PUMS vintage
+# write.csv(
+#   headship_rates,
+#   paste0(output_path, "headship_rates.pums",yr,".csv"),
+#   row.names = FALSE
+# )
+
+#Remove QC check dataframe
+rm(hr_check)
+
+#TODO:
+# 1. Compare to 2015-2019 ACS PUMS Headship rates
+# 2. Compare to adjusted headships rates from last projections
+
 ```
 
 # 5.0 Compare Split Household Headship Rates to Current PUMS Vintage Headships Rates

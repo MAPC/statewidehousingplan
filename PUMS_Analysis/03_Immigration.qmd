@@ -185,7 +185,8 @@ household_foreign_born_summary_table <- pums %>%
 
 ```{r}
 #export
-
+ write.xlsx(list('Households by nativity' = household_foreign_born_summary_table), 
+           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/immig_hhlder_nativity.xlsx") 
 ```
 
 # State level analysis of foreign born households
@@ -207,7 +208,6 @@ total_foreign_hhld <- sum(households_foreign_born$first_weight)
 
 ```{r}
 #Age of householder in foreign born vs. native hhlds 
-
 householder_age_foreign_born <- pums %>%
  filter(RT != "H") %>%   # exclude hhlds because nativity is a person-level data point
  select(uniq_obs, SERIALNO, PUMA, WGTP, HHLDRAGEP, NATIVITY) %>% 
@@ -245,7 +245,6 @@ householder_age_foreign_born <- pums %>%
 #Export age of hhlder by nativity table
  write.xlsx(list('Age of householder by nativity' = householder_age_foreign_born), 
            file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/immig_age_of_hhlder.xlsx") 
-
 ```
 
 ```{r}
@@ -323,7 +322,6 @@ householder_hisp_foreign_born <- pums %>%
  write.xlsx(list('Race of householder by nativity' = householder_race_foreign_born, 
                  'Ethnicity of householder by nativity' = householder_hisp_foreign_born), 
            file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/immig_race_eth_of_hhlder.xlsx") 
-
 ```
 
 
@@ -375,8 +373,8 @@ household_year_entry_foreign_born <- pums %>%
 
 ```{r}
 #Export year of entry table 
-
-
+ write.xlsx(list('Year entry of householder' = household_year_entry_foreign_born), 
+           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/immig_year_entry_hhlder.xlsx") 
 ```
 
 
@@ -516,7 +514,8 @@ householder_income_foreign_born <- pums %>%
 
 ```{r}
 #Export income table
-
+ write.xlsx(list('Income of householder' = householder_income_foreign_born), 
+           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/immig_income_hhlder.xlsx") 
 
 ```
 
@@ -557,7 +556,8 @@ householder_tenure_foreign_born <- pums %>%
 
 ```{r}
 #Export tenure table
-
+ write.xlsx(list('Tenure of householder' = householder_tenure_foreign_born), 
+           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/immig_tenure_hhlder.xlsx") 
 
 ```
 

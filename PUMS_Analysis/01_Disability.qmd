@@ -620,7 +620,8 @@ total_households_with_disability <- sum(households_with_disability$WGTP, na.rm =
 #Calculate the total number of households in sample 
 household_data <- pums %>%
 filter(RT == "H") %>%
-filter(TYPEHUGQ != 2)
+filter(TYPEHUGQ != 2) %>%
+filter(NP > 0)  #filter out vacant units so just getting household number
 #add weights
 total_weighted_households <- sum(household_data$WGTP, na.rm = TRUE)
 
@@ -842,7 +843,7 @@ household_tenure_disability <- people_with_disability %>%
 ```
 
 ```{r}
-#Age of housing stock for households with disability - YRBLT
+#Age of housing stock for households with disability - YRBLT - note this is the only variable for vacant units, do we want to include vacant units here? This currently includes occupied units because it's based on person level disability data - meaning vacant units do not have any members with a disability because they have 0 members. 
 
 household_age_of_housing_disability <- people_with_disability %>%
   mutate(Housing.Age = case_when(                                     # create age of housing groups 

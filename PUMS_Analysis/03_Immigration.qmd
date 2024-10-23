@@ -158,18 +158,17 @@ pums_RPA <- left_join(
 
 ```{r}
 #Number and share of hhlds in the state where the head of household is foreign born
-####Assuming that the first person in each hhld is the head of hhld ?????????????????
+####Assuming that the first person in each hhld is the head of hhld 
 
 #Calculate weighted total of all hhlds in data set
 household_data <- pums %>%
-filter(RT == "H") %>%
-filter(TYPEHUGQ != 2) # filtering out institutional group quarters
+filter(RT == "H") 
 total_weighted_households <- sum(household_data$WGTP, na.rm = TRUE) # add weights
 
-household_foreign_born <- pums %>%
-  filter(TYPEHUGQ != 2) %>% 
+household_foreign_born_summary_table <- pums %>%
+  filter(RT != "H") %>%   # exclude hhlds because nativity is a person-level data point
   group_by(SERIALNO) %>% # group by household 
-  summarise(first_weight = first(WGTP, na.rm = TRUE), # get the first person's weight for hhld
+  summarise(first_weight = first(WGTP, na.rm = TRUE), # get the first person's weight for hhld - assuming this is head of hhld
     NATIVITY = first(NATIVITY), .groups = "drop") %>%           # get the nativity for the first person                          
   group_by(NATIVITY) %>%                                   # group by nativity to calculate total weights for each type
   summarise(total_by_nativity= sum(first_weight, na.rm = TRUE), # sum the weights by nativity
@@ -178,12 +177,39 @@ household_foreign_born <- pums %>%
     NATIVITY == 1 ~ "Native",
     NATIVITY == 2 ~ "Foreign born",
     TRUE ~ NA_character_)) %>%
+  mutate(total_households = sum(total_by_nativity)) %>%
   #filter(!is.na(NATIVITY)) %>% # filter out NAs? who is in NA
-  mutate(percentage_of_total = (total_by_nativity / total_weighted_households) * 100) # Calculate percent out of all hhlds
+  mutate(percentage_of_total = (total_by_nativity / total_households) * 100) # Calculate percent out of all hhlds
 
 ```
 
 ```{r}
+
+```
+
+# State level analysis of foreign born households
+```{r}
+#Create data set for hhlds where householder is foreign born 
+
+households_foreign_born <- pums %>%
+ filter(RT != "H") %>%   # exclude hhlds because nativity is a person-level data point
+ group_by(SERIALNO) %>% 
+ summarise(
+    first_weight = first(WGTP, na.rm = TRUE),  # get the first person's weight for the household
+    first_person_nativity = first(NATIVITY, na.rm = TRUE),  # get the nativity of the first person
+    .groups = "drop"
+  ) %>%
+  filter(first_person_nativity == 2) 
+
+#checking total foreign born hhlds
+total_foreign_hhld <- sum(households_foreign_born$first_weight)
+```
+
+```{r}
+#Age of householder in foreign born hhlds 
+
+
+
 
 ```
 

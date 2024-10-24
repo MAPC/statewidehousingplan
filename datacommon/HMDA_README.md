@@ -19,6 +19,10 @@ NOTE: because the script involves join with ACS 5yr data, the latest year availa
  __SHoP_hmda_processing_muni_120pct_aggr_pre2018.R__ 
 
 
+---
+
+__deprecated code explanation below__
+
 ##### original code for 2007-17 is in this folder: 
 
 *original code folder*: K:\DataServices\Datasets\Housing\HMDA\Code\2007-2017

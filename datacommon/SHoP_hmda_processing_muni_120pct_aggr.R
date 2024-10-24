@@ -314,12 +314,18 @@ clean_import <- keys_import %>%
   )
   
 
-# 3.2  ck removal of error in previous step  (note, categories added for "na" and "mlt")
+# 3.2  ck removal of error in previous step  (note, category added for "na")
 ck_muni <- clean_import %>%
   filter(is.na(race_ethnicity))
+#note: when step 3.2 returns only rows with [applicant_ethnicity = 2, 3, 4 or NA], and [applicant_race = NA], then proceed
 
-#note: when step 3.2 returns only rows with applicant_ethnicity = 2 or NA, and applicant_race = NA, then proceed
-rm(ck_muni)
+ck_muni_step <- ck_muni %>% 
+  filter(applicant_ethnicity != 2) %>% # 2 = not hispanic
+  filter(applicant_ethnicity != 3) %>% # 3 = hisp info not provided
+  filter(applicant_ethnicity != 4) %>% # 4 = not applicable
+  filter(applicant_ethnicity != "NA")
+
+rm(ck_muni,ck_muni_step)
 
 # 3.3 filter out any remaining rows with is.na(race_ethnicity)
 clean_import <- clean_import %>%
@@ -506,6 +512,6 @@ df <- df %>%
   mutate(na_rate = round(na_rate, 2))
 
 ## 10. export to csv
-write_csv(df, paste0(exp_path,"/",hmda_yr,"/hmda_mortgage_denials_by_race_120pct.csv"))
+write_csv(df, paste0(exp_path,"/",hmda_yr,"/hmda_mortgage_denials_by_race_120pct_",hmda_yr,".csv"))
 
 #ck output at exp_path = "K:/DataServices/Datasets/Housing/HMDA/Data/Modified/Tabular/"

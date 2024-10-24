@@ -47,7 +47,7 @@ library(devtools)
 # 0.2 - Set package dependencies, set environment, set up data keys
 
 ```{r}
-#Load PUMS data - new  version
+#Load PUMS data 
 pums <- read.xlsx("J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/pums_immig_hh_2021_V_2024-10-09.xlsx")
 ```
 
@@ -154,11 +154,11 @@ pums_RPA <- left_join(
 
 # State-level
 
-#Identify households whose head of household is foreign born.
+Identify households whose head of household is foreign born.
 
 ```{r}
 #Number and share of hhlds in the state where the head of household is foreign born
-####Assuming that the first person in each hhld is the head of hhld - can also use SPORDER == 1 to do this
+#### The first person in each hhld is the head of hhld - can also use SPORDER == 1 to do this
 
 #Calculate weighted total of all hhlds in data set 
 household_data <- pums %>%
@@ -169,7 +169,7 @@ total_weighted_households <- sum(household_data$WGTP, na.rm = TRUE) # sum weight
 
 household_foreign_born_summary_table <- pums %>%
   filter(RT != "H") %>%   # exclude hhlds because nativity is a person-level data point
-  group_by(SERIALNO) %>% # group by household 
+  group_by(SERIALNO) %>%  # group by household 
   summarise(first_weight = first(WGTP, na.rm = TRUE), # get the first person's weight for hhld - assuming this is head of hhld
     NATIVITY = first(NATIVITY), .groups = "drop") %>%           # get the nativity for the first person                          
   group_by(NATIVITY) %>%                                   # group by nativity to calculate total weights for each type
@@ -190,7 +190,6 @@ household_foreign_born_summary_table <- pums %>%
            file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/immig_hhlder_nativity.xlsx") 
 ```
 
-# State level analysis of foreign born households
 ```{r}
 #Check calculation of the weighted number of foreign born hhlds
 households_foreign_born <- pums %>%
@@ -205,6 +204,49 @@ households_foreign_born <- pums %>%
 
 #checking total foreign born hhlds
 total_foreign_hhld <- sum(households_foreign_born$first_weight)
+```
+
+```{r}
+#Household type - HHT variable 
+household_type_foreign_born <- pums %>%
+  filter(RT != "H") %>%   # exclude hhlds because nativity is a person-level data point
+  select(uniq_obs, SERIALNO, PUMA, WGTP, HHT, NATIVITY) %>% 
+  group_by(SERIALNO) %>% 
+  summarise(
+    household_type = first(HHT, na.rm = TRUE),  # get the first person's householder ethnicity
+    householder_nativity = first(NATIVITY, na.rm = TRUE),  # get nativity of first person (householder)
+    first_weight = first(WGTP, na.rm = TRUE),  # Get the weight for the first person (householder)
+    .groups = "drop") %>%
+  group_by(householder_nativity, household_type) %>%  # group by nativity and hispanic status
+  summarise(
+    total_weight = sum(first_weight, na.rm = TRUE),  # summarize total weights for each nativity and race
+    .groups = "drop") %>%
+  group_by(householder_nativity) %>%  # group by nativity to calculate totals within each group
+  mutate(
+    total_weight_by_nativity = sum(total_weight, na.rm = TRUE),  # calculate the total weight for each nativity group
+    percentage_within_nativity = (total_weight / total_weight_by_nativity) * 100) %>%  # calculate percentage within each group
+  mutate(householder_nativity = case_when(  # rename nativity categories
+    householder_nativity == 1 ~ "Native",
+    householder_nativity == 2 ~ "Foreign born",
+    TRUE ~ "Unknown")) %>%
+  mutate(household_type = case_when(        # rename hhld type categories
+    household_type == 1 ~ "Married couple household",
+    household_type == 2 ~ "Other family: male no spouse",
+    household_type == 3 ~ "Other family: female no spouse",
+    household_type == 4 ~ "Nonfamily: male living alone",
+    household_type == 5 ~ "Nonfamily: male not living alone",
+    household_type == 6 ~ "Nonfamily: female living alone",
+    household_type == 7 ~ "Nonfamily: female not living alone",
+    TRUE ~ NA_character_)) %>%
+  filter(!is.na(household_type)) %>%
+  arrange(householder_nativity, household_type)
+
+```
+
+```{r}
+#Export hhld type 
+ write.xlsx(list('Type of hhld' = household_type_foreign_born), 
+           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/immig_hhld_type.xlsx") 
 ```
 
 ```{r}
@@ -238,15 +280,66 @@ householder_age_foreign_born <- pums %>%
   mutate(householder_nativity = case_when(  # rename nativity categories
     householder_nativity == 1 ~ "Native",
     householder_nativity == 2 ~ "Foreign born",
-    TRUE ~ "Unknown"))
-
+    TRUE ~ "Unknown")) %>%
+  mutate (age_range = factor(age_range, levels = c(   # order groups in correct order
+      "5-17",
+      "18-34",
+      "35-64",
+      "65-74",
+      "75 and over"))) %>%
+   arrange(householder_nativity, age_range)
 ```
 
 ```{r}
-#Export age of hhlder by nativity table
- write.xlsx(list('Age of householder by nativity' = householder_age_foreign_born), 
+#Share of age group that is either foreign born or native 
+household_age_by_nativity <- pums %>%              
+  select(uniq_obs, SERIALNO, PUMA, WGTP, HHLDRAGEP, NATIVITY) %>% 
+  mutate(age_range = case_when(
+    HHLDRAGEP >= 0 & HHLDRAGEP < 5 ~ "Under 5",
+    HHLDRAGEP >= 5 & HHLDRAGEP < 18 ~ "5-17",
+    HHLDRAGEP >= 18 & HHLDRAGEP < 35 ~ "18-34",
+    HHLDRAGEP >= 35 & HHLDRAGEP < 65 ~ "35-64",
+    HHLDRAGEP >= 65 & HHLDRAGEP < 75 ~ "65-74",
+    HHLDRAGEP >= 75 ~ "75 and over")) %>% 
+  group_by(SERIALNO) %>%  # Group by household
+  summarise(
+    householder_age_range = first(age_range, na.rm = TRUE),  # Get age range of the householder
+    householder_nativity = first(NATIVITY, na.rm = TRUE),    # Get nativity of the householder
+    first_weight = first(WGTP, na.rm = TRUE),                # Get weight for the householder
+    .groups = "drop"
+  ) %>%
+  mutate(householder_nativity = case_when(  # Rename nativity categories
+    householder_nativity == 1 ~ "Native",
+    householder_nativity == 2 ~ "Foreign born",
+    TRUE ~ "Unknown"
+  )) %>%
+  filter(householder_nativity != "Unknown") %>%  # Filter out unknown nativity
+  group_by(householder_age_range, householder_nativity) %>%  # Group by age range and nativity
+  summarise(
+    total_weight = sum(first_weight, na.rm = TRUE),  # Calculate total weight for each age and nativity group
+    .groups = "drop"
+  ) %>%
+  group_by(householder_age_range) %>%  # Group by age range to calculate percentages within each age group
+  mutate(
+    total_weight_by_age_range = sum(total_weight, na.rm = TRUE),  # Total weight by age group
+    percentage_within_age_range = (total_weight / total_weight_by_age_range) * 100  # Calculate percentage within each age group
+  ) %>%
+    mutate (householder_age_range = factor(householder_age_range, levels = c(   # order groups in correct order
+      "5-17",
+      "18-34",
+      "35-64",
+      "65-74",
+      "75 and over"))) %>%
+  arrange(householder_age_range, householder_nativity)  # Sort by age range and nativity
+```
+
+```{r}
+#Export age  tables
+ write.xlsx(list('Age of householders' = householder_age_foreign_born,
+                 'Share of age group by nativity' = household_age_by_nativity), 
            file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/immig_age_of_hhlder.xlsx") 
 ```
+
 
 ```{r}
 #Race of householder 
@@ -321,8 +414,16 @@ householder_hisp_foreign_born <- pums %>%
 ```{r}
 #Export race and ethnicity tables 
  write.xlsx(list('Race of householder by nativity' = householder_race_foreign_born, 
-                 'Ethnicity of householder by nativity' = householder_hisp_foreign_born), 
+                 'Ethnicity of hhldr by nativity' = householder_hisp_foreign_born), 
            file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/immig_race_eth_of_hhlder.xlsx") 
+```
+
+```{r}
+#do race shares in reverse way? % of black householders that are foreign born, etc. 
+
+#do I need to do non-hispanic / hispanic for the race categories - probably 
+
+
 ```
 
 
@@ -347,6 +448,7 @@ household_year_entry_foreign_born <- pums %>%
     householder_nativity = first(NATIVITY, na.rm = TRUE),  # get nativity of first person (householder)
     first_weight = first(WGTP, na.rm = TRUE),  # get the weight for the first person (householder)
     .groups = "drop") %>%
+  filter(householder_nativity == 2) %>% # only including foreign born hhlds 
   group_by(householder_nativity, householder_entry) %>%  # group by nativity and year of entry
   summarise(
     total_weight = sum(first_weight, na.rm = TRUE),  # summarize total weights for each nativity and year of entry
@@ -356,10 +458,7 @@ household_year_entry_foreign_born <- pums %>%
     total_weight_by_nativity = sum(total_weight, na.rm = TRUE),  # calculate the total weight for each nativity group
     percentage_within_nativity = (total_weight / total_weight_by_nativity) * 100  # calculate percentage within each group
   ) %>%
-  mutate(householder_nativity = case_when(  # rename nativity categories
-    householder_nativity == 1 ~ "Native",
-    householder_nativity == 2 ~ "Foreign born",
-    TRUE ~ "Unknown")) %>%
+  mutate(householder_nativity = "Foreign born") %>%
    mutate (householder_entry = factor(householder_entry, levels = c(   # order groups in correct order
       "Before 1934",
       "1934 to 1954",
@@ -436,6 +535,7 @@ median_household_size_by_nativity <- pums %>%
     TRUE ~ "Unknown"))
 ```
 
+The median size for both foreign-born households and native households is 2. 
 
 ```{r}
 #Presence of children in hhld by nativity - presence of children variables, HUPAC, HUPAOC, HUPARC
@@ -473,8 +573,9 @@ household_children_foreign_born <- pums %>%
 
 ```{r}
 #Export hhld size and presence of children tables 
-
-
+write.xlsx(list('Size of household' = household_size_foreign_born,
+                'Presence of children' = household_children_foreign_born), 
+           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/immig_size_children_hhld.xlsx") 
 ```
 
 
@@ -517,7 +618,6 @@ householder_income_foreign_born <- pums %>%
 #Export income table
  write.xlsx(list('Income of householder' = householder_income_foreign_born), 
            file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/immig_income_hhlder.xlsx") 
-
 ```
 
 ```{r}
@@ -559,7 +659,6 @@ householder_tenure_foreign_born <- pums %>%
 #Export tenure table
  write.xlsx(list('Tenure of householder' = householder_tenure_foreign_born), 
            file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/immig_tenure_hhlder.xlsx") 
-
 ```
 
 
@@ -640,7 +739,9 @@ household_owner_burden_foreign_born <- pums %>%
 
 ```{r}
 #Export cost burden tables 
-
+ write.xlsx(list('Renter cost burden' = household_renter_burden_foreign_born,
+                 'Owner cost burden' = household_owner_burden_foreign_born), 
+           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/immig_cost_burden.xlsx") 
 ```
 
 
@@ -655,6 +756,7 @@ household_english_foreign_born <- pums %>%
     householder_nativity = first(NATIVITY, na.rm = TRUE),  # get nativity of first person (householder)
     first_weight = first(WGTP, na.rm = TRUE),  # get the weight for the first person (householder)
     .groups = "drop") %>%
+  filter(householder_nativity == 2) %>% # only including foreign born hhlds 
   group_by(householder_nativity, householder_english) %>%  # group by nativity and tenure
   summarise(
     total_weight = sum(first_weight, na.rm = TRUE),  # summarize total weights for each nativity and tenure
@@ -673,13 +775,89 @@ household_english_foreign_born <- pums %>%
     householder_english == 2 ~ "Well",
     householder_english == 3 ~ "Not well",
     householder_english == 4 ~ "Not at all",
-    TRUE ~ NA_character_)) %>%
+    TRUE ~ "N/A")) %>%
   arrange(householder_nativity, householder_english)
 ```
 
 ```{r}
-#Export English table
+#English spoken at home
+#LANX is language other than english spoken at home
 
+household_language_foreign_born <- pums %>%
+ filter(RT != "H") %>%   # exclude hhlds because nativity is a person-level data point
+ select(uniq_obs, SERIALNO, PUMA, WGTP, NATIVITY, LANX) %>% 
+ group_by(SERIALNO) %>% 
+ summarise(
+    householder_language = first(LANX, na.rm = TRUE),  # get the first person's language
+    householder_nativity = first(NATIVITY, na.rm = TRUE),  # get nativity of first person (householder)
+    first_weight = first(WGTP, na.rm = TRUE),  # get the weight for the first person (householder)
+    .groups = "drop") %>%
+  #filter(householder_nativity == 2) %>%       # if only including foreign born hhlds 
+  group_by(householder_nativity, householder_language) %>%  # group by nativity and lang
+  summarise(
+    total_weight = sum(first_weight, na.rm = TRUE),  # summarize total weights for each nativity and language
+    .groups = "drop") %>%
+  group_by(householder_nativity) %>%  # group by nativity to calculate totals within each group
+  mutate(
+    total_weight_by_nativity = sum(total_weight, na.rm = TRUE),  # calculate the total weight for each nativity group
+    percentage_within_nativity = (total_weight / total_weight_by_nativity) * 100  # calculate percentage within each group
+  ) %>%
+    mutate(householder_nativity = case_when(  # rename nativity categories
+    householder_nativity == 1 ~ "Native",
+    householder_nativity == 2 ~ "Foreign born",
+    TRUE ~ NA_character_)) %>%
+    mutate(householder_language = case_when(                             # rename variables 
+    householder_language == 1 ~ "Yes, speaks another language",
+    householder_language == 2 ~ "No, speaks only English",
+    TRUE ~ NA_character_)) %>%
+  filter(!is.na(householder_language)) %>%
+  arrange(householder_nativity, householder_language)
+
+```
+
+```{r}
+#Limited english speaking hhld
+#LNGI is a hhld variable for limited english speaking household
+
+household_limited_lang_foreign_born <- pums %>%
+ filter(RT != "H") %>%   # exclude hhlds because nativity is a person-level data point
+ select(uniq_obs, SERIALNO, PUMA, WGTP, NATIVITY, LNGI) %>% 
+ group_by(SERIALNO) %>% 
+ summarise(
+    householder_language = first(LNGI, na.rm = TRUE),  # get the first person's language
+    householder_nativity = first(NATIVITY, na.rm = TRUE),  # get nativity of first person (householder)
+    first_weight = first(WGTP, na.rm = TRUE),  # get the weight for the first person (householder)
+    .groups = "drop") %>%
+  filter(householder_nativity == 2) %>%       # if only including foreign born hhlds 
+  group_by(householder_nativity, householder_language) %>%  # group by nativity and lang
+  summarise(
+    total_weight = sum(first_weight, na.rm = TRUE),  # summarize total weights for each nativity and language
+    .groups = "drop") %>%
+  group_by(householder_nativity) %>%  # group by nativity to calculate totals within each group
+  mutate(
+    total_weight_by_nativity = sum(total_weight, na.rm = TRUE),  # calculate the total weight for each nativity group
+    percentage_within_nativity = (total_weight / total_weight_by_nativity) * 100  # calculate percentage within each group
+  ) %>%
+    mutate(householder_nativity = case_when(  # rename nativity categories
+    householder_nativity == 1 ~ "Native",
+    householder_nativity == 2 ~ "Foreign born",
+    TRUE ~ NA_character_)) %>%
+    mutate(householder_language = case_when(                             # rename variables 
+    householder_language == 1 ~ "At least one person speaks English",
+    householder_language == 2 ~ "No one speaks English",
+    TRUE ~ NA_character_)) %>%
+  filter(!is.na(householder_language)) %>%
+  arrange(householder_nativity, householder_language)
+
+```
+
+
+```{r}
+#Export English table
+ write.xlsx(list('English ability' = household_english_foreign_born, 
+                 'Language' = household_language_foreign_born,
+                 'Limited Eng Hhld' = household_limited_lang_foreign_born), 
+           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/immig_english_ability.xlsx") 
 ```
 
 
@@ -722,12 +900,54 @@ household_world_origin_foreign_born <- pums %>%
 
 ```{r}
 #Export place of origin table 
-
+ write.xlsx(list('Place of origin' = household_world_origin_foreign_born), 
+           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/immig_origin.xlsx") 
 ```
 
 ```{r}
 #Educational attainment of adult hhld members - do not have the variable in current pums data pull
 
 
+```
+
+# RPA level
+
+Identify households whose head of household is foreign born in each RPA
+
+```{r}
+#Calculate the total number of households in sample by RPA
+household_data_RPA <- pums_RPA %>%
+  filter(RT == "H") %>%
+  filter(TYPEHUGQ == 1) %>%
+  filter(NP > 0) %>%         # excluding vacant units
+  group_by(rpa_acr) %>%
+  summarise(total_weighted_sum = sum(WGTP)) 
+
+#calculate share of foreign born for each RPA
+household_foreign_born_summary_table_RPA <- pums_RPA %>%
+  filter(RT != "H") %>%   # exclude hhlds because nativity is a person-level data point
+  group_by(SERIALNO, rpa_acr) %>%  # group by household 
+  summarise(first_weight = first(WGTP, na.rm = TRUE), # get the first person's weight for hhld - head of hhld
+    NATIVITY = first(NATIVITY), .groups = "drop") %>%           # get the nativity for the first person                          
+  group_by(NATIVITY, rpa_acr) %>%                                   # group by nativity to calculate total weights for each type
+  summarise(total_by_nativity= sum(first_weight, na.rm = TRUE), # sum the weights by nativity
+    .groups = "drop") %>%                                       
+  mutate(NATIVITY = case_when(                             # rename variables 
+    NATIVITY == 1 ~ "Native",
+    NATIVITY == 2 ~ "Foreign born",
+    TRUE ~ "Unknown")) 
+
+#combine tables  
+RPA_foreign_born_table <- household_foreign_born_summary_table_RPA %>%
+  left_join(household_data_RPA, by = c("rpa_acr")) %>%
+  mutate(percentage = (total_by_nativity / total_weighted_sum) * 100) %>%
+  arrange(rpa_acr)
+
+```
+
+```{r}
+#Export RPA nativity data 
+ write.xlsx(list('RPA nativity' = RPA_foreign_born_table), 
+           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/immig_RPA.xlsx") 
 ```
 

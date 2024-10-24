@@ -59,6 +59,23 @@ calc <- calc %>%  #percent of units for sale or for rent
 
 # 3.1 round the values joined from the input tables
 
+clean_for_export <- calc %>% 
+  mutate(
+    av_rent_mp = round(av_rent_mp,2),
+    av_rent_p = round(av_rent_p,2),
+    av_sale_mp = round(av_sale_mp,2),
+    av_sale_p = round(av_sale_p,2),
+    migrwrk_mp = round(migrwrk_mp,2),
+    migrwrk_p = round(migrwrk_p,2),
+    oth_vac_mp = round(oth_vac_mp,2),
+    oth_vac_p = round(oth_vac_p,2),
+    r_noccu_mp = round(r_noccu_mp,2),
+    r_noccu_p = round(r_noccu_p,2),
+    s_noccu_mp = round(s_noccu_mp,2),
+    s_noccu_p = round(s_noccu_p,2),
+    ssnlrcr_mp = round(ssnlrcr_mp,2),
+    ssnlrcr_p = round(ssnlrcr_p,2)
+    )
 
 ## 3.2  replace NaN values
 is.nan.data.frame <- function(x)

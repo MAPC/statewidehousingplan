@@ -163,6 +163,7 @@ pums_RPA <- left_join(
 #Calculate weighted total of all hhlds in data set 
 household_data <- pums %>%
 filter(RT == "H") %>%
+filter(TYPEHUGQ == 1) %>%
 filter(NP > 0)  # filter out vacant units that have 0 people in it 
 total_weighted_households <- sum(household_data$WGTP, na.rm = TRUE) # sum weights for total household number
 

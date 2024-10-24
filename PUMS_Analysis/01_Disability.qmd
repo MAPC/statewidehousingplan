@@ -620,7 +620,7 @@ total_households_with_disability <- sum(households_with_disability$WGTP, na.rm =
 #Calculate the total number of households in sample 
 household_data <- pums %>%
 filter(RT == "H") %>%
-filter(TYPEHUGQ != 2) %>%
+filter(TYPEHUGQ == 1) %>% 
 filter(NP > 0)  #filter out vacant units so just getting household number
 #add weights
 total_weighted_households <- sum(household_data$WGTP, na.rm = TRUE)
@@ -635,7 +635,7 @@ dis_summary_table_hhld <- data.frame(
   "Total Households" = total_weighted_households)
 ```
 
-22% of households in the state have someone with a disability. This is around 650,000 households.
+24% of households in the state have someone with a disability. This is around 650,000 households.
 
 ```{r}
 #Export disability data 
@@ -843,7 +843,7 @@ household_tenure_disability <- people_with_disability %>%
 ```
 
 ```{r}
-#Age of housing stock for households with disability - YRBLT - note this is the only variable for vacant units, do we want to include vacant units here? This currently includes occupied units because it's based on person level disability data - meaning vacant units do not have any members with a disability because they have 0 members. 
+#Age of housing stock for households with disability - YRBLT - note excluding vacant units from this analysis 
 
 household_age_of_housing_disability <- people_with_disability %>%
   mutate(Housing.Age = case_when(                                     # create age of housing groups 
@@ -870,7 +870,8 @@ household_age_of_housing_disability <- people_with_disability %>%
     
 #Calculate for whole state for comparison in the same housing age groups
 household_age_of_housing_state <- pums %>%
-  mutate(Housing.Age = case_when(                                     # create age of housing groups 
+  filter(NP > 0) %>%                                             # exclude vacant housing units
+  mutate(Housing.Age = case_when(                                # create age of housing groups 
       YRBLT < 1940 ~ "Pre-1940",
       YRBLT >= 1940 & YRBLT <= 1969 ~ "1940 to 1969",
       YRBLT >= 1970 & YRBLT <= 1999 ~ "1970 to 1999",
@@ -1024,8 +1025,8 @@ hhld_owner_cost_burden__dis_summary_table <- rbind(household_cost_burden_owner_d
 #Number of hhlds in each RPA with a person with any disability - non-institutionalized population 
 people_with_disability_by_RPA <- pums_RPA %>%
   group_by(uniq_obs) %>%
-  filter(DIS == 1) %>% #filtering for disability flag, will only include person-level data not hhld data
-  filter(TYPEHUGQ != 2) #filtering out institutional group quarters
+  filter(DIS == 1) %>%     # filtering for disability flag, will only include person-level data not hhld data
+  filter(TYPEHUGQ != 2)    # filtering out institutional group quarters
   
 people_with_disability_by_RPA_summary_table <- people_with_disability_by_RPA %>%
   group_by(rpa_acr) %>%
@@ -1033,8 +1034,8 @@ people_with_disability_by_RPA_summary_table <- people_with_disability_by_RPA %>%
 
 #Calculate the total number of people in sample in each RPA
 person_data_RPA <- pums_RPA %>%
-  filter(RT == "P") %>% #filtering for only people not hhlds 
-  filter(TYPEHUGQ != 2) %>% #filtering out institutional group quarters
+  filter(RT == "P") %>%       # filtering for only people not hhlds 
+  filter(TYPEHUGQ != 2) %>%   # filtering out institutional group quarters
   group_by(rpa_acr) %>%
   summarise(total_weighted_sum = sum(PWGTP)) 
 
@@ -1052,15 +1053,15 @@ RPA_person_dis_table <- RPA_person_dis_table %>%
 #Number of people in each RPA with a person with any disability in institutionalized population
 people_with_disability_by_RPA_GQ <- pums_RPA %>%
   group_by(uniq_obs) %>%
-  filter(DIS == 1) %>% #filtering for disability flag, will only include person-level data not hhld data
-  filter(TYPEHUGQ == 2) %>% #filtering out institutional group quarters
+  filter(DIS == 1) %>%        # filtering for disability flag, will only include person-level data not hhld data
+  filter(TYPEHUGQ == 2) %>%   # filtering for institutional group quarters
   group_by(rpa_acr) %>%
   summarise(dis_weighted_sum = sum(PWGTP)) 
 
 #Calculate the total number of people in sample in each RPA, not in GQ 
 person_data_RPA_GQ <- pums_RPA %>%
-  filter(RT == "P") %>% #filtering for only people not hhlds 
-  filter(TYPEHUGQ == 2) %>% #filtering out institutional group quarters
+  filter(RT == "P") %>%      # filtering for only people not hhlds 
+  filter(TYPEHUGQ == 2) %>%  # filtering for institutional group quarters
   group_by(rpa_acr) %>%
   summarise(total_weighted_sum = sum(PWGTP)) 
 
@@ -1094,7 +1095,8 @@ hhlds_with_disability_by_RPA <- people_with_disability_by_RPA %>%
 #Calculate the total number of households in sample by RPA
 household_data_RPA <- pums_RPA %>%
   filter(RT == "H") %>%
-  filter(TYPEHUGQ != 2) %>%
+  filter(TYPEHUGQ == 1) %>%
+  filter(NP > 0) %>%         # excluding vacant units
   group_by(rpa_acr) %>%
   summarise(total_weighted_sum = sum(WGTP)) 
 
@@ -1122,7 +1124,7 @@ write.xlsx(list('RPA_hhld_dis' = RPA_hhld_dis_table),
 
 #Calculate sum of weights for each age group for people with disability by RPA
 dis_age_group_RPA <- pums_RPA %>%
-  filter(TYPEHUGQ != 2) %>%  #filter out institutionalized population
+  filter(TYPEHUGQ != 2) %>%     # filter out institutionalized population
   select(uniq_obs, PUMA, PWGTP, AGEP, DIS, rpa_acr) %>% 
   mutate(age_range = case_when(
     AGEP >= 0 & AGEP < 5 ~ "Under 5",

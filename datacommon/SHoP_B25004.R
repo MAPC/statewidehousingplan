@@ -46,16 +46,21 @@ calc <- get_b25004 %>%
 
 ## 3.  run calculations (as needed)
 calc <- calc %>%  #percent of vacant units
-  mutate(vac_pct = (vac_tot/hu)*100) %>% 
+  mutate(vac_pct = round((vac_tot/hu)*100),2) %>% 
   mutate(vac_pct_m = round(moe_prop(vac_tot, hu, vac_tot_m, hu_me)*100, 2))
 
 calc <- calc %>%  #percent of units for sale or for rent
-  mutate(avail_pct = ((av_rent+av_sale)/hu)*100) %>% 
+  mutate(avail_pct = round(((av_rent+av_sale)/hu)*100),2) %>% 
   mutate(avail_pct_m = round(moe_prop((av_rent+av_sale), hu, ((av_rent_m + av_sale_m)), hu_me)*100, 2))
 
 # ? how to get moe_prop for sum of columns in previous line?
 
-## 3.1  replace NaN values
+# 3 clean up for export
+
+# 3.1 round the values joined from the input tables
+
+
+## 3.2  replace NaN values
 is.nan.data.frame <- function(x)
   do.call(cbind, lapply(x, is.nan)) #credit Hong Ooi on stack overflow
 
@@ -204,7 +209,7 @@ avail_plot
 
 
 ## 7. EXPORT THE DATA to file for input year
-write.csv(calc, paste0(exp_path, "SHoP_b25004_b25024_vacancy_",input_year,".csv"))
+write.csv(calc, paste0(exp_path, "redo_SHoP_b25004_b25024_vacancy_",input_year,".csv"))
 
 
 

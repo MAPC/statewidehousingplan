@@ -20,7 +20,7 @@ options(scipen = 999)
 
 # set output path
 exp_path = "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS"
-exp_path ="C:/Users/lberman/Downloads"
+exp_path ="K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS/ipums_2021"
 
 # Housing units are uniquely identified by the SERIALNO variable
 # Persons are uniquely identified by the combination of SERIALNO and SPORDER.
@@ -262,7 +262,7 @@ pums_2021_reorder <- pums_2021 [c('uniq_obs',
 
 
 # 8 read csv of hh data downloaded from pums ftp
-hh_pums <- read.csv("C:/Users/lberman/Downloads/csv_hma/psam_h25.csv", header = TRUE, stringsAsFactors = FALSE)
+hh_pums <- read.csv(paste0(exp_path, "/psam_h25.csv"), header = TRUE, stringsAsFactors = FALSE)
 
 # 8.1 add SPORDER column = 0
 hh_pums['SPORDER'] = '0'
@@ -637,7 +637,7 @@ write_csv(unitsbuilt_vars, paste0(exp_path,"/pums_unitsbuilt_variables_2021.csv"
 # 18 SUBSET  IMMIGRANT HOUSEHOLDS (columns from Sheet 1)
 
 pums_immig_hh_2021 <- pums_all_2021 %>% 
-  select(c(uniq_obs,RT, SERIALNO, PUMA, ST, ADJHSG, WGTP, NP, TYPEHUGQ, MV, HHT, HHT2, HUGCL, HUPAC, HUPAOC, HUPARC, MULTG, NPF, NPP, NR, NRC, PARTNER, PSF, R18, PWGTP, AGEP, RELSHIPP, SEX, RAC1P, OC, SFN, SFR, ADJINC, HHLDRAGEP, HHLDRRAC1P, HHLDRHISP, LNGI, ENG, LANX, YOEP, HISP, NATIVITY, POBP, RAC2P, WAOB))
+  select(c(uniq_obs,RT, SERIALNO, PUMA, ST, ADJHSG, WGTP, NP, TYPEHUGQ, MV, HHT, HHT2, HUGCL, HUPAC, HUPAOC, HUPARC, MULTG, NPF, NPP, NR, NRC, PARTNER, PSF, R18, PWGTP, AGEP, RELSHIPP, SEX, RAC1P, OC, SFN, SFR, ADJINC, HHLDRAGEP, HHLDRRAC1P, HHLDRHISP, LNGI, ENG, LANX, YOEP, HISP, NATIVITY, POBP, RAC2P, WAOB, YRBLT, HINCP, TEN, GRPIP, OCPIP))
 
 # 18.1 export VARS for IMMIGRANT HOUSEHOLDS
 immig_hh_list <- c('uniq_obs',
@@ -684,7 +684,12 @@ immig_hh_list <- c('uniq_obs',
                    'NATIVITY',
                    'POBP',
                    'RAC2P',
-                   'WAOB')
+                   'WAOB',
+                   'YRBLT', # added 8 Oct
+                   'HINCP', # added 8 Oct
+                   'TEN', # added 8 Oct
+                   'GRPIP', # added 8 Oct
+                   'OCPIP') # added 8 Oct
 
 # 18.2 export IMMIGRANT HOUSEHOLDS
 write_csv(pums_immig_hh_2021, paste0(exp_path,"/pums_immig_hh_2021_V_",dateAsText,".csv"))
@@ -699,7 +704,7 @@ write_csv(immig_hh_vars, paste0(exp_path,"/pums_immig_hh_variables_2021.csv"))
 # 19 SUBSET PERSONS W DISABILITY HOUSEHOLDS (columns from Sheet 1)
 
 pums_disab_hh_2021 <- pums_all_2021 %>% 
-  select(c(uniq_obs, RT, SERIALNO, PUMA, ST, ADJHSG, WGTP, NP, TYPEHUGQ,NPP, PARTNER, PSF, PWGTP, AGEP, RELSHIPP, SEX, RAC1P, OC, SFN, SFR, ADJINC, HHLDRAGEP, HHLDRRAC1P, HHLDRHISP, HISP, DIS, DDRS, DEAR, DEYE, DOUT, DPHY, DREM))
+  select(c(uniq_obs, RT, SERIALNO, PUMA, ST, ADJHSG, WGTP, NP, TYPEHUGQ, NPP, PARTNER, PSF, PWGTP, AGEP, RELSHIPP, SEX, RAC1P, OC, SFN, SFR, ADJINC, HHLDRAGEP, HHLDRRAC1P, HHLDRHISP, HISP, DIS, DDRS, DEAR, DEYE, DOUT, DPHY, DREM, YRBLT, HINCP, TEN, GRPIP, OCPIP))
 
 # 19.1 export VARS for PERSONS W DISABILITY HOUSEHOLDS
 disab_hh_list <- c('uniq_obs',
@@ -733,7 +738,14 @@ disab_hh_list <- c('uniq_obs',
                    'DOUT', # added 16 Sep
                    'DPHY', # added 16 Sep
                    'DREM', # added 16 Sep  
-                   'DIS')
+                   'DIS', 
+                   'YRBLT', # added 8 Oct
+                   'HINCP', # added 8 Oct
+                   'TEN', # added 8 Oct
+                   'GRPIP', # added 8 Oct
+                   'OCPIP') # added 8 Oct
+
+# 19.1 export VARS for PERSONS W DISABILITY HOUSEHOLDS )
 
 # 19.2 export PERSONS W DISABILITY HOUSEHOLDS
 write_csv(pums_disab_hh_2021, paste0(exp_path,"/pums_disab_hh_2021_V_",dateAsText,".csv"))

@@ -267,7 +267,9 @@ write.csv(
 ```
 
 # 1.0 PUMS Analysis
+
 # 1.1 Overcrowding (PPB) at the State-level and for family households and by number of bedrooms
+
 ```{r}
 #===============================================================================
 # 1.1.1 Overcrowding in general at the State-level
@@ -361,6 +363,7 @@ write.csv(
 ```
 
 # 1.2 Overcrowding (PPB) at the RPA-level and for Family households and by Number of Bedrooms
+
 ```{r}
 #===============================================================================
 # 1.2.1 Overcrowding by RPA
@@ -475,11 +478,9 @@ About 1.8 percent of households across the state are overcrowded, which is class
 
 When looking at the proportion of overcrowded households by RPA clear differences arise across the state. The Berkshires, Cape Code, Martha's Vineyard and Nantucket all have less than one percent of their households be overcrowded. MAPC has the highest percentage of overcrowded households across all RPA regions with 2.1 percent of households being overcrowded. The other RPAs fall closer to the statewide proportion.
 
-
 # 2.0 Subfamilies Analysis
 
-A subfamily is defined as either 1) a married couple without children or a 2) single parent with unmarried children under the age of 18. Does not differentiate between whether members of a subfamily are related to the householder. The "RELSHIP" variable contains information about the relatedness of people in a household to the householder.
-(Source: https://www.census.gov/programs-surveys/cps/technical-documentation/subject-definitions.html#subfamily)
+A subfamily is defined as either 1) a married couple without children or a 2) single parent with unmarried children under the age of 18. Does not differentiate between whether members of a subfamily are related to the householder. The "RELSHIP" variable contains information about the relatedness of people in a household to the householder. (Source: https://www.census.gov/programs-surveys/cps/technical-documentation/subject-definitions.html#subfamily)
 
 # 2.1 Looking at Composition of Subfamilies to determine if they make sense
 
@@ -633,15 +634,9 @@ Presence of a subfamily (see definition) is associated with a greater proportion
 
 # 3.0 Multigenerational Household Analysis
 
-U.S. Census defines "multigenerational" households as those with three or more generations
-present in the household.
+U.S. Census defines "multigenerational" households as those with three or more generations present in the household.
 
-A second definition is more expansive, one which IPUMS has coded into their 
-microdata sample. They record the number of generations present among people in the household
-relative to the householder. A household where the parents of the householder live 
-with them would be a two generation household. One where the grandparents, children, and 
-grandchildren are present would be a four generation household.
-(Source that refers to this definition: https://www2.census.gov/library/publications/2012/acs/acsbr11-03.pdf)
+A second definition is more expansive, one which IPUMS has coded into their microdata sample. They record the number of generations present among people in the household relative to the householder. A household where the parents of the householder live with them would be a two generation household. One where the grandparents, children, and grandchildren are present would be a four generation household. (Source that refers to this definition: https://www2.census.gov/library/publications/2012/acs/acsbr11-03.pdf)
 
 # 3.1 Redefining Multigenerational households
 
@@ -997,6 +992,7 @@ write.csv(
 )
 
 ```
+
 # 4.2 Analysis:
 
 At the state level
@@ -1005,13 +1001,14 @@ Households that are not multigenerational but contain a subfamily have the highe
 
 What is a reasonable rate of overcrowding? And by that I mean - what is the number of households and the percentage of households that are overcrowded that represent a state where the choice to cohabit with other people, despite having less room, more desirable than living separately. Can we parse out who would rather be living separately from other people in their household if they could choose to do so?
 
-Reasonable rate
-Non-multigenerational households without the presence of subfamilies
+Reasonable rate Non-multigenerational households without the presence of subfamilies
 
 From there
 
 # 5.0 Visualizations
+
 # 5.1 Tenure
+
 ```{r}
 #===============================================================================
 # 5.1 Overcrowding by Tenure at the State-Level
@@ -1100,6 +1097,7 @@ OC.TEN.RPA.PPB <- pums |>
 ```
 
 # 5.2 Income Groups
+
 ```{r}
 #===============================================================================
 # 5.2 Overcrowding by Income Groups at the State-Level
@@ -1164,6 +1162,7 @@ ggsave(
 ```
 
 # 5.3 Race Groups
+
 ```{r}
 #===============================================================================
 # 5.3 Overcrowding by Income Groups at the State-Level
@@ -1229,6 +1228,7 @@ ggsave(
 ```
 
 # 5.4 Presence of Non-Relatives in a Household
+
 ```{r}
 #===============================================================================
 # 5.4 Overcrowding by Income Groups at the State-Level
@@ -1296,6 +1296,7 @@ ggsave(
 ```
 
 # 5.5 Ethnicity Group
+
 ```{r}
 #===============================================================================
 # 5.5 Overcrowding by Income Groups at the State-Level

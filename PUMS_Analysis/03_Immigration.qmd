@@ -158,7 +158,7 @@ pums_RPA <- left_join(
 
 ```{r}
 #Number and share of hhlds in the state where the head of household is foreign born
-####Assuming that the first person in each hhld is the head of hhld 
+####Assuming that the first person in each hhld is the head of hhld - can also use SPORDER == 1 to do this
 
 #Calculate weighted total of all hhlds in data set 
 household_data <- pums %>%

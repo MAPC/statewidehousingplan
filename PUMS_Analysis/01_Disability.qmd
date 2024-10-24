@@ -799,6 +799,7 @@ household_income_disability <- people_with_disability %>%
   
 #Household income for all households statewide for comparison in same income groups
 household_income_state <- pums %>%
+  filter(NP > 0) %>%
   group_by(SERIALNO) %>% # group by household 
   summarise(first_weight = first(WGTP, na.rm = TRUE), # get the first person's weight for hhld
     HH.Income.Grp = first(HH.Income.Grp), .groups = "drop") %>%          # get the income for the first person                          
@@ -838,7 +839,32 @@ household_tenure_disability <- people_with_disability %>%
     TEN == 4 ~ "Occupied without payment of rent",
     TRUE ~ NA_character_)) %>%
   filter(!is.na(TEN)) %>%
-  mutate(percentage_of_total = (total_by_tenure / total_households_with_disability) * 100) # Calculate percent out of all disabled hhlds
+  mutate(percentage_of_total = (total_by_tenure / total_households_with_disability) * 100) %>% # Calculate percent of all disabled hhlds
+  mutate(description = "MA households with disability") %>%
+  select(description, everything())                            # move new description column to the front
+  
+#calculate for state for comparison
+household_tenure_state <- pums %>%
+  filter(NP > 0) %>%
+  group_by(SERIALNO) %>% # group by household 
+  summarise(first_weight = first(WGTP, na.rm = TRUE), # get the first person's weight for hhld
+    TEN = first(TEN), .groups = "drop") %>%           # get the tenure for the first person                          
+  group_by(TEN) %>%                                   # group by tenure to calculate total weights for each type
+  summarise(total_by_tenure = sum(first_weight, na.rm = TRUE), # Sum the weights by tenure group
+    .groups = "drop") %>%   
+  mutate(TEN = case_when(                             # rename tenure variables 
+    TEN == 1 ~ "Owned with mortgage",
+    TEN == 2 ~ "Owned without mortgage",
+    TEN == 3 ~ "Rented",
+    TEN == 4 ~ "Occupied without payment of rent",
+    TRUE ~ NA_character_)) %>%
+  filter(!is.na(TEN)) %>%
+  arrange(TEN) %>% 
+  mutate(percentage_of_total = (total_by_tenure / total_weighted_households) * 100) %>%  # Calculate % of all hhlds
+  mutate(description = "All MA households") %>%
+  select(description, everything())                      # move new description column to the front
+
+hhld_tenure_dis_summary_table <- rbind(household_tenure_disability, household_tenure_state)
 
 ```
 
@@ -1006,7 +1032,7 @@ hhld_owner_cost_burden__dis_summary_table <- rbind(household_cost_burden_owner_d
 ```{r}
 #Export other household data 
  write.xlsx(list('Income' = hhld_income_dis_summary_table, 
-                 'Tenure' = household_tenure_disability,
+                 'Tenure' = hhld_tenure_dis_summary_table,
                  'Age of Housing Stock' = hhld_age_housing_summary_table, 
                  'Renter Cost Burden' = hhld_renter_cost_burden__dis_summary_table,
                  'Owner Cost Burden' = hhld_owner_cost_burden__dis_summary_table),

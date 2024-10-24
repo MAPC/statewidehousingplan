@@ -1,3 +1,16 @@
+### SHoP: Update of HMDA mortgage denials for income > 150,000
+
+*script*: SHoP_hmda_processing_muni_150K_m_aggr.R
+
+*code folder*: K:\DataServices\Projects\Current_Projects\Housing\StatewideHousingPlan_SHoP_datacommon\
+
+*import_path* = "K:/DataServices/Datasets/Housing/HMDA/Data/Raw/Tabular/"
+
+*exp_path* = "K:/DataServices/Datasets/Housing/HMDA/Data/Modified/Tabular/[year]"
+
+NOTE: because the script involves join with ACS 5yr data, the latest year available will be latest ACS 5 yr.
+
+
 ### Data loading and cleaning of HMDA files 2007-2017
 
 
@@ -23,12 +36,9 @@ In the original code, the file was imported to df then a function was run to ren
 
 In the revised version of the script, raw data is filtered by year *before* any processing.
 
-
 *project folder*: K:\DataServices\Datasets\Housing\HMDA\Code\datacommon\SHoP_hmda_processing_muni_120pct_aggr_pre2018.R
 
 *output folder*: K:\DataServices\Datasets\Housing\HMDA\Data\Modified\Tabular\2007-2017\redo\
-
-
 
 __2_hmda_geographies__:  this script joins an index of parent and related geographies
 

@@ -1,6 +1,6 @@
-### SHoP: Update of HMDA mortgage denials for income > 150,000
+### SHoP: Update of HMDA mortgage denials for income > 120% HUD Income Limits AMI 
 
-*script*: SHoP_hmda_processing_muni_150K_m_aggr.R
+*script*: SHoP_hmda_processing_muni_120pct_aggr.R
 
 *code folder*: K:\DataServices\Projects\Current_Projects\Housing\StatewideHousingPlan_SHoP_datacommon\
 
@@ -14,10 +14,14 @@ NOTE: because the script involves join with ACS 5yr data, the latest year availa
 ### Data loading and cleaning of HMDA files 2007-2017
 
 
-#### PREVIOUS CODE EXPLAINED BELOW, USE THE NEW VERSION:
+#### PREVIOUS CODE EXPLAINED BELOW, FOR EARLIER YEARS USE THIS NEW VERSION:
 
  __SHoP_hmda_processing_muni_120pct_aggr_pre2018.R__ 
 
+
+---
+
+__deprecated code explanation below__
 
 ##### original code for 2007-17 is in this folder: 
 

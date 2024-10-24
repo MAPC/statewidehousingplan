@@ -46,11 +46,11 @@ calc <- get_b25004 %>%
 
 ## 3.  run calculations (as needed)
 calc <- calc %>%  #percent of vacant units
-  mutate(vac_pct = round((vac_tot/hu)*100),2) %>% 
-  mutate(vac_pct_m = round(moe_prop(vac_tot, hu, vac_tot_m, hu_me)*100, 2))
+  mutate(vac_pct = (vac_tot/hu)*100) %>% 
+  mutate(vac_pct_m = moe_prop(vac_tot, hu, vac_tot_m, hu_me)*100)
 
 calc <- calc %>%  #percent of units for sale or for rent
-  mutate(avail_pct = round(((av_rent+av_sale)/hu)*100),2) %>% 
+  mutate(avail_pct = ((av_rent+av_sale)/hu)*100) %>% 
   mutate(avail_pct_m = round(moe_prop((av_rent+av_sale), hu, ((av_rent_m + av_sale_m)), hu_me)*100, 2))
 
 # ? how to get moe_prop for sum of columns in previous line?
@@ -61,6 +61,10 @@ calc <- calc %>%  #percent of units for sale or for rent
 
 clean_for_export <- calc %>% 
   mutate(
+    vac_pct = round(vac_pct,2),
+    vac_pct_m = round(vac_pct_m,2),
+    avail_pct = round(avail_pct,2),
+    avail_pct_m = round(avail_pct_m,2),
     av_rent_mp = round(av_rent_mp,2),
     av_rent_p = round(av_rent_p,2),
     av_sale_mp = round(av_sale_mp,2),
@@ -81,7 +85,14 @@ clean_for_export <- calc %>%
 is.nan.data.frame <- function(x)
   do.call(cbind, lapply(x, is.nan)) #credit Hong Ooi on stack overflow
 
-calc[is.nan(calc)] <- 0   #or whatever replacement value
+clean_for_export[is.nan(clean_for_export)] <- 0   #or whatever replacement value
+
+
+## 3.3 EXPORT THE DATA to file for input year
+write.csv(clean_for_export, paste0(exp_path, "redo_SHoP_b25004_b25024_vacancy_",input_year,".csv"))
+
+
+##### PLOT EXAMPLE FOLLOWS
 
 ### 4. get spatial data for join (if needed)
 
@@ -100,7 +111,7 @@ st_crs(geo_shp)
 # 5.  join b25004 table df to shp
 shp_join <- geo_shp %>%
   left_join(.,
-            calc %>% select(-c(seq_id,municipal)),
+            clean_for_export %>% select(-c(seq_id,municipal)),
             by = c('muni_id' = 'muni_id')) %>% 
   arrange(muni_id) 
 
@@ -223,10 +234,6 @@ avail_plot <- ggplot(shp_join) +
   )
 
 avail_plot
-
-
-## 7. EXPORT THE DATA to file for input year
-write.csv(calc, paste0(exp_path, "redo_SHoP_b25004_b25024_vacancy_",input_year,".csv"))
 
 
 

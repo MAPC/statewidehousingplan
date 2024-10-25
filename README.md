@@ -3,7 +3,6 @@ Project Repo for Statewide Housing Plan 2024 analysis for EOHLC
 
 ## 1. PUMS Analysis
 
-
 ## 2. DataCommon 
 Scipts which pull data from MAPC's DataCommon to supplement the Statewide Housing Plan.
 

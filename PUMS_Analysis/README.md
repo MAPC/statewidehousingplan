@@ -59,3 +59,23 @@ https://data.census.gov/mdat/#/search?ds=ACSPUMS5Y2009
 
 *Type:* Estimate or Recodes
 
+
+### PUMS Analyses
+
+## 0.8 Assigning Community Types to PUMAs
+
+# Method for Assigning MAPC Community Type Designations to 2010 PUMAs
+ 
+Each municipality has a community type assigned to it.
+Each municipality has a total population.
+Each municipality is a 2D polygon for which an area can be calculated.
+
+PUMAs are U.S. Census geographies created for PUMS data to prevent re-identification of households or people.
+Each PUMA is a 2D polygon for which an area can be calculated.
+
+Each municipality intersects a PUMA geography. 
+
+Assigning Community Type by Population.
+
+For example, let it be that there is a PUMA of 100 people. Let it be that three (3) municipalities intersect said PUMA. Each municipality has a community type assigned to it. The population composition of the PUMA is as such: municipality 1 (M1), 50 people.; municipality 2 (M2), 30 people.; municipality 3 (M3) 20 people.. Group the total population by the community type of the intersecting municipalities. M1 is assigned "Rural", M2 is assigned "Rural", M3 is assigned "Developing Suburb." The PUMA is composed of two distinct community types: "Rural" and "Developing Suburb." The population of the community types which the PUMA is composed of are as such: "Rural", 80; "Developing Suburb", 20. The community type to which the PUMA belongs is the one which is assigned to the greatest combined municipal population. In this case, the PUMA will be assigned the "Rural" community types since 80 out of 100 people belong to municipalities which intersect the PUMA with the "Rural" community type designation. 
+

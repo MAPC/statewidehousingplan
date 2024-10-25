@@ -197,7 +197,7 @@ subset.1 <- pums_data |>
    hhds = sum(WGTP)   
   ) |> 
   ungroup() |>
-  # FIlter for the first subset of households described above.
+  # Filter for the first subset of households described above.
   filter(subset.flag.1 == 1) |> 
   mutate(
     new.hhds = case_when(
@@ -255,10 +255,16 @@ pums_data.adj <- pums_data |>
     SERIALNO.adj = case_when(
       # First Subset
       SFN == 0 & subset.flag.1 == 1 ~ paste0(SERIALNO,".1.og"),
-      SFN > 0 & subset.flag.1 == 1 ~ paste0(SERIALNO,".1.adj"),
+      SFN == 1 & subset.flag.1 == 1 ~ paste0(SERIALNO,".1.sf1.adj"),
+      SFN == 2 & subset.flag.1 == 1 ~ paste0(SERIALNO,".1.sf2.adj"),
+      SFN == 3 & subset.flag.1 == 1 ~ paste0(SERIALNO,".1.sf3.adj"),
+      SFN >= 4 & subset.flag.1 == 1 ~ paste0(SERIALNO,".1.sf4.adj"),
       # Second Subset
       SFN == 0 & subset.flag.2 == 1 ~ paste0(SERIALNO, ".2.og"),
-      SFN > 0 & subset.flag.2 == 1 ~ paste0(SERIALNO, ".2.adj"),
+      SFN == 1 & subset.flag.2 == 1 ~ paste0(SERIALNO,".1.sf1.adj"),
+      SFN == 2 & subset.flag.2 == 1 ~ paste0(SERIALNO,".1.sf2.adj"),
+      SFN == 3 & subset.flag.2 == 1 ~ paste0(SERIALNO,".1.sf3.adj"),
+      SFN >= 4 & subset.flag.2 == 1 ~ paste0(SERIALNO,".1.sf4.adj"),
       # Default to original SERIALNO for all other households.
       .default = SERIALNO
     ),
@@ -407,21 +413,32 @@ test <- pums_data.adj |>
 ```{r}
 #===============================================================================
 # 
-subset.1.test <- pums_data.adj |> 
+
+subset.1.og.test <- pums_data.adj |> 
+  filter(SPORDER.adj == 1 & TYPEHUGQ == 1 & subset.flag.1 == 1 & adj.flag == 0)
+
+print(sum(subset.1.og.test$WGTP))
+
+subset.1.adj.test <- pums_data.adj |> 
   filter(SPORDER.adj == 1 & TYPEHUGQ == 1 & subset.flag.1 == 1 & adj.flag == 1)
 
-print(sum(subset.1.test$WGTP))
+print(sum(subset.1.adj.test$WGTP))
 
 #===============================================================================
 #
-subset.2.test <- pums_data.adj |> 
+subset.2.og.test <- pums_data.adj |> 
+  filter(SPORDER.adj == 1 & TYPEHUGQ == 1 & subset.flag.2 == 1 & adj.flag == 0)
+
+print(sum(subset.2.og.test$WGTP))
+
+subset.2.adj.test <- pums_data.adj |> 
   filter(SPORDER.adj == 1 & TYPEHUGQ == 1 & subset.flag.2 == 1 & adj.flag == 2)
 
-print(sum(subset.2.test$WGTP))
+print(sum(subset.2.adj.test$WGTP))
 
-print(sum(sum(subset.1.test$WGTP), sum(subset.2.test$WGTP)))
+print(sum(sum(subset.1.adj.test$WGTP), sum(subset.2.adj.test$WGTP)))
 
-if(sum(sum(subset.1$new.hhds), sum(subset.2$new.hhds)) != sum(sum(subset.1.test$WGTP), sum(subset.2.test$WGTP))){
+if(sum(sum(subset.1$new.hhds), sum(subset.2$new.hhds)) != sum(sum(subset.1.adj.test$WGTP), sum(subset.2.adj.test$WGTP))){
   print("STOP! The number of households identified in the earlier code should match what is produced after splitting households!")
 } else{
   print("Proceed!")

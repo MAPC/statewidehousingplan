@@ -30,14 +30,7 @@ shp_path = "K:/DataServices/Projects/Current_Projects/Projections/Projections_20
 ct_keys <- mapcdatakeys::community_type
 
 
-# 2 load pop data
-
-muni_pop <- read.csv(paste0("https://datacommon.mapc.org/csv?table=tabular.demo_general_demographics_m&database=ds&years=2010&year_col=acs_year")) %>% 
-  select(c(muni_id,pop,hh))
-
-
-# pums_inter <- read.csv("K:DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/pums_muni_inter.csv") %>% 
-#   select(c(TOWN_ID,TOWN,POP2010,SUM_ACRES,PUMACE10),everything())
+# 2  prepare spatial data for intersection
 
 # 2.1 read shp from K drive
 
@@ -71,15 +64,6 @@ st_crs(muni_xy_sf) <- 4326
 muni_xy_sf <- muni_xy_sf %>% 
   st_transform(26986) 
   
-
-# puma_20 <- read_sf("H:/0_PROJECTS/2024_puma_comm_type/ipums_puma_2020/ipums_puma_2020.shp") 
-# puma_20_ma <- puma_20 %>% 
-#   filter(STATEFIP == "25")
-# st_crs(puma_20_ma)
-# puma_20_ma <- puma_20_ma %>%
-#   st_transform(26986)
-# st_crs(puma_20_ma)
-
 
 # 3. run intersection
 

@@ -371,3 +371,77 @@ slice_bind <- rbind(slice_00100, slice_00200, slice_00300, slice_00301, slice_00
 
 # 9 export uniq to concat the slice commands
 write.csv(slice_bind,"H:/0_PROJECTS/2024_puma_comm_type/ipums_puma_2020/puma_cmtyp08_xwalk_by_type_count.csv")
+
+
+# 10 test map
+
+class(slice_bind)
+puma_map <- puma_10_shp %>%
+  left_join(.,
+            slice_bind %>% select(-c(PUMACE10,cmtyp08,cmtyp08_id),everything()),
+            by = c('PUMACE10' = 'PUMACE10')) %>% 
+  arrange(PUMACE10) 
+class(puma_map)
+st_crs(puma_map)
+
+puma_centroid <- puma_map %>% 
+  st_transform(4326) %>% 
+  mutate(centroids = st_centroid(st_geometry(.)))
+
+puma_xy <- puma_centroid %>%
+  mutate(long = unlist(map(puma_centroid$centroids,1)),
+         lat = unlist(map(puma_centroid$centroids,2)))
+
+map_title = paste0("puma by type")
+
+puma_plot <- ggplot(puma_xy) +
+  geom_sf(aes(fill = cmtyp08), linewidth = 0, alpha = 0.9) +
+  theme_void() +
+  scale_colour_viridis_d(
+    #    trans = "log", breaks = c(1, 5, 10, 20, 50, 100),
+    name = "pct",
+    guide = guide_legend(
+      keyheight = unit(3, units = "mm"),
+      keywidth = unit(12, units = "mm"),
+      label.position = "bottom",
+      title.position = "top",
+      nrow = 1
+    )
+  ) +
+  labs(
+    title = map_title,
+    subtitle = "chloropleth of community types",
+    caption = "Data: highest count of type for each PUMA"
+  ) +
+  theme(
+    text = element_text(color = "#22211d"),
+    plot.background = element_rect(fill = "#f5f5f2", color = NA),
+    panel.background = element_rect(fill = "#f5f5f2", color = NA),
+    legend.background = element_rect(fill = "#f5f5f2", color = NA),
+    plot.title = element_text(
+      size = 20, hjust = 0.01, color = "#4e4d47",
+      margin = margin(
+        b = -0.1, t = 0.4, l = 2,
+        unit = "cm"
+      )
+    ),
+    plot.subtitle = element_text(
+      size = 15, hjust = 0.01,
+      color = "#4e4d47",
+      margin = margin(
+        b = -0.1, t = 0.43, l = 2,
+        unit = "cm"
+      )
+    ),
+    plot.caption = element_text(
+      size = 10,
+      color = "#4e4d47",
+      margin = margin(
+        b = 0.3, r = -99, t = 0.3,
+        unit = "cm"
+      )
+    ),
+    legend.position = c(0.1, 0.09)
+  )
+
+puma_plot

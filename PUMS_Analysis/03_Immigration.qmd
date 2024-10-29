@@ -927,7 +927,7 @@ household_world_origin_foreign_born <- pums %>%
 #Educational attainment for  head of household - SCHL variable
 householder_edu_foreign_born <- pums %>%
  filter(RT != "H") %>%    # exclude hhlds 
- filter(AGEP >= 18) %>%  # only adults
+ filter(AGEP >= 25) %>%   # only adults 25+
  mutate(EDU = case_when(      # create edu groups
       as.numeric(SCHL) >= 1 & as.numeric(SCHL) <= 15 ~ "Less than high school diploma",
       as.numeric(SCHL) >= 16 & as.numeric(SCHL) <= 17 ~ "High school diploma or equivalent",
@@ -963,15 +963,14 @@ householder_edu_foreign_born <- pums %>%
      "Bachelor's degree",
      "Graduate, professional, or doctorate degree"))) %>%
    arrange(householder_nativity, householder_edu)
-
 ```
 
 ```{r}
-#Educational attainment of all adult hhld members - not  just head of household
+#Edu attainment for all household members 
 household_member_edu_foreign_born <- pums %>%
- filter(RT != "H") %>%    # exclude households
- filter(AGEP >= 18) %>%   # only adults
- mutate(EDU = case_when(      # create edu groups
+ filter(RT != "H") %>%      # exclude households
+ filter(AGEP >= 25) %>%     # only population 25 and over
+ mutate(EDU = case_when(    # create edu groups
       as.numeric(SCHL) >= 1 & as.numeric(SCHL) <= 15 ~ "Less than high school diploma",
       as.numeric(SCHL) >= 16 & as.numeric(SCHL) <= 17 ~ "High school diploma or equivalent",
       as.numeric(SCHL) >= 18 & as.numeric(SCHL) <= 19 ~ "Some college",
@@ -997,10 +996,22 @@ household_member_edu_foreign_born <- pums %>%
     NATIVITY == 1 ~ "Native",
     NATIVITY == 2 ~ "Foreign born",
     TRUE ~ "Unknown")) %>%
+     mutate (EDU = factor(EDU, levels = c(   # order groups in correct order
+     "Less than high school diploma",
+     "High school diploma or equivalent",
+     "Some college",
+     "Associate degree",
+     "Bachelor's degree",
+     "Graduate, professional, or doctorate degree"))) %>%
  arrange(NATIVITY, EDU)
-
 ```
 
+```{r}
+#Export education tables
+write.xlsx(list('Householder edu attainment' = householder_edu_foreign_born, 
+                'Household member edu' = household_member_edu_foreign_born), 
+           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/immig_edu.xlsx") 
+```
 
 # RPA level
 
@@ -1024,7 +1035,7 @@ household_foreign_born_summary_table_RPA <- pums_RPA %>%
   group_by(NATIVITY, rpa_acr) %>%                               # group by nativity to calculate total weights for each type
   summarise(total_by_nativity= sum(first_weight, na.rm = TRUE), # sum the weights by nativity
     .groups = "drop") %>%                                       
-  mutate(NATIVITY = case_when(                             # rename variables 
+  mutate(NATIVITY = case_when(                                  # rename variables 
     NATIVITY == 1 ~ "Native",
     NATIVITY == 2 ~ "Foreign born",
     TRUE ~ "Unknown")) 
@@ -1041,5 +1052,97 @@ RPA_foreign_born_table <- household_foreign_born_summary_table_RPA %>%
 #Export RPA nativity data 
  write.xlsx(list('RPA nativity' = RPA_foreign_born_table), 
            file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/immig_RPA.xlsx") 
+```
+
+#Sub group analysis of hhld where the head of hhld is recent immigrant, e.g. year of entry 2014 or more recent. 
+```{r}
+#Cost burden for recent immigrants - head of hhld 
+#Cost burden - renter and owner cost burden - GRPIP OCPIP
+
+#Renter cost burden 
+household_renter_burden_recent_immig <- pums %>%
+ filter(RT != "H") %>%                # exclude households 
+ filter(TEN == 3) %>%                 # filter for just renters
+ mutate(Cost.Burden = case_when(      # create cost burden groups 
+      GRPIP <= 30 ~ "No cost burden",
+      GRPIP > 30 & GRPIP <= 50 ~ "Cost burden",
+      GRPIP > 50 ~ "Severe cost burden",
+      TRUE ~ "0")) %>%
+ mutate(Year.Entry = case_when(      # create year of entry groups
+      YOEP < 1934 ~ "Before 1934",
+      YOEP >= 1934 & YOEP <= 2013 ~ "1934 to 2013",
+      YOEP >= 2014 & YOEP <= 2024 ~ "2014 to 2024",
+      TRUE ~ "0")) %>%
+ select(uniq_obs, SERIALNO, WGTP, NATIVITY, Cost.Burden, Year.Entry) %>%
+ group_by(SERIALNO) %>%
+ summarise(
+    householder_renter_burden = first(Cost.Burden, na.rm = TRUE),  # get the first person's cost burden
+    householder_nativity = first(NATIVITY, na.rm = TRUE),  # get nativity of first person (householder)
+    first_weight = first(WGTP, na.rm = TRUE),  # get the weight for the first person (householder)
+    year_entry = first(Year.Entry, na.rm = TRUE),  # get the year entry for the first person (householder)
+    .groups = "drop") %>%
+ filter(householder_nativity == 2) %>%  # filter for foreign-born householders only
+ group_by(householder_nativity, year_entry, householder_renter_burden) %>%  # group by nativity, year entry, and cost burden
+ summarise(
+    total_weight = sum(first_weight, na.rm = TRUE),  # summarize total weights for each nativity, year entry, and cost burden
+    .groups = "drop") %>%
+ group_by(householder_nativity, year_entry) %>%  # group by nativity and year entry to calculate totals within each group
+ mutate(
+    total_weight_by_nativity = sum(total_weight, na.rm = TRUE),  # calculate the total weight for each nativity group
+    percentage_within_nativity = (total_weight / total_weight_by_nativity) * 100  # calculate percentage within each group
+ ) %>%
+ mutate(householder_nativity = case_when(  # rename nativity categories
+    householder_nativity == 1 ~ "Native",
+    householder_nativity == 2 ~ "Foreign born",
+    TRUE ~ "Unknown")) %>%
+ mutate(householder_renter_burden = factor(householder_renter_burden, levels = c(        # order groups in correct order
+    "No cost burden", 
+    "Cost burden", 
+    "Severe cost burden"))) %>%
+ arrange(householder_nativity, year_entry, householder_renter_burden)
+
+
+#Owner cost burden 
+household_owner_burden_recent_immig <- pums %>%
+ filter(RT != "H") %>%   # exclude hhlds
+ filter(TEN == 1 | TEN == 2) %>%                 # filter for just owners
+ mutate(Cost.Burden = case_when(                 # create cost burden groups 
+      OCPIP <= 30 ~ "No cost burden",
+      OCPIP > 30 & OCPIP <= 50 ~ "Cost burden",
+      OCPIP > 50 ~ "Severe cost burden",
+      TRUE ~ "0")) %>% 
+ mutate(Year.Entry = case_when(      # create year of entry groups
+      YOEP < 1934 ~ "Before 1934",
+      YOEP >= 1934 & YOEP <= 2013 ~ "1934 to 2013",
+      YOEP >= 2014 & YOEP <= 2024 ~ "2014 to 2024",
+      TRUE ~ "0")) %>%
+ select(uniq_obs, SERIALNO, WGTP, NATIVITY, Cost.Burden, Year.Entry) %>%
+ group_by(SERIALNO) %>%
+ summarise(
+    householder_owner_burden = first(Cost.Burden, na.rm = TRUE),  # get the first person's cost burden
+    householder_nativity = first(NATIVITY, na.rm = TRUE),  # get nativity of first person (householder)
+    first_weight = first(WGTP, na.rm = TRUE),  # get the weight for the first person (householder)
+    year_entry = first(Year.Entry, na.rm = TRUE),  # get the year entry for the first person (householder)
+    .groups = "drop") %>%
+ filter(householder_nativity == 2) %>%  # filter for foreign-born householders only
+ group_by(householder_nativity, year_entry, householder_owner_burden) %>%  # group by nativity, year entry, and cost burden
+ summarise(
+    total_weight = sum(first_weight, na.rm = TRUE),  # summarize total weights for each nativity, year entry, and cost burden
+    .groups = "drop") %>%
+ group_by(householder_nativity, year_entry) %>%  # group by nativity and year entry to calculate totals within each group
+ mutate(
+    total_weight_by_nativity = sum(total_weight, na.rm = TRUE),  # calculate the total weight for each nativity group
+    percentage_within_nativity = (total_weight / total_weight_by_nativity) * 100  # calculate percentage within each group
+ ) %>%
+ mutate(householder_nativity = case_when(  # rename nativity categories
+    householder_nativity == 1 ~ "Native",
+    householder_nativity == 2 ~ "Foreign born",
+    TRUE ~ "Unknown")) %>%
+ mutate(householder_renter_burden = factor(householder_owner_burden, levels = c(        # order groups in correct order
+    "No cost burden", 
+    "Cost burden", 
+    "Severe cost burden"))) %>%
+ arrange(householder_nativity, year_entry, householder_owner_burden)
+
 ```
 

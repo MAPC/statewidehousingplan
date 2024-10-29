@@ -88,14 +88,11 @@ cpi.deflator <- cpi.2013 / cpi.present
 
 #Query {tidycensus} for 2017-2021 5-Year PUMS data
 pums_data <- pums_query(var.list = variable_list, yr = vintage, srvy = "acs5") |>
-  # Join the PUMA to RPA ceosswalk to the PUMS data
-  left_join(
-    xw,
-    by = c('PUMA')
-  ) |> 
   # General Data Cleaning
-  # Create a household flag for whether there is a child in a household.
   mutate(
+    # Generate five-year age groupings to match UMDI population projections data.
+    ageCAT6 = cut(AGEP, breaks = c(-Inf, seq(4, 84, 5), Inf), labels = 1:18),
+    # Create a household flag for whether there is a child in a household.
     child = case_when(
       AGEP < 18 ~ 1,
       AGEP >= 18 ~ 0,
@@ -171,13 +168,6 @@ pums_data <- pums_query(var.list = variable_list, yr = vintage, srvy = "acs5") |
       .default = 0
     )
   )
-
-#Check to make sure all RPAs have been included in the PUMA-RPA Crosswalk.
-if (length(unique(pums_data$rpa_acr)) != 13){
-  print("STOP! Check the PUMA - RPA Crosswalk for MVC and NPEDC.")
-} else{
-  print("Proceed!")
-}
 
 ```
 
@@ -330,8 +320,6 @@ pums_data.adj <- pums_data.adj |>
 ```{r}
 pums_data.adj <- pums_data.adj |> 
   mutate(
-    # Generate five-year age groupings to match UMDI population projections data.
-    ageCAT6 = cut(AGEP, breaks = c(-Inf, seq(4, 84, 5), Inf), labels = 1:18),
     # Counts as Worker
     # NOTE: Categories are (0) under 16 or not in labor force, or (1) in labor force or non-civilian worker
     worker = case_when(
@@ -409,35 +397,38 @@ test <- pums_data.adj |>
 # 4. 
 ```
 
-# 3.3 QA/QC - Check Split Households are Equal to The Number of Households We Expect to Be Split
+# 3.4 QA/QC - Check Split Households are Equal to The Number of Households We Expect to Be Split
 ```{r}
 #===============================================================================
-# 
-
+# Analyze Subset #1
+# Filter for the subset of non-subfamily members from the split household (the "original" household).
 subset.1.og.test <- pums_data.adj |> 
   filter(SPORDER.adj == 1 & TYPEHUGQ == 1 & subset.flag.1 == 1 & adj.flag == 0)
 
-print(sum(subset.1.og.test$WGTP))
-
+# Filter for the subset of subfamily members from the split household (the "original" household).
 subset.1.adj.test <- pums_data.adj |> 
   filter(SPORDER.adj == 1 & TYPEHUGQ == 1 & subset.flag.1 == 1 & adj.flag == 1)
 
+# Print the number of household created by the household split code for Subset #1.
 print(sum(subset.1.adj.test$WGTP))
 
 #===============================================================================
-#
+# Analyze Subset #2
+# Filter for the subset of non-subfamily members from the split household (the "original" household).
 subset.2.og.test <- pums_data.adj |> 
   filter(SPORDER.adj == 1 & TYPEHUGQ == 1 & subset.flag.2 == 1 & adj.flag == 0)
 
-print(sum(subset.2.og.test$WGTP))
-
+# Filter for the subset of subfamily members from the split household (the "original" household).
 subset.2.adj.test <- pums_data.adj |> 
   filter(SPORDER.adj == 1 & TYPEHUGQ == 1 & subset.flag.2 == 1 & adj.flag == 2)
 
+# Print the number of households created by the household split code for Subset #2.
 print(sum(subset.2.adj.test$WGTP))
 
+# Print the sum of households created by the household split code for both subsets #1 and #2.
 print(sum(sum(subset.1.adj.test$WGTP), sum(subset.2.adj.test$WGTP)))
 
+# Compare the total number of households in subsets #1 and #2 to the number of households created by the household split. If they are not equivalent, a warning message will be printed. If they are, an affirmative will be printed.
 if(sum(sum(subset.1$new.hhds), sum(subset.2$new.hhds)) != sum(sum(subset.1.adj.test$WGTP), sum(subset.2.adj.test$WGTP))){
   print("STOP! The number of households identified in the earlier code should match what is produced after splitting households!")
 } else{
@@ -446,20 +437,25 @@ if(sum(sum(subset.1$new.hhds), sum(subset.2$new.hhds)) != sum(sum(subset.1.adj.t
 
 ```
 
-# 4.0 Calculate Headship Rates
+# 4.0 Calculate Headship Rates for Split Households PUMS
 ```{r}
-#Generating headship rates by RPA and 5-year age group for the ACS 2017-2022 PUMS
-headship_rates <- pums_data.adj |> 
-  #Inclues only observations for people in households (omits GQ)                       
+# Generating headship rates by RPA and 5-year age group for the ACS 2017-2022 PUMS
+headship_rates.split <- pums_data.adj |> 
+  # Join the PUMA to RPA ceosswalk to the PUMS data
+  left_join(
+    xw,
+    by = c('PUMA')
+  ) |>
+  # Includes only observations for people in households (omits GQ)                       
   filter(TYPEHUGQ == "1") |> 
-  #Groups by variables in the dataframe necessary to getting the granularity of
-  #data we're interested in.
+  # Groups by variables in the dataframe necessary to getting the granularity of
+  # data we're interested in.
   group_by(rpa_acr, ageCAT6) |> 
-  #Computes the weighted sum of individuals in each HH type category by the groups
-  #assigned above.
+  # Computes the weighted sum of individuals in each HH type category by the groups
+  # assigned above.
   count(var = HHtype, wt = WGTP) |>
-  #Recodes factor variables as the categories they represent.
-  #Converts numbers into frequencies.                       
+  # Recodes factor variables as the categories they represent.
+  # Converts numbers into frequencies.                       
   mutate(
     var = case_when(
       var == 1 ~ "hhderchild",
@@ -468,14 +464,14 @@ headship_rates <- pums_data.adj |>
       var == 4 ~ "nothhdernochild",
       var == 5 ~ "single"),
     freq = (n/sum(n))) |> 
-  #Removes the level of aggregation set earlier by group_by()
+  # Removes the level of aggregation set earlier by group_by()
   ungroup() |> 
   select(
     -c(n)
   )
 
-#QC Check - determine if the frequencies in each RP, Age Group crosstab add to 1
-hr_check <- headship_rates |> 
+# QC Check - determine if the frequencies in each RP, Age Group crosstab add to 1
+hr_check <- headship_rates.split |> 
   group_by(
     rpa_acr,
     ageCAT6
@@ -499,9 +495,69 @@ rm(hr_check)
 
 ```
 
-# 5.0 Compare Split Household Headship Rates to Current PUMS Vintage Headships Rates
+# 5.0 Calculate Headship Rates for 2017-2021 5-Year ACS Vintage + Compare Split Household Headship Rates to Current PUMS Vintage Headships Rates
 ```{r}
+# Generating headship rates by RPA and 5-year age group for the ACS 2017-2022 PUMS
+headship_rates <- pums_data |> 
+  # Join the PUMA to RPA ceosswalk to the PUMS data
+  left_join(
+    xw,
+    by = c('PUMA')
+  ) |>
+  # Includes only observations for people in households (omits GQ)                       
+  filter(TYPEHUGQ == "1") |> 
+  # Groups by variables in the dataframe necessary to getting the granularity of
+  # data we're interested in.
+  group_by(rpa_acr, ageCAT6) |> 
+  # Computes the weighted sum of individuals in each HH type category by the groups
+  # assigned above.
+  count(var = HHtype, wt = WGTP) |>
+  # Recodes factor variables as the categories they represent.
+  # Converts numbers into frequencies.                       
+  mutate(
+    var = case_when(
+      var == 1 ~ "hhderchild",
+      var == 2 ~ "nothhderchild",
+      var == 3 ~ "hhdernochild",
+      var == 4 ~ "nothhdernochild",
+      var == 5 ~ "single"),
+    freq = (n/sum(n))) |> 
+  # Removes the level of aggregation set earlier by group_by()
+  ungroup() |> 
+  select(
+    -c(n)
+  )
 
+# QC Check - determine if the frequencies in each RP, Age Group crosstab add to 1
+hr_check <- headship_rates |> 
+  group_by(
+    rpa_acr,
+    ageCAT6
+  ) |> 
+  summarise(
+    freq_check = sum(freq)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    flag = ifelse(freq_check != 1, 1, 0)
+  )
+
+if (sum(hr_check$flag) > 0){
+  print("STOP! Check headship rate calculations!")
+} else{
+  print("Proceed!")
+}
+
+#Remove QC check dataframe
+rm(hr_check)
+
+
+```
+
+# 6.0 Compare Headship Rates to 
+```{r}
+# Load in spreadsheet with all previously calculated headship rates.
+hdsp.r <- read.csv(paste0(rwt_path,"Headship_rates/headship_rate_comparison.csv"))
 
 ```
 

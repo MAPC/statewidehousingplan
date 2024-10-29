@@ -89,10 +89,10 @@ cpi.deflator <- cpi.2013 / cpi.present
 #Query {tidycensus} for 2017-2021 5-Year PUMS data
 pums_data <- pums_query(var.list = variable_list, yr = vintage, srvy = "acs5") |>
   # Join the PUMA to RPA ceosswalk to the PUMS data
-  left_join(
-    xw,
-    by = c('PUMA')
-  ) |> 
+  # left_join(
+  #   xw,
+  #   by = c('PUMA')
+  # ) |> 
   # General Data Cleaning
   # Create a household flag for whether there is a child in a household.
   mutate(
@@ -171,13 +171,6 @@ pums_data <- pums_query(var.list = variable_list, yr = vintage, srvy = "acs5") |
       .default = 0
     )
   )
-
-#Check to make sure all RPAs have been included in the PUMA-RPA Crosswalk.
-if (length(unique(pums_data$rpa_acr)) != 13){
-  print("STOP! Check the PUMA - RPA Crosswalk for MVC and NPEDC.")
-} else{
-  print("Proceed!")
-}
 
 ```
 
@@ -412,32 +405,35 @@ test <- pums_data.adj |>
 # 3.3 QA/QC - Check Split Households are Equal to The Number of Households We Expect to Be Split
 ```{r}
 #===============================================================================
-# 
-
+# Analyze Subset #1
+# Filter for the subset of non-subfamily members from the split household (the "original" household).
 subset.1.og.test <- pums_data.adj |> 
   filter(SPORDER.adj == 1 & TYPEHUGQ == 1 & subset.flag.1 == 1 & adj.flag == 0)
 
-print(sum(subset.1.og.test$WGTP))
-
+# Filter for the subset of subfamily members from the split household (the "original" household).
 subset.1.adj.test <- pums_data.adj |> 
   filter(SPORDER.adj == 1 & TYPEHUGQ == 1 & subset.flag.1 == 1 & adj.flag == 1)
 
+# Print the number of household created by the household split code for Subset #1.
 print(sum(subset.1.adj.test$WGTP))
 
 #===============================================================================
-#
+# Analyze Subset #2
+# Filter for the subset of non-subfamily members from the split household (the "original" household).
 subset.2.og.test <- pums_data.adj |> 
   filter(SPORDER.adj == 1 & TYPEHUGQ == 1 & subset.flag.2 == 1 & adj.flag == 0)
 
-print(sum(subset.2.og.test$WGTP))
-
+# Filter for the subset of subfamily members from the split household (the "original" household).
 subset.2.adj.test <- pums_data.adj |> 
   filter(SPORDER.adj == 1 & TYPEHUGQ == 1 & subset.flag.2 == 1 & adj.flag == 2)
 
+# Print the number of households created by the household split code for Subset #2.
 print(sum(subset.2.adj.test$WGTP))
 
+# Print the sum of households created by the household split code for both subsets #1 and #2.
 print(sum(sum(subset.1.adj.test$WGTP), sum(subset.2.adj.test$WGTP)))
 
+# Compare the total number of households in subsets #1 and #2 to the number of households created by the household split. If they are not equivalent, a warning message will be printed. If they are, an affirmative will be printed.
 if(sum(sum(subset.1$new.hhds), sum(subset.2$new.hhds)) != sum(sum(subset.1.adj.test$WGTP), sum(subset.2.adj.test$WGTP))){
   print("STOP! The number of households identified in the earlier code should match what is produced after splitting households!")
 } else{

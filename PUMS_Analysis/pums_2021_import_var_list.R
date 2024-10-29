@@ -145,8 +145,6 @@ write_csv(uniq_vars, paste0(exp_path,"/pums_vars_uniq_20241002.csv"))
 # 3 retrieve data function
 # WGTP = housing-unit weight; PWGTP person weight
 
-
-
 pums_2021_raw <- get_pums(
   variables = var.list,
   state = "MA",
@@ -160,8 +158,6 @@ pums_2021_raw_b <- get_pums(
   survey = "acs5",
   year = 2021
 )
-
-
 
 # 4 create uniq id for each hh + person [SERIALNO + SPORDER]
 pums_2021_raw <- pums_2021_raw %>% 
@@ -637,7 +633,7 @@ write_csv(unitsbuilt_vars, paste0(exp_path,"/pums_unitsbuilt_variables_2021.csv"
 # 18 SUBSET  IMMIGRANT HOUSEHOLDS (columns from Sheet 1)
 
 pums_immig_hh_2021 <- pums_all_2021 %>% 
-  select(c(uniq_obs,RT, SERIALNO, PUMA, ST, ADJHSG, WGTP, NP, TYPEHUGQ, MV, HHT, HHT2, HUGCL, HUPAC, HUPAOC, HUPARC, MULTG, NPF, NPP, NR, NRC, PARTNER, PSF, R18, PWGTP, AGEP, RELSHIPP, SEX, RAC1P, OC, SFN, SFR, ADJINC, HHLDRAGEP, HHLDRRAC1P, HHLDRHISP, LNGI, ENG, LANX, YOEP, HISP, NATIVITY, POBP, RAC2P, WAOB, YRBLT, HINCP, TEN, GRPIP, OCPIP))
+  select(c(uniq_obs,RT, SERIALNO, PUMA, ST, ADJHSG, WGTP, NP, TYPEHUGQ, MV, HHT, HHT2, HUGCL, HUPAC, HUPAOC, HUPARC, MULTG, NPF, NPP, NR, NRC, PARTNER, PSF, R18, PWGTP, AGEP, RELSHIPP, SEX, RAC1P, OC, SFN, SFR, ADJINC, HHLDRAGEP, HHLDRRAC1P, HHLDRHISP, LNGI, ENG, LANX, YOEP, HISP, NATIVITY, POBP, RAC2P, WAOB, YRBLT, HINCP, TEN, GRPIP, OCPIP, SCH, SCHL, SCHG))
 
 # 18.1 export VARS for IMMIGRANT HOUSEHOLDS
 immig_hh_list <- c('uniq_obs',
@@ -689,7 +685,10 @@ immig_hh_list <- c('uniq_obs',
                    'HINCP', # added 8 Oct
                    'TEN', # added 8 Oct
                    'GRPIP', # added 8 Oct
-                   'OCPIP') # added 8 Oct
+                   'OCPIP', # added 8 Oct
+                   "SCH", # added 29 Oct
+                   "SCHL", # added 29 Oct
+                   "SCHG") # added 29 Oct
 
 # 18.2 export IMMIGRANT HOUSEHOLDS
 write_csv(pums_immig_hh_2021, paste0(exp_path,"/pums_immig_hh_2021_V_",dateAsText,".csv"))

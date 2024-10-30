@@ -1305,6 +1305,10 @@ write.xlsx(list('Edu of recent immig' = household_member_edu_recent_immig),
 
 ```{r}
 #Count of hhlds headed by recent immigrants by RPA and year of entry groups
+
+########DRAFT code, not finished 
+
+
 household_data_recent_immig_RPA <- pums_RPA %>%
   filter(RT != "H") %>%      #exclude household data points, use SERIALNO as household grouping instead
   filter(TYPEHUGQ == 1) %>%

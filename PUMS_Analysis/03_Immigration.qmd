@@ -1301,6 +1301,94 @@ write.xlsx(list('Edu of recent immig' = household_member_edu_recent_immig),
 ```{r}
 #Age of recent immigrant householders 
 
+# code copied below from above analysis - need to add year of entry groups 
+
+#Age of householder for foreign born vs. native hhlds 
+householder_age_foreign_born <- pums %>%
+ filter(RT != "H") %>%   # exclude hhlds
+ select(uniq_obs, SERIALNO, WGTP, HHLDRAGEP, NATIVITY) %>% 
+ mutate(age_range = case_when(                  # create age ranges
+    HHLDRAGEP >= 0 & HHLDRAGEP < 5 ~ "Under 5",
+    HHLDRAGEP >= 5 & HHLDRAGEP < 18 ~ "5-17",
+    HHLDRAGEP >= 18 & HHLDRAGEP < 35 ~ "18-34",
+    HHLDRAGEP >= 35 & HHLDRAGEP < 65 ~ "35-64",
+    HHLDRAGEP >= 65 & HHLDRAGEP < 75 ~ "65-74",
+    HHLDRAGEP >= 75 ~ "75 and over")) %>% 
+ group_by(SERIALNO) %>% 
+ summarise(
+    householder_age = first(HHLDRAGEP, na.rm = TRUE),  # get the first person's householder age
+    householder_nativity = first(NATIVITY, na.rm = TRUE),  # get nativity of first person (householder)
+    first_weight = first(WGTP, na.rm = TRUE),  # get the weight for the first person (householder)
+    age_range = first(age_range, na.rm = TRUE),  # get age range for the first person (householder)
+    .groups = "drop") %>%
+  group_by(householder_nativity, age_range) %>%  # group by nativity and age range
+  summarise(
+    total_weight = sum(first_weight, na.rm = TRUE),  # summarize total weights for each nativity and age range
+    .groups = "drop") %>%
+  group_by(householder_nativity) %>%  # group by nativity to calculate totals within each group
+  mutate(
+    total_weight_by_nativity = sum(total_weight, na.rm = TRUE),  # calculate the total weight for each nativity group
+    percentage_within_nativity = (total_weight / total_weight_by_nativity) * 100  # calculate percentage within each group
+  ) %>%
+  mutate(householder_nativity = case_when(  # rename nativity categories
+    householder_nativity == 1 ~ "Native",
+    householder_nativity == 2 ~ "Foreign born",
+    TRUE ~ "Unknown")) %>%
+  mutate (age_range = factor(age_range, levels = c(   # order groups in correct order
+      "5-17",
+      "18-34",
+      "35-64",
+      "65-74",
+      "75 and over"))) %>%
+   arrange(householder_nativity, age_range)
+```
+
+```{r}
+#In progress
+
+#Share of each age group that is either foreign born or native 
+household_age_by_nativity <- pums %>%
+  filter(RT != "H") %>%   # exclude hhlds
+  select(RT, uniq_obs, SERIALNO, WGTP, HHLDRAGEP, NATIVITY) %>% 
+  mutate(age_range = case_when(
+    HHLDRAGEP >= 0 & HHLDRAGEP < 5 ~ "Under 5",
+    HHLDRAGEP >= 5 & HHLDRAGEP < 18 ~ "5-17",
+    HHLDRAGEP >= 18 & HHLDRAGEP < 35 ~ "18-34",
+    HHLDRAGEP >= 35 & HHLDRAGEP < 65 ~ "35-64",
+    HHLDRAGEP >= 65 & HHLDRAGEP < 75 ~ "65-74",
+    HHLDRAGEP >= 75 ~ "75 and over")) %>% 
+  group_by(SERIALNO) %>%  # group by household
+  summarise(
+    householder_age_range = first(age_range, na.rm = TRUE),  # get age range of the householder
+    householder_nativity = first(NATIVITY, na.rm = TRUE),    # get nativity of the householder
+    first_weight = first(WGTP, na.rm = TRUE),                # get weight for the householder
+    .groups = "drop") %>%
+  mutate(householder_nativity = case_when(                   # rename nativity categories
+    householder_nativity == 1 ~ "Native",
+    householder_nativity == 2 ~ "Foreign born",
+    TRUE ~ "Unknown")) %>%
+  group_by(householder_age_range, householder_nativity) %>%  # group by age range and nativity
+  summarise(
+    total_weight = sum(first_weight, na.rm = TRUE),  # calculate total weight for each age and nativity group
+    .groups = "drop") %>%
+  group_by(householder_age_range) %>%  # group by age range to calculate percentages within each age group
+  mutate(
+    total_weight_by_age_range = sum(total_weight, na.rm = TRUE),  # total weight by age group
+    percentage_within_age_range = (total_weight / total_weight_by_age_range) * 100) %>%  # calculate percentage within each age group
+    mutate (householder_age_range = factor(householder_age_range, levels = c(   # order groups in correct order
+      "5-17",
+      "18-34",
+      "35-64",
+      "65-74",
+      "75 and over"))) %>%
+  arrange(householder_age_range, householder_nativity)  # sort by age range and nativity
+```
+
+```{r}
+#Export age tables for recent immigrants
+ write.xlsx(list('Age' = householder_age_,
+                 'Share of age group' = household_age_), 
+           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/immig_age_of_hhlder.xlsx") 
 ```
 
 ```{r}

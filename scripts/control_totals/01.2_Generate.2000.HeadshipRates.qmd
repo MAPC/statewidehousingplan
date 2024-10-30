@@ -1,0 +1,135 @@
+---
+title: "01.2_Generate.2000.HeadshipRates"
+format: html
+editor: visual
+---
+
+# 0.0 Setup - Define helper functions, set knitr path, load necessary packages, set muni data keys
+
+# 0.1 - Set knitr path + root for inputs
+
+```{r}
+#Use when Rproject is open
+#root <- '../../../../Data/Working/Regional_Control_Totals/'
+
+# Base root. Toggle between S: and K: drive depedning on mapped paths on your computer
+base <- "K:/DataServices/Projects/Current_Projects/"
+#base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
+
+#General K drive filepath
+root <- paste0(base, "/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/")
+
+# Reweighter files path
+rwt_path <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Reweighter/")
+
+#PUMS K drive filepath
+pums_path <- paste0(base, "/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS/ipums_2021/")
+
+#Set output filepath
+output_path <- paste0(base, "/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS/outputs/")
+
+#Set knitr path
+knitr::opts_knit$set(root.dir = pums_path)
+```
+
+# 0.2 - Set package dependencies, set environment, set up data keys
+
+```{r}
+library(tidycensus)
+library(tidyverse)
+library(data.table)
+library(mapcdatakeys)
+library(janitor)
+library(readxl)
+
+# Remove scientific notation
+options(scipen = 999)
+# Set random seed
+set.seed(351)
+
+# Load Libraries for PUMS Analysis and PUMS API query functions
+# Sets seed and removes scientific notation
+source("C:/Project_Work/statewidehousingplan/PUMS_Analysis/PUMS_Helper_Functions.R")
+
+# Load PUMA x RPA Crosswalk
+xw <- read.csv(paste0(rwt_path, "PUMS_data/PUMA10_RPA_crosswalk.csv")) |> 
+  mutate(PUMA = str_pad(PUMA, 5, "left", pad = 0))
+
+```
+
+# 1.0 Load 2000 5% PUMS Records and Create Variables Needed to Calculate Headship Rates
+```{r}
+# List of PUMS variables
+variable_list <- c('RT', 'PUMA', 'ADJHSG','ADJINC','NP','TYPEHUGQ','BDSP','RMSP','CPLT','HHLDRAGEP',
+                   'HHLDRRAC1P','HHLDRHISP', 'HHT', 'HHT2', 'HINCP', 'HUGCL', 'HUPAC', 'HUPAOC',
+                   'HUPARC', 'LNGI', 'MULTG', 'NPF', 'NPP', 'NR','NRC', 'PARTNER', 'PSF','R18',
+                   'AGEP','RELSHIPP','RAC1P','OC','SFN','SFR','TEN', "SEX", "PINCP", "ESR")
+
+# Query {tidycensus} for 2017-2021 5-Year PUMS data
+pums_data <- pums_query(var.list = variable_list, yr = vintage, srvy = "acs5") |>
+  # General Data Cleaning
+  mutate(
+    # Generate five-year age groupings to match UMDI population projections data.
+    ageCAT6 = cut(AGEP, breaks = c(-Inf, seq(4, 84, 5), Inf), labels = 1:18),
+    # Counts as Worker
+    # NOTE: Categories are (0) under 16 or not in labor force, or (1) in labor force or non-civilian worker
+    worker = case_when(
+      (ESR == "b" | ESR == 6) ~ 0,
+      (ESR == 1 | ESR == 2 | ESR == 3 | ESR == 4 | ESR == 5) ~ 1,
+      is.na(ESR) ~ 0
+    ),
+    # Counts as person
+    person = case_when(
+      SPORDER != 0 ~ 1,
+      SPORDER == 0 ~ 0
+    ),
+    # Create a household flag for whether there is a child in a household.
+    child = case_when(
+      AGEP < 18 ~ 1,
+      AGEP >= 18 ~ 0,
+      .default = 0
+    )
+  ) |>
+  # Creating household flags for person variables.
+  group_by(SERIALNO) |> 
+  mutate(
+    # Sum the total number of workers in the household
+    Worker_Total = sum(worker),
+    # Sum the total number of children in the household
+    Child_Total = sum(child)
+  ) |> 
+  ungroup() |> 
+  mutate(
+  # Create a variable that is a household flag for whether or not a household has 
+  # Children. 
+   child_flag = case_when(
+      Child_Total > 0 ~ "1",
+      Child_Total == 0 ~ "0",
+      .default = "0"
+    ),
+   # Categorizing worker categories (0) no workers, (1) one worker, (2) two workers, (3) three or more workers
+   WRKHH = case_when(
+     Worker_Total == 0 ~ 0,
+     Worker_Total == 1 ~ 1,
+     Worker_Total == 2 ~ 2,
+     Worker_Total >= 3 ~ 3
+    ),
+    # Determine if person is not hhder vs hhder of 0- wrk, 1wrk, 2 wrk, 3+wrk
+   HHder = case_when(
+     SPORDER == 1 & WRKHH == 0 ~ 0,
+     SPORDER == 1 & WRKHH == 1 ~ 1,
+     SPORDER == 1 & WRKHH == 2 ~ 2,
+     SPORDER == 1 & WRKHH == 3 ~ 3,
+     SPORDER > 1 ~ 99
+   ),
+   # Determine what type of household the person is heading or not heading (1) Householder of Household with Children, (2) Non-Householder in a Household with Children, (3) Householder of a Household with Multiple Adults and no children, (4) Non-Householder in a Household with no children, (5) Householder of a Single Person Household
+   HHtype = case_when(
+     Child_Total >= 1 & NP > 1 & HHder != 99 ~ 1,
+     Child_Total >= 1 & NP > 1 & HHder == 99 ~ 2,
+     Child_Total == 0 & NP > 1 & HHder != 99 ~ 3,
+     Child_Total == 0 & NP > 1 & HHder == 99 ~ 4,
+     NP == 1 & HHder != 99 ~ 5
+   )
+  )
+
+```

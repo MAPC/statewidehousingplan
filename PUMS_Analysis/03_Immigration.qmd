@@ -1300,13 +1300,14 @@ write.xlsx(list('Edu of recent immig' = household_member_edu_recent_immig),
 
 ```{r}
 #Age of recent immigrant householders 
-
-# code copied below from above analysis - need to add year of entry groups 
-
-#Age of householder for foreign born vs. native hhlds 
-householder_age_foreign_born <- pums %>%
+householder_age_recent_immig <- pums %>%
  filter(RT != "H") %>%   # exclude hhlds
- select(uniq_obs, SERIALNO, WGTP, HHLDRAGEP, NATIVITY) %>% 
+ mutate(Year.Entry = case_when(      # create year of entry groups
+      YOEP < 1934 ~ "Before 1934",
+      YOEP >= 1934 & YOEP <= 2013 ~ "1934 to 2013",
+      YOEP >= 2014 & YOEP <= 2024 ~ "2014 and later",
+      TRUE ~ "0")) %>%
+ select(uniq_obs, SERIALNO, WGTP, HHLDRAGEP,NATIVITY, Year.Entry) %>% 
  mutate(age_range = case_when(                  # create age ranges
     HHLDRAGEP >= 0 & HHLDRAGEP < 5 ~ "Under 5",
     HHLDRAGEP >= 5 & HHLDRAGEP < 18 ~ "5-17",
@@ -1316,40 +1317,42 @@ householder_age_foreign_born <- pums %>%
     HHLDRAGEP >= 75 ~ "75 and over")) %>% 
  group_by(SERIALNO) %>% 
  summarise(
-    householder_age = first(HHLDRAGEP, na.rm = TRUE),  # get the first person's householder age
+    householder_age = first(HHLDRAGEP, na.rm = TRUE),      # get the first person's householder age
+    householder_entry= first(Year.Entry, na.rm = TRUE),    # get year of entry of first person (householder)
     householder_nativity = first(NATIVITY, na.rm = TRUE),  # get nativity of first person (householder)
-    first_weight = first(WGTP, na.rm = TRUE),  # get the weight for the first person (householder)
-    age_range = first(age_range, na.rm = TRUE),  # get age range for the first person (householder)
+    first_weight = first(WGTP, na.rm = TRUE),              # get the weight for the first person (householder)
+    age_range = first(age_range, na.rm = TRUE),            # get age range for the first person (householder)
     .groups = "drop") %>%
-  group_by(householder_nativity, age_range) %>%  # group by nativity and age range
+  filter(householder_nativity == 2) %>%                    # filter for foreign-born householders only
+  group_by(householder_entry, age_range) %>%               # group by year of entry and age range
   summarise(
-    total_weight = sum(first_weight, na.rm = TRUE),  # summarize total weights for each nativity and age range
+    total_weight = sum(first_weight, na.rm = TRUE),        # summarize total weights for each age range and year of entry
     .groups = "drop") %>%
-  group_by(householder_nativity) %>%  # group by nativity to calculate totals within each group
+  group_by(householder_entry) %>%                          # group to calculate totals within each group
   mutate(
-    total_weight_by_nativity = sum(total_weight, na.rm = TRUE),  # calculate the total weight for each nativity group
-    percentage_within_nativity = (total_weight / total_weight_by_nativity) * 100  # calculate percentage within each group
+    total_weight_by_entry = sum(total_weight, na.rm = TRUE),  # calculate the total weight for each nativity group
+    percentage_within_entry = (total_weight / total_weight_by_entry) * 100  # calculate percentage within each group
   ) %>%
-  mutate(householder_nativity = case_when(  # rename nativity categories
-    householder_nativity == 1 ~ "Native",
-    householder_nativity == 2 ~ "Foreign born",
-    TRUE ~ "Unknown")) %>%
   mutate (age_range = factor(age_range, levels = c(   # order groups in correct order
       "5-17",
       "18-34",
       "35-64",
       "65-74",
       "75 and over"))) %>%
-   arrange(householder_nativity, age_range)
+   arrange(householder_entry, age_range)
 ```
 
 ```{r}
-#In progress
-
-#Share of each age group that is either foreign born or native 
-household_age_by_nativity <- pums %>%
+#Age part 2
+#Share of each foreign born age group that is recent immigrants
+householder_age_group_recent_immig <- pums %>%
   filter(RT != "H") %>%   # exclude hhlds
-  select(RT, uniq_obs, SERIALNO, WGTP, HHLDRAGEP, NATIVITY) %>% 
+  mutate(Year.Entry = case_when(      # create year of entry groups
+      YOEP < 1934 ~ "Before 1934",
+      YOEP >= 1934 & YOEP <= 2013 ~ "1934 to 2013",
+      YOEP >= 2014 & YOEP <= 2024 ~ "2014 and later",
+      TRUE ~ "0")) %>%
+  select(RT, uniq_obs, SERIALNO, WGTP, HHLDRAGEP, NATIVITY, Year.Entry) %>% 
   mutate(age_range = case_when(
     HHLDRAGEP >= 0 & HHLDRAGEP < 5 ~ "Under 5",
     HHLDRAGEP >= 5 & HHLDRAGEP < 18 ~ "5-17",
@@ -1361,13 +1364,11 @@ household_age_by_nativity <- pums %>%
   summarise(
     householder_age_range = first(age_range, na.rm = TRUE),  # get age range of the householder
     householder_nativity = first(NATIVITY, na.rm = TRUE),    # get nativity of the householder
+    householder_entry = first(Year.Entry, na.rm = TRUE),     # get year of entry for the householder
     first_weight = first(WGTP, na.rm = TRUE),                # get weight for the householder
     .groups = "drop") %>%
-  mutate(householder_nativity = case_when(                   # rename nativity categories
-    householder_nativity == 1 ~ "Native",
-    householder_nativity == 2 ~ "Foreign born",
-    TRUE ~ "Unknown")) %>%
-  group_by(householder_age_range, householder_nativity) %>%  # group by age range and nativity
+  filter(householder_nativity == 2) %>%                      # filter for foreign-born householders only
+  group_by(householder_age_range, householder_entry) %>%     # group by age range and year of entry
   summarise(
     total_weight = sum(first_weight, na.rm = TRUE),  # calculate total weight for each age and nativity group
     .groups = "drop") %>%
@@ -1381,60 +1382,46 @@ household_age_by_nativity <- pums %>%
       "35-64",
       "65-74",
       "75 and over"))) %>%
-  arrange(householder_age_range, householder_nativity)  # sort by age range and nativity
+  arrange(householder_age_range, householder_entry)  # sort by age range and nativity
 ```
 
 ```{r}
 #Export age tables for recent immigrants
- write.xlsx(list('Age' = householder_age_,
-                 'Share of age group' = household_age_), 
-           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/immig_age_of_hhlder.xlsx") 
+ write.xlsx(list('Recent immigrant hhld age' = householder_age_recent_immig,
+                 'Share of recent immig by age' = householder_age_group_recent_immig), 
+           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/immig__recent_age_of_hhlder.xlsx") 
 ```
 
 ```{r}
 #Count of hhlds headed by recent immigrants by RPA and year of entry groups
-
-########DRAFT code, not finished 
-
-
-household_data_recent_immig_RPA <- pums_RPA %>%
-  filter(RT != "H") %>%      #exclude household data points, use SERIALNO as household grouping instead
-  filter(TYPEHUGQ == 1) %>%
-  filter(NP > 0) %>%         # excluding vacant units
-  filter(NATIVITY == 2) %>%  # filter for only foreign born people
-     mutate(Year.Entry = case_when(      # create year of entry groups
-      YOEP < 1934 ~ "Before 1934",
-      YOEP >= 1934 & YOEP <= 2013 ~ "1934 to 2013",
-      YOEP >= 2014 & YOEP <= 2024 ~ "2014 and later",
-      TRUE ~ "0")) %>%
-  group_by(rpa_acr, SERIALNO, Year.Entry) %>%
-  summarise(total_weighted_sum = first(WGTP), .groups= "drop") 
-
-
-
-
-#calculate share of foreign born for each RPA by year of entry groups
 household_recent_immig_summary_table_RPA <- pums_RPA %>%
-  filter(RT != "H") %>%   # exclude hhlds 
-  filter(NATIVITY == 2) %>%  # filter for only foreign born
-   mutate(Year.Entry = case_when(      # create year of entry groups
+  filter(RT != "H") %>%            # exclude hhld data points
+  group_by(SERIALNO, rpa_acr) %>%  # group by household and RPA
+  summarise(first_weight = first(WGTP, na.rm = TRUE), # get the first person's weight for household
+            NATIVITY = first(NATIVITY),               # get the nativity for the first person
+            YOEP = first(YOEP, na.rm = TRUE),         # get the year of entry for the first person
+            .groups = "drop") %>%           
+  mutate(Year.Entry = case_when(                      # create year of entry groups
       YOEP < 1934 ~ "Before 1934",
       YOEP >= 1934 & YOEP <= 2013 ~ "1934 to 2013",
       YOEP >= 2014 & YOEP <= 2024 ~ "2014 and later",
       TRUE ~ "0")) %>%
-  group_by(SERIALNO, rpa_acr, Year.Entry) %>%                   # group by household, rpa, and year of entry
-  summarise(first_weight = first(WGTP, na.rm = TRUE),           # get the first person's weight for hhld - head of hhld
-            .groups = "drop") %>%                                   
-  group_by(Year.Entry, rpa_acr) %>%                               # group by year of entry and rpa to calculate total weights for each
-  summarise(total_by_entry= sum(first_weight, na.rm = TRUE),   # sum the weights by entry groups
-    .groups = "drop")                                       
+  filter(NATIVITY == 2) %>%                           # filter for foreign born only
+  group_by(NATIVITY, rpa_acr, Year.Entry) %>%         # group by rpa and year of entry
+  summarise(total_by_entry = sum(first_weight, na.rm = TRUE), # sum the weights by nativity and year of entry
+            .groups = "drop") %>%
+group_by(rpa_acr) %>%
+  mutate(total_foreign_born_weight = sum(total_by_entry)) %>% # Calculate total foreign-born weight per RPA
+  ungroup() %>%
+  mutate(percentage = (total_by_entry / total_foreign_born_weight) * 100)
+  #select(-total_foreign_born_weight)  # drop total column 
 
+```
 
-#combine tables  
-RPA_foreign_born_table <- household_foreign_born_summary_table_RPA %>%
-  left_join(household_data_RPA, by = c("rpa_acr")) %>%
-  mutate(percentage = (total_by_nativity / total_weighted_sum) * 100) %>%
-  arrange(rpa_acr)
+```{r}
+#Export rpa tables for recent immigrants
+ write.xlsx(list('Recent immigrants by RPA' = household_recent_immig_summary_table_RPA), 
+           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/immig__recent_RPA.xlsx") 
 ```
 
 ```{r}

@@ -38,7 +38,6 @@ knitr::opts_knit$set(root.dir = pums_path)
 library(tidycensus)
 library(tidyverse)
 library(data.table)
-library(reticulate)
 library(mapcdatakeys)
 library(janitor)
 library(readxl)
@@ -63,35 +62,35 @@ xw <- read.csv(paste0(rwt_path, "PUMS_data/PUMA10_RPA_crosswalk.csv")) |>
 NOTE: We use the CPI deflator time series to adjust PUMS income to 2013 dollars (for UrbanSim). ACS uses the Consumer Price Index for All Urban Consumers Retroactive Series (R-CPI-U-RS, details here: <https://www.bls.gov/cpi/research-series/r-cpi-u-rs-home.htm>) as opposed to the ASEC/Census which uses C-CPI-U (details here: [*https://www.census.gov/topics/income-poverty/income/guidance/current-vs-constant-dollars.html*](https://www.census.gov/topics/income-poverty/income/guidance/current-vs-constant-dollars.html){.uri}*)*
 
 ```{r}
-#Set PUMS vintage final year for {tidycensus} API query.
+# Set PUMS vintage final year for {tidycensus} API query.
 vintage <- 2021
 
-#List of PUMS variables
+# List of PUMS variables
 variable_list <- c('RT', 'PUMA', 'ADJHSG','ADJINC','NP','TYPEHUGQ','BDSP','RMSP','CPLT','HHLDRAGEP',
                    'HHLDRRAC1P','HHLDRHISP', 'HHT', 'HHT2', 'HINCP', 'HUGCL', 'HUPAC', 'HUPAOC',
                    'HUPARC', 'LNGI', 'MULTG', 'NPF', 'NPP', 'NR','NRC', 'PARTNER', 'PSF','R18',
                    'AGEP','RELSHIPP','RAC1P','OC','SFN','SFR','TEN', "SEX", "PINCP", "ESR")
 
-#SEMP bottom coding has changed from $1 to $4 like WAGP
+# SEMP bottom coding has changed from $1 to $4 like WAGP
 
-# Load CPI time series for deflating income variable
-cpi <- fread(paste0(root,'cpi_deflators_by_year.csv'))
-
-# Creat variable which is CPI index for 2013
-cpi.2013 <- cpi |> filter(year == 2013) |> pull(index)
-
-# Create variable which is CPI index for ACS vintage year
-cpi.present <- cpi |> filter(year == vintage) |> pull(index)
-
-# Calculate the CPI deflator for ACS Vintage year
-cpi.deflator <- cpi.2013 / cpi.present
-
-#Query {tidycensus} for 2017-2021 5-Year PUMS data
+# Query {tidycensus} for 2017-2021 5-Year PUMS data
 pums_data <- pums_query(var.list = variable_list, yr = vintage, srvy = "acs5") |>
   # General Data Cleaning
   mutate(
     # Generate five-year age groupings to match UMDI population projections data.
     ageCAT6 = cut(AGEP, breaks = c(-Inf, seq(4, 84, 5), Inf), labels = 1:18),
+    # Counts as Worker
+    # NOTE: Categories are (0) under 16 or not in labor force, or (1) in labor force or non-civilian worker
+    worker = case_when(
+      (ESR == "b" | ESR == 6) ~ 0,
+      (ESR == 1 | ESR == 2 | ESR == 3 | ESR == 4 | ESR == 5) ~ 1,
+      is.na(ESR) ~ 0
+    ),
+    # Counts as person
+    person = case_when(
+      SPORDER != 0 ~ 1,
+      SPORDER == 0 ~ 0
+    ),
     # Create a household flag for whether there is a child in a household.
     child = case_when(
       AGEP < 18 ~ 1,
@@ -132,24 +131,49 @@ pums_data <- pums_query(var.list = variable_list, yr = vintage, srvy = "acs5") |
   # Creating household flags for person variables.
   group_by(SERIALNO) |> 
   mutate(
-    # Create a variable which is the sum of the number of children in a household
-    child_count = sum(child),
     # Create a variable which denotes the presence of subfamilies for a household.
     SFN.num = sum(SFN),
     # Create a variable which denotes the total number of subfamilies in a household.
-    SFN.max = max(SFN)
+    SFN.max = max(SFN),
+    # Sum the total number of workers in the household
+    Worker_Total = sum(worker),
+    # Sum the total number of children in the household
+    Child_Total = sum(child)
   ) |> 
   ungroup() |> 
   mutate(
   # Create a variable that is a household flag for whether or not a household has 
   # Children. 
    child_flag = case_when(
-      child_count > 0 ~ "1",
-      child_count == 0 ~ "0",
+      Child_Total > 0 ~ "1",
+      Child_Total == 0 ~ "0",
       .default = "0"
     ),
    # Create a household flag for whether or not the household contains a subfamily.
    SFN.flag = if_else(SFN.num > 0, 1, 0),
+   # Categorizing worker categories (0) no workers, (1) one worker, (2) two workers, (3) three or more workers
+   WRKHH = case_when(
+     Worker_Total == 0 ~ 0,
+     Worker_Total == 1 ~ 1,
+     Worker_Total == 2 ~ 2,
+     Worker_Total >= 3 ~ 3
+    ),
+    # Determine if person is not hhder vs hhder of 0- wrk, 1wrk, 2 wrk, 3+wrk
+   HHder = case_when(
+     SPORDER == 1 & WRKHH == 0 ~ 0,
+     SPORDER == 1 & WRKHH == 1 ~ 1,
+     SPORDER == 1 & WRKHH == 2 ~ 2,
+     SPORDER == 1 & WRKHH == 3 ~ 3,
+     SPORDER > 1 ~ 99
+   ),
+   # Determine what type of household the person is heading or not heading (1) Householder of Household with Children, (2) Non-Householder in a Household with Children, (3) Householder of a Household with Multiple Adults and no children, (4) Non-Householder in a Household with no children, (5) Householder of a Single Person Household
+   HHtype = case_when(
+     Child_Total >= 1 & NP > 1 & HHder != 99 ~ 1,
+     Child_Total >= 1 & NP > 1 & HHder == 99 ~ 2,
+     Child_Total == 0 & NP > 1 & HHder != 99 ~ 3,
+     Child_Total == 0 & NP > 1 & HHder == 99 ~ 4,
+     NP == 1 & HHder != 99 ~ 5
+   )
   ) |> 
   mutate(
     # Non-multigenerational household WITH at least one (1) subfamily WITH at least one (1) child
@@ -274,16 +298,49 @@ pums_data.adj <- pums_data |>
       SFN > 0 & subset.flag.2 == 1 ~ "2",
       .default = "0"
     ),
-    # Create a row ID number to loop through later.
-    ID = row_number()
+    adj.flag.2 = case_when(
+      # Flag for the adjusted household of the subsetted groups
+      # First Subset
+      SFN > 0 & subset.flag.1 == 1 ~ "1",
+      #Second Subset
+      SFN > 0 & subset.flag.2 == 1 ~ "1",
+      .default = "0"
+    )
   )
 
 ```
 
-# 3.2 Redefine SPORDER and Relationship Variables
+# 3.2 Reorder Persons in Households to be Split
+```{r}
+# Reordering persons in the households to be split.
+# Subset of households that will not be split that do not need to be reordered
+pums_data.adj.og <- pums_data.adj |> 
+  filter(adj.flag.2 == "0")
+
+# Subset of households that WILL be split and need to be reordered within their new household.
+pums_data.adj.adj <- pums_data.adj |> 
+  filter(adj.flag.2 == "1") |> 
+  group_by(SERIALNO.adj) |> 
+  dplyr::arrange(desc(AGEP), .by_group = TRUE) |> 
+  ungroup()
+
+# To redefine the person order within a household, we need to make sure the people in the households to be split are at least sort of logically ordered. I am assuming that the oldest person (as captured by AGEP) is the "head" (SPORDER == 1) of the household. We do not want children to head a household in which they have a parent, which they should because that is the definition of a subfamily when they have children.
+
+# Rebinding the pums data subsets with the people in the households to be split properly arranged by age.
+pums_data.adj <- rbind(pums_data.adj.og, pums_data.adj.adj)
+
+# Removing the interim subsets I no longer need.
+rm(pums_data.adj.og, pums_data.adj.adj)
+```
+
+# 3.3 Redefine SPORDER and Relationship Variables
 ```{r}
 # Create a test data frame before putting this into production
 pums_data.adj <- pums_data.adj |>
+  mutate(
+    # Create a row ID number to loop through later.
+    ID = row_number()
+  ) |> 
   group_by(SERIALNO.adj) |> 
   mutate(
     # Create a new SPORDER variable based on the order of people in the new households (if they are split into new households).
@@ -314,9 +371,10 @@ pums_data.adj <- pums_data.adj |>
 # List of assumptions:
 # 1. Cant determine the kind of spouse or child non-reference persons are in the new, split households. Could distinguish same or opposite sex spousal relationship with "SEX" variable added to the PUMS data.
 # 2. Can we use RELSHIPP to help us be more correct? What about for people who are non-relatives?
+
 ```
 
-# 3.3 Re-create households variables for split households
+# 3.4 Re-create households variables for split households
 ```{r}
 pums_data.adj <- pums_data.adj |> 
   mutate(
@@ -397,7 +455,7 @@ test <- pums_data.adj |>
 # 4. 
 ```
 
-# 3.4 QA/QC - Check Split Households are Equal to The Number of Households We Expect to Be Split
+# 3.5 QA/QC - Check Split Households are Equal to The Number of Households We Expect to Be Split
 ```{r}
 #===============================================================================
 # Analyze Subset #1
@@ -468,6 +526,9 @@ headship_rates.split <- pums_data.adj |>
   ungroup() |> 
   select(
     -c(n)
+  ) |> 
+  dplyr::rename(
+    freq.split = freq
   )
 
 # QC Check - determine if the frequencies in each RP, Age Group crosstab add to 1
@@ -477,7 +538,7 @@ hr_check <- headship_rates.split |>
     ageCAT6
   ) |> 
   summarise(
-    freq_check = sum(freq)
+    freq_check = sum(freq.split)
   ) |> 
   ungroup() |> 
   mutate(
@@ -495,7 +556,7 @@ rm(hr_check)
 
 ```
 
-# 5.0 Calculate Headship Rates for 2017-2021 5-Year ACS Vintage + Compare Split Household Headship Rates to Current PUMS Vintage Headships Rates
+# 5.0 Calculate Headship Rates for 2017-2021 5-Year ACS Vintage +
 ```{r}
 # Generating headship rates by RPA and 5-year age group for the ACS 2017-2022 PUMS
 headship_rates <- pums_data |> 
@@ -551,7 +612,25 @@ if (sum(hr_check$flag) > 0){
 #Remove QC check dataframe
 rm(hr_check)
 
-
+```
+# 5.1 Compare Split Household Headship Rates to Current PUMS Vintage Headships Rates
+```{r}
+# Join 2017-2021 5-year ACS PUMS data Headship Rates to the Split Households Headship Rates
+hdsp.r_compare <- full_join(
+  headship_rates,
+  headship_rates.split,
+  by = c("rpa_acr","ageCAT6","var")
+) |> 
+  mutate(
+    # Fill in Zeros where NAs exist from new headship rate groups being created in the split household tabulation.
+    across(starts_with("freq"), ~replace_na(.,0)),
+    # Compare differences in headship rates.
+    hdsh.r_comp = freq.split-freq
+  ) |> 
+  filter(
+    # Filter for the three household types.
+    var %in% c("hhderchild", "hhdernochild", "single")
+  )
 ```
 
 # 6.0 Compare Headship Rates to 

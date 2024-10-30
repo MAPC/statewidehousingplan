@@ -1072,7 +1072,7 @@ household_renter_burden_recent_immig <- pums %>%
  mutate(Year.Entry = case_when(      # create year of entry groups
       YOEP < 1934 ~ "Before 1934",
       YOEP >= 1934 & YOEP <= 2013 ~ "1934 to 2013",
-      YOEP >= 2014 & YOEP <= 2024 ~ "2014 to 2024",
+      YOEP >= 2014 & YOEP <= 2024 ~ "2014 and later",
       TRUE ~ "0")) %>%
  select(uniq_obs, SERIALNO, WGTP, NATIVITY, Cost.Burden, Year.Entry) %>%
  group_by(SERIALNO) %>%
@@ -1115,7 +1115,7 @@ household_owner_burden_recent_immig <- pums %>%
  mutate(Year.Entry = case_when(      # create year of entry groups
       YOEP < 1934 ~ "Before 1934",
       YOEP >= 1934 & YOEP <= 2013 ~ "1934 to 2013",
-      YOEP >= 2014 & YOEP <= 2024 ~ "2014 to 2024",
+      YOEP >= 2014 & YOEP <= 2024 ~ "2014 and later",
       TRUE ~ "0")) %>%
  select(uniq_obs, SERIALNO, WGTP, NATIVITY, Cost.Burden, Year.Entry) %>%
  group_by(SERIALNO) %>%
@@ -1161,27 +1161,26 @@ householder_tenure_recent_immig <- pums %>%
  mutate(Year.Entry = case_when(      # create year of entry groups
       YOEP < 1934 ~ "Before 1934",
       YOEP >= 1934 & YOEP <= 2013 ~ "1934 to 2013",
-      YOEP >= 2014 & YOEP <= 2024 ~ "2014 to 2024",
+      YOEP >= 2014 & YOEP <= 2024 ~ "2014 and later",
       TRUE ~ "0")) %>%
  select(uniq_obs, SERIALNO, WGTP, NATIVITY, TEN, Year.Entry) %>% 
  group_by(SERIALNO) %>% 
  summarise(
-    householder_tenure = first(TEN, na.rm = TRUE),  # get the first person's tenure
+    householder_tenure = first(TEN, na.rm = TRUE),         # get the first person's tenure
     householder_nativity = first(NATIVITY, na.rm = TRUE),  # get nativity of first person (householder)
-    first_weight = first(WGTP, na.rm = TRUE),  # get the weight for the first person (householder)
-    year_entry = first(Year.Entry, na.rm = TRUE),   # get the year entry for the first person (householder)
+    first_weight = first(WGTP, na.rm = TRUE),              # get the weight for the first person (householder)
+    year_entry = first(Year.Entry, na.rm = TRUE),          # get the year entry for the first person (householder)
     .groups = "drop") %>%
- filter(householder_nativity == 2) %>%  # filter for foreign-born householders only
- group_by(year_entry, householder_tenure) %>%  # group by year entry and tenure for summarization
+ filter(householder_nativity == 2) %>%                     # filter for foreign-born householders only
+ group_by(year_entry, householder_tenure) %>%              # group by year entry and tenure for sum
  summarise(
-    total_weight = sum(first_weight, na.rm = TRUE),  # summarize total weights by year entry and tenure
+    total_weight = sum(first_weight, na.rm = TRUE),        # summarize total weights by year entry and tenure
     .groups = "drop") %>%
- group_by(year_entry) %>%  # group by year entry for nativity weight totals
+ group_by(year_entry) %>%                                  # group by year entry for nativity weight totals
  mutate(
-    total_weight_by_nativity = sum(total_weight, na.rm = TRUE),  # calculate the total weight for each year entry group
-    percentage_within_nativity = (total_weight / total_weight_by_nativity) * 100  # calculate percentage within each group
- ) %>%
- mutate(householder_tenure = case_when(  # rename tenure categories
+    total_weight_by_nativity = sum(total_weight, na.rm = TRUE),       # calculate the total weight for each year entry group
+    percentage_within_nativity = (total_weight / total_weight_by_nativity) * 100) %>%  # calculate percentage within each group
+ mutate(householder_tenure = case_when(                               # rename tenure categories
     householder_tenure == "1" ~ "Owned with mortgage",
     householder_tenure == "2" ~ "Owned without mortgage",
     householder_tenure == "3" ~ "Rented",
@@ -1192,7 +1191,6 @@ householder_tenure_recent_immig <- pums %>%
 
 ```
 
-
 ```{r}
 #Export tenure table
 write.xlsx(list('Tenure of recent immig' = householder_tenure_recent_immig), 
@@ -1201,11 +1199,104 @@ write.xlsx(list('Tenure of recent immig' = householder_tenure_recent_immig),
 
 ```{r}
 #Household size for recent immigrants 
+household_size_recent_immig <- pums %>%
+ filter(RT != "H") %>%      # exclude hhlds 
+ #filter(NATIVITY == 2) %>%  # filter for only foreign born
+ mutate(Year.Entry = case_when(      # create year of entry groups
+      YOEP < 1934 ~ "Before 1934",
+      YOEP >= 1934 & YOEP <= 2013 ~ "1934 to 2013",
+      YOEP >= 2014 & YOEP <= 2024 ~ "2014 and later",
+      TRUE ~ "0")) %>%
+ select(uniq_obs, SERIALNO, WGTP, NATIVITY, NP, Year.Entry) %>% 
+ group_by(SERIALNO) %>% 
+ summarise(
+    household_size = first(NP, na.rm = TRUE),              # get the number of people in hhld for first person
+    householder_nativity = first(NATIVITY, na.rm = TRUE),  # get nativity of first person (householder)
+    first_weight = first(WGTP, na.rm = TRUE),              # get the weight for the first person (householder) 
+    year_entry = first(Year.Entry, na.rm = TRUE),          # get the year entry for the first person (householder)
+    .groups = "drop") %>%
+  filter(householder_nativity == 2) %>%                     # filter for foreign-born householders only
+  mutate(household_size_category = case_when(              # create household size categories
+    household_size >= 10 ~ "10 or more",
+    household_size < 10 ~ as.character(household_size),    # keep sizes less than 10 as strings to categorize them
+    TRUE ~ "Unknown")) %>%
+  group_by(household_size_category, year_entry) %>%  # group by size and year of entry group
+  summarise(
+    total_weight = sum(first_weight, na.rm = TRUE),  # summarize total weights for each size and year of entry group
+    .groups = "drop") %>%
+  group_by(year_entry) %>%                 # group by year of entry to calculate totals within each group
+  mutate(
+    total_weight_by_entry = sum(total_weight, na.rm = TRUE),  # calculate the total weight for each entry group
+    percentage_within_entry = (total_weight / total_weight_by_entry) * 100) %>%       # calculate percentage within each group
+      mutate (household_size_category = factor(household_size_category, levels = c(   # order groups in correct order
+     "1",
+     "2",
+     "3",
+     "4",
+     "5",
+     "6",
+     "7",
+     "8",
+     "9",
+     "10 or more"))) %>%
+  arrange(year_entry, household_size_category)
 ```
 
 ```{r}
-#Edu attainment for recent immigrants
+#Export hhld size table for recent immigrants
+write.xlsx(list('Hhld size of recent immig' = household_size_recent_immig), 
+           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/immig_recent_hhld_size.xlsx") 
 ```
+
+
+```{r}
+#Edu attainment for recent immigrants - all members in household
+household_member_edu_recent_immig <- pums %>%
+ filter(RT != "H") %>%      # exclude household data points
+ filter(AGEP >= 25) %>%     # only population 25 and over
+ filter(NATIVITY == 2) %>%  # filter for only foreign born
+ mutate(Year.Entry = case_when(      # create year of entry groups
+      YOEP < 1934 ~ "Before 1934",
+      YOEP >= 1934 & YOEP <= 2013 ~ "1934 to 2013",
+      YOEP >= 2014 & YOEP <= 2024 ~ "2014 and later",
+      TRUE ~ "0")) %>%
+ mutate(EDU = case_when(            # create edu groups
+      as.numeric(SCHL) >= 1 & as.numeric(SCHL) <= 15 ~ "Less than high school diploma",
+      as.numeric(SCHL) >= 16 & as.numeric(SCHL) <= 17 ~ "High school diploma or equivalent",
+      as.numeric(SCHL) >= 18 & as.numeric(SCHL) <= 19 ~ "Some college",
+      as.numeric(SCHL) == 20 ~ "Associate degree",
+      as.numeric(SCHL) == 21 ~ "Bachelor's degree",
+      as.numeric(SCHL) >= 22 & as.numeric(SCHL) <= 24 ~ "Graduate, professional, or doctorate degree",
+      TRUE ~ "0")) %>% 
+ select(uniq_obs, SERIALNO, WGTP, NATIVITY, EDU, Year.Entry) %>%
+ group_by(SERIALNO, EDU, Year.Entry) %>%     # group by household ID, education, and year of entry
+ summarise(
+    total_weight = sum(WGTP, na.rm = TRUE),  # sum weights for each edu level within households
+    .groups = "drop") %>%
+ group_by(Year.Entry, EDU) %>%  # group by year of entry and education
+ summarise(
+    total_weight_by_edu_nativity = sum(total_weight, na.rm = TRUE),  # total weight by edu and nativity group
+    .groups = "drop") %>%
+ group_by(Year.Entry) %>%
+ mutate(
+    total_weight_by_entry = sum(total_weight_by_edu_nativity, na.rm = TRUE),  # calculate nativity group totals
+    percentage_within_entry = (total_weight_by_edu_nativity / total_weight_by_entry) * 100) %>%  # calculate percentage
+    mutate (EDU = factor(EDU, levels = c(   # order groups in correct order
+     "Less than high school diploma",
+     "High school diploma or equivalent",
+     "Some college",
+     "Associate degree",
+     "Bachelor's degree",
+     "Graduate, professional, or doctorate degree"))) %>%
+ arrange(Year.Entry, EDU)
+```
+
+```{r}
+#Export edu table for recent immigrants 
+write.xlsx(list('Edu of recent immig' = household_member_edu_recent_immig), 
+           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/immig_recent_edu.xlsx") 
+```
+
 
 ```{r}
 #Age of recent immigrant householders 
@@ -1213,11 +1304,49 @@ write.xlsx(list('Tenure of recent immig' = householder_tenure_recent_immig),
 ```
 
 ```{r}
-#Count of hhlds headed by recent immigrants by RPA 
+#Count of hhlds headed by recent immigrants by RPA and year of entry groups
+household_data_recent_immig_RPA <- pums_RPA %>%
+  filter(RT != "H") %>%      #exclude household data points, use SERIALNO as household grouping instead
+  filter(TYPEHUGQ == 1) %>%
+  filter(NP > 0) %>%         # excluding vacant units
+  filter(NATIVITY == 2) %>%  # filter for only foreign born people
+     mutate(Year.Entry = case_when(      # create year of entry groups
+      YOEP < 1934 ~ "Before 1934",
+      YOEP >= 1934 & YOEP <= 2013 ~ "1934 to 2013",
+      YOEP >= 2014 & YOEP <= 2024 ~ "2014 and later",
+      TRUE ~ "0")) %>%
+  group_by(rpa_acr, SERIALNO, Year.Entry) %>%
+  summarise(total_weighted_sum = first(WGTP), .groups= "drop") 
 
+
+
+
+#calculate share of foreign born for each RPA by year of entry groups
+household_recent_immig_summary_table_RPA <- pums_RPA %>%
+  filter(RT != "H") %>%   # exclude hhlds 
+  filter(NATIVITY == 2) %>%  # filter for only foreign born
+   mutate(Year.Entry = case_when(      # create year of entry groups
+      YOEP < 1934 ~ "Before 1934",
+      YOEP >= 1934 & YOEP <= 2013 ~ "1934 to 2013",
+      YOEP >= 2014 & YOEP <= 2024 ~ "2014 and later",
+      TRUE ~ "0")) %>%
+  group_by(SERIALNO, rpa_acr, Year.Entry) %>%                   # group by household, rpa, and year of entry
+  summarise(first_weight = first(WGTP, na.rm = TRUE),           # get the first person's weight for hhld - head of hhld
+            .groups = "drop") %>%                                   
+  group_by(Year.Entry, rpa_acr) %>%                               # group by year of entry and rpa to calculate total weights for each
+  summarise(total_by_entry= sum(first_weight, na.rm = TRUE),   # sum the weights by entry groups
+    .groups = "drop")                                       
+
+
+#combine tables  
+RPA_foreign_born_table <- household_foreign_born_summary_table_RPA %>%
+  left_join(household_data_RPA, by = c("rpa_acr")) %>%
+  mutate(percentage = (total_by_nativity / total_weighted_sum) * 100) %>%
+  arrange(rpa_acr)
 ```
 
 ```{r}
 #Any other household variables for recent immigrants
+
 ```
 

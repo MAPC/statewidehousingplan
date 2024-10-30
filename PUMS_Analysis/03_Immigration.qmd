@@ -457,14 +457,14 @@ householder_race_non_hisp <- pums %>%
 
 household_year_entry_foreign_born <- pums %>%
  filter(RT != "H") %>%   # exclude hhlds 
- mutate(Year.Entry = case_when(      # create year of entry groups - might need to change around
+ mutate(Year.Entry = case_when(      # create year of entry groups
       YOEP < 1934 ~ "Before 1934",
-      YOEP >= 1934 & YOEP <= 1954 ~ "1934 to 1954",
-      YOEP >= 1955 & YOEP <= 1974 ~ "1955 to 1974",
-      YOEP >= 1975 & YOEP <= 1994 ~ "1975 to 1994",
-      YOEP >= 1995 & YOEP <= 2004 ~ "1995 to 2004",
-      YOEP >= 2005 & YOEP <= 2014 ~ "2005 to 2014",
-      YOEP >= 2015 & YOEP <= 2024 ~ "2015 to 2024",
+      YOEP >= 1934 & YOEP <= 1953 ~ "1934 to 1953",
+      YOEP >= 1954 & YOEP <= 1973 ~ "1954 to 1973",
+      YOEP >= 1974 & YOEP <= 1993 ~ "1974 to 1993",
+      YOEP >= 1994 & YOEP <= 2003 ~ "1994 to 2003",
+      YOEP >= 2004 & YOEP <= 2013 ~ "2004 to 2013",
+      YOEP >= 2014 & YOEP <= 2024 ~ "2014 and later",
       TRUE ~ "0")) %>%
  select(uniq_obs, SERIALNO, WGTP, NATIVITY, Year.Entry) %>% 
  group_by(SERIALNO) %>% 
@@ -485,12 +485,12 @@ household_year_entry_foreign_born <- pums %>%
   mutate(householder_nativity = "Foreign born") %>%
    mutate (householder_entry = factor(householder_entry, levels = c(   # order groups in correct order
       "Before 1934",
-      "1934 to 1954",
-      "1955 to 1974",
-      "1975 to 1994",
-      "1995 to 2004",
-      "2005 to 2014",
-      "2015 to 2024"))) %>%
+      "1934 to 1953",
+      "1954 to 1973",
+      "1974 to 1993",
+      "1994 to 2003",
+      "2004 to 2013",
+      "2014 and later"))) %>%
    arrange(householder_nativity, householder_entry)
 
 ```
@@ -1054,7 +1054,7 @@ RPA_foreign_born_table <- household_foreign_born_summary_table_RPA %>%
            file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/immig_RPA.xlsx") 
 ```
 
-#Sub group analysis of hhld where the head of hhld is recent immigrant, e.g. year of entry 2014 or more recent. 
+#Sub group analysis of hhld where the head of hhld is recent immigrant, e.g. year of entry 2014 or more recent
 
 ```{r}
 #Cost burden for recent immigrants - head of hhld 
@@ -1089,8 +1089,8 @@ household_renter_burden_recent_immig <- pums %>%
     .groups = "drop") %>%
  group_by(householder_nativity, year_entry) %>%  # group by nativity and year entry to calculate totals within each group
  mutate(
-    total_weight_by_nativity = sum(total_weight, na.rm = TRUE),  # calculate the total weight for each nativity group
-    percentage_within_nativity = (total_weight / total_weight_by_nativity) * 100  # calculate percentage within each group
+    total_weight_by_entry = sum(total_weight, na.rm = TRUE),  # calculate the total weight for each nativity group
+    percentage_within_entry = (total_weight / total_weight_by_entry) * 100  # calculate percentage within each group
  ) %>%
  mutate(householder_nativity = case_when(  # rename nativity categories
     householder_nativity == 1 ~ "Native",
@@ -1132,14 +1132,14 @@ household_owner_burden_recent_immig <- pums %>%
     .groups = "drop") %>%
  group_by(householder_nativity, year_entry) %>%  # group by nativity and year entry to calculate totals within each group
  mutate(
-    total_weight_by_nativity = sum(total_weight, na.rm = TRUE),  # calculate the total weight for each nativity group
-    percentage_within_nativity = (total_weight / total_weight_by_nativity) * 100  # calculate percentage within each group
+    total_weight_by_entry = sum(total_weight, na.rm = TRUE),  # calculate the total weight for each nativity group
+    percentage_within_entry = (total_weight / total_weight_by_entry) * 100  # calculate percentage within each group
  ) %>%
  mutate(householder_nativity = case_when(  # rename nativity categories
     householder_nativity == 1 ~ "Native",
     householder_nativity == 2 ~ "Foreign born",
     TRUE ~ "Unknown")) %>%
- mutate(householder_renter_burden = factor(householder_owner_burden, levels = c(        # order groups in correct order
+ mutate(householder_owner_burden = factor(householder_owner_burden, levels = c(        # order groups in correct order
     "No cost burden", 
     "Cost burden", 
     "Severe cost burden"))) %>%
@@ -1178,8 +1178,8 @@ householder_tenure_recent_immig <- pums %>%
     .groups = "drop") %>%
  group_by(year_entry) %>%                                  # group by year entry for nativity weight totals
  mutate(
-    total_weight_by_nativity = sum(total_weight, na.rm = TRUE),       # calculate the total weight for each year entry group
-    percentage_within_nativity = (total_weight / total_weight_by_nativity) * 100) %>%  # calculate percentage within each group
+    total_weight_by_entry = sum(total_weight, na.rm = TRUE),       # calculate the total weight for each year entry group
+    percentage_within_nativity = (total_weight / total_weight_by_entry) * 100) %>%  # calculate percentage within each group
  mutate(householder_tenure = case_when(                               # rename tenure categories
     householder_tenure == "1" ~ "Owned with mortgage",
     householder_tenure == "2" ~ "Owned without mortgage",
@@ -1275,12 +1275,12 @@ household_member_edu_recent_immig <- pums %>%
     .groups = "drop") %>%
  group_by(Year.Entry, EDU) %>%  # group by year of entry and education
  summarise(
-    total_weight_by_edu_nativity = sum(total_weight, na.rm = TRUE),  # total weight by edu and nativity group
+    total_weight_by_edu_entry = sum(total_weight, na.rm = TRUE),  # total weight by edu and nativity group
     .groups = "drop") %>%
  group_by(Year.Entry) %>%
  mutate(
-    total_weight_by_entry = sum(total_weight_by_edu_nativity, na.rm = TRUE),  # calculate nativity group totals
-    percentage_within_entry = (total_weight_by_edu_nativity / total_weight_by_entry) * 100) %>%  # calculate percentage
+    total_weight_by_entry = sum(total_weight_by_edu_entry, na.rm = TRUE),  # calculate nativity group totals
+    percentage_within_entry = (total_weight_by_edu_entry/ total_weight_by_entry) * 100) %>%  # calculate percentage
     mutate (EDU = factor(EDU, levels = c(   # order groups in correct order
      "Less than high school diploma",
      "High school diploma or equivalent",

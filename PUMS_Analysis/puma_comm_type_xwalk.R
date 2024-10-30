@@ -13,10 +13,7 @@ library(stringi)
 
 ### 0. SETUP VARIABLES SECTION
 
-# 0.1 REQUIRED:  INPUT ACS 5YR VALUE
-input_year = "2018-22"
-
-# 0.2 REQUIRED: SET PATHS
+# 0.1 REQUIRED: SET PATHS
 # write table to exp_path
 # exp_path = "H:/0_PROJECTS/2024_statewide_housing_plan/output/"
 
@@ -156,6 +153,7 @@ slice_bos_03305 <- puma_concat %>%
 puma_bind <- rbind(puma_concat,slice_bos_03301,slice_bos_03302,slice_bos_03303,slice_bos_03305) %>% 
   arrange(PUMACE10)
 
+
 ###
 # 8 summarize on comm type type one-by-one
 ###
@@ -234,12 +232,12 @@ puma_aggr <-
 
 
 # 10.3 calc total of suburbs
-puma_total <- puma_total %>% 
+puma_total <- puma_aggr %>% 
   mutate(suburb = (dev_sub + mat_sub)
   )
 
 # 10.4 calc total pop for each PUMA
-puma_total <- puma_aggr %>% 
+puma_total <- puma_total %>% 
   mutate(total_pop = (dev_sub + reg_urb + rur_twn + mat_sub + inn_cor)
   )
 
@@ -268,7 +266,7 @@ puma_pct <- puma_total %>%
     suburb_p = round((suburb/total_pop),2)
   )
 
-rm(puma_new_types)
+
 # 12 assign the types based on percentages
 
 # # 12.1 original rates
@@ -288,12 +286,12 @@ rm(puma_new_types)
 puma_new_types <- puma_pct %>% 
   mutate(
     puma_type = case_when(
-      inn_cor_p > 0.8 ~ 'Core',
+      inn_cor_p > 0.7 ~ 'Core',
       reg_urb_p > 0.7 ~ 'RegUrbCtr',
       suburb_p > 0.7 ~ 'Suburb',
       rur_twn_p > 0.7 ~ 'RuralTown',
       (reg_urb_p + suburb) > 0.7 ~ 'RegUrbCnt+Suburb',
-      inn_cor_p <= 0 ~ 'Core'
+      inn_cor_p = 1 ~ 'Core'
     )
   )
 

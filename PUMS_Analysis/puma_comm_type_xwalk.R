@@ -1,5 +1,6 @@
 library(dplyr)
 library(tidycensus)
+library(tidyverse)
 library(sf)
 library(geojsonsf)
 library(ggplot2)
@@ -12,10 +13,7 @@ library(stringi)
 
 ### 0. SETUP VARIABLES SECTION
 
-# 0.1 REQUIRED:  INPUT ACS 5YR VALUE
-input_year = "2018-22"
-
-# 0.2 REQUIRED: SET PATHS
+# 0.1 REQUIRED: SET PATHS
 # write table to exp_path
 # exp_path = "H:/0_PROJECTS/2024_statewide_housing_plan/output/"
 
@@ -35,14 +33,21 @@ muni_pop <- read.csv(paste0("https://datacommon.mapc.org/csv?table=tabular.demo_
   select(c(muni_id,pop,hh))
 
 
-# pums_inter <- read.csv("K:DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/pums_muni_inter.csv") %>% 
-#   select(c(TOWN_ID,TOWN,POP2010,SUM_ACRES,PUMACE10),everything())
+# pums_inter <- read.csv("K:DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/pums_muni_inter.csv") #%>% 
+#    select(c(TOWN_ID,TOWN,POP2010,SUM_ACRES,PUMACE10),everything())
 
 # 2.1 read shp from K drive
 
 puma_10_shp <- read_sf(paste0(shp_path,"tl_2019_25_puma10.shp")) %>% 
   st_transform(26986)
 st_crs(puma_10_shp)
+
+puma_10_shp <- puma_10_shp %>% 
+  arrange(GEOID10)
+
+# pums_inter <- pums_inter %>% 
+#   arrange(TOWN) %>% 
+#   select(c(TOWN,GEOID10),everything())
 
 # ct164_shp <- read_sf("K:/DataServices/Projects/Current_Projects/Community Types/maps/project file/CommType164.shp") 
 # st_crs(ct164_shp)
@@ -109,20 +114,60 @@ puma_pop <- puma_keys %>%
 puma_concat <- puma_pop %>% 
   mutate(puma_type = paste0(PUMACE10,"_",cmtyp08_id))
 
+
+# 7. patch in missing BOSTON PUMAs [3301,3302,3303,3305] using 3304 as template
+
+# 7.1 Allston Brighton Fenway
+slice_bos_03301 <- puma_concat %>% 
+  filter(PUMACE10 == '03304') %>% 
+  mutate(PUMACE10 = '03301') %>% 
+  mutate(GEOID10 = '2503301') %>% 
+  mutate(puma_type = '03301_378') %>% 
+  mutate(NAMELSAD10 = 'Boston City--Allston-Brighton-Fenway PUMA')
+
+# 7.2 Boston City--Back Bay-Beacon Hill-Charlestown-East Boston-Central & South End
+slice_bos_03302 <- puma_concat %>% 
+  filter(PUMACE10 == '03304') %>% 
+  mutate(PUMACE10 = '03302') %>% 
+  mutate(GEOID10 = '2503302') %>% 
+  mutate(puma_type = '03302_378') %>% 
+  mutate(NAMELSAD10 = 'Boston City--Back Bay-Beacon Hill-Charlestown-East Boston-Central & South End PUMA')
+
+# 7.3 Dorchester & South Boston
+slice_bos_03303 <- puma_concat %>% 
+  filter(PUMACE10 == '03304') %>% 
+  mutate(PUMACE10 = '03303') %>% 
+  mutate(GEOID10 = '2503303') %>% 
+  mutate(puma_type = '03303_378') %>% 
+  mutate(NAMELSAD10 = 'Boston City--Dorchester & South Boston PUMA')
+
+# 7.4 Hyde Park Jamaica Plain Roslindale & West Roxbury 
+slice_bos_03305 <- puma_concat %>% 
+  filter(PUMACE10 == '03304') %>% 
+  mutate(PUMACE10 = '03305') %>% 
+  mutate(GEOID10 = '2503305') %>% 
+  mutate(puma_type = '03305_378') %>% 
+  mutate(NAMELSAD10 = 'Boston City--Hyde Park-Jamaica Plain-Roslindale & West Roxbury PUMA')
+
+# 7.5 bind the Inner Boston PUMAS 
+puma_bind <- rbind(puma_concat,slice_bos_03301,slice_bos_03302,slice_bos_03303,slice_bos_03305) %>% 
+  arrange(PUMACE10)
+
+
 ###
-# 7 summarize on comm type type one-by-one
+# 8 summarize on comm type type one-by-one
 ###
 
-# 7.0 convert from spatial to plain df
-puma_df <- puma_concat %>% st_drop_geometry() #%>% 
+# 8.0 convert from spatial to plain df
+puma_df <- puma_bind %>% st_drop_geometry() #%>% 
 #  filter(PUMACE10 == '00100')
 class(puma_df)
 
-# 7.1  check to see what the comm types are for input PUMA value
+# 8.1  check to see what the comm types are for input PUMA value
 puma_df_uniq_types <- puma_df %>% 
   distinct(cmtyp08)
 
-# 7.2 set aggr function
+# 8.2 set aggr function
 commtype_aggr_func <- function(grp_id, grp_name){
   puma_df %>%  
     group_by({{grp_id}}, {{grp_name}}) %>%
@@ -133,7 +178,7 @@ commtype_aggr_func <- function(grp_id, grp_name){
     select(c(puma_type, municipal), everything())
 }
 
-# 7.3 run aggregation for pop by comm type
+# 8.3 run aggregation for pop by comm type
 commtype_aggr <-
   bind_rows(
     commtype_aggr_func(grp_id = puma_type, grp_name = cmtyp08)) %>% 
@@ -143,307 +188,193 @@ commtype_aggr <-
 
 
 ### 
-# 8 find max value pop row for each uniq PUMACE10
+# 9 pivot wider with type columns and aggr population for each
 ###
 
-# 8.1 reset the PUMACE10
-commtype_loop <- commtype_aggr %>% 
+# 9.1 retrieve the PUMACE10
+commtype_pumas <- commtype_aggr %>% 
   mutate(PUMACE10 = stri_sub(puma_type,1,5)
   )
 
-# 8.2  find the uniq vals to slice
-puma10ce_uniq <- commtype_loop %>% 
-  distinct(PUMACE10)
-
-# 8.3 export uniq to concat the slice commands
-write.csv(puma10ce_uniq,"H:/0_PROJECTS/2024_puma_comm_type/ipums_puma_2020/uniq_puma10ce.csv")
-
-# concat example: 
-
-# 8.4 slice each max pop value
-# test version
-
-slice_00100 <- commtype_loop %>% 
-  filter(PUMACE10 == '00100') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_00200 <- commtype_loop %>% 
-  filter(PUMACE10 == '00200') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_00300 <- commtype_loop %>% 
-  filter(PUMACE10 == '00300') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_00301 <- commtype_loop %>% 
-  filter(PUMACE10 == '00301') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_00302 <- commtype_loop %>% 
-  filter(PUMACE10 == '00302') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_00303 <- commtype_loop %>% 
-  filter(PUMACE10 == '00303') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_00304 <- commtype_loop %>% 
-  filter(PUMACE10 == '00304') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_00400 <- commtype_loop %>% 
-  filter(PUMACE10 == '00400') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_00501 <- commtype_loop %>% 
-  filter(PUMACE10 == '00501') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_00502 <- commtype_loop %>% 
-  filter(PUMACE10 == '00502') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_00503 <- commtype_loop %>% 
-  filter(PUMACE10 == '00503') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_00504 <- commtype_loop %>% 
-  filter(PUMACE10 == '00504') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_00505 <- commtype_loop %>% 
-  filter(PUMACE10 == '00505') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_00506 <- commtype_loop %>% 
-  filter(PUMACE10 == '00506') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_00507 <- commtype_loop %>% 
-  filter(PUMACE10 == '00507') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_00508 <- commtype_loop %>% 
-  filter(PUMACE10 == '00508') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_00701 <- commtype_loop %>% 
-  filter(PUMACE10 == '00701') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_00702 <- commtype_loop %>% 
-  filter(PUMACE10 == '00702') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_00703 <- commtype_loop %>% 
-  filter(PUMACE10 == '00703') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_00704 <- commtype_loop %>% 
-  filter(PUMACE10 == '00704') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_01000 <- commtype_loop %>% 
-  filter(PUMACE10 == '01000') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_01300 <- commtype_loop %>% 
-  filter(PUMACE10 == '01300') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_01400 <- commtype_loop %>% 
-  filter(PUMACE10 == '01400') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_01600 <- commtype_loop %>% 
-  filter(PUMACE10 == '01600') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_01900 <- commtype_loop %>% 
-  filter(PUMACE10 == '01900') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_01901 <- commtype_loop %>% 
-  filter(PUMACE10 == '01901') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_01902 <- commtype_loop %>% 
-  filter(PUMACE10 == '01902') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_02400 <- commtype_loop %>% 
-  filter(PUMACE10 == '02400') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_02800 <- commtype_loop %>% 
-  filter(PUMACE10 == '02800') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_03304 <- commtype_loop %>% 
-  filter(PUMACE10 == '03304') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_03306 <- commtype_loop %>% 
-  filter(PUMACE10 == '03306') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_03400 <- commtype_loop %>% 
-  filter(PUMACE10 == '03400') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_03500 <- commtype_loop %>% 
-  filter(PUMACE10 == '03500') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_03601 <- commtype_loop %>% 
-  filter(PUMACE10 == '03601') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_03602 <- commtype_loop %>% 
-  filter(PUMACE10 == '03602') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_03603 <- commtype_loop %>% 
-  filter(PUMACE10 == '03603') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_03900 <- commtype_loop %>% 
-  filter(PUMACE10 == '03900') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_04000 <- commtype_loop %>% 
-  filter(PUMACE10 == '04000') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_04200 <- commtype_loop %>% 
-  filter(PUMACE10 == '04200') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_04301 <- commtype_loop %>% 
-  filter(PUMACE10 == '04301') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_04302 <- commtype_loop %>% 
-  filter(PUMACE10 == '04302') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_04303 <- commtype_loop %>% 
-  filter(PUMACE10 == '04303') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_04500 <- commtype_loop %>% 
-  filter(PUMACE10 == '04500') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_04700 <- commtype_loop %>% 
-  filter(PUMACE10 == '04700') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_04800 <- commtype_loop %>% 
-  filter(PUMACE10 == '04800') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_04901 <- commtype_loop %>% 
-  filter(PUMACE10 == '04901') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_04902 <- commtype_loop %>% 
-  filter(PUMACE10 == '04902') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-slice_04903 <- commtype_loop %>% 
-  filter(PUMACE10 == '04903') %>% 
-  slice_max(pop, with_ties = FALSE)
-
-
-
-## 9 bind all the max rows
-slice_bind <- rbind(slice_00100, slice_00200, slice_00300, slice_00301, slice_00302, slice_00303, slice_00304, slice_00400, slice_00501, slice_00502, slice_00503, slice_00504, slice_00505, slice_00506, slice_00507, slice_00508, slice_00701, slice_00702, slice_00703, slice_00704, slice_01000, slice_01300, slice_01400, slice_01600, slice_01900, slice_01901, slice_01902, slice_02400, slice_02800, slice_03304, slice_03306, slice_03400, slice_03500, slice_03601, slice_03602, slice_03603, slice_03900, slice_04000, slice_04200, slice_04301, slice_04302, slice_04303, slice_04500, slice_04700, slice_04800, slice_04901, slice_04902, slice_04903)
-
-# 9.1 drop & rename cols
-puma_cmtyp08 <- slice_bind %>% 
+# 9.2  pivot wider
+pivot_on_types <- commtype_pumas %>%
+  pivot_wider(names_from = municipal, values_from = pop) %>% 
   mutate(
-    max_pop_type = puma_type,
-    max_pop_name = municipal,
-    max_pop = pop
+    dev_sub = `Developing Suburb`, # backticks for blank spaces in var names
+    reg_urb = `Regional Urban Center`,
+    rur_twn = `Rural Town`,
+    mat_sub = `Maturing Suburb`,
+    inn_cor = `Inner Core`,
+    puma_name = PUMACE10
   ) %>% 
-  mutate(cmtyp08_id = stri_sub(max_pop_type,-3,-1)) %>% 
-  select(-c(municipal,pop,hh,puma_type)) %>% 
-  arrange(PUMACE10)
-
-class(puma_cmtyp08)
+  select(-c(`Developing Suburb`,`Regional Urban Center`,`Rural Town`,`Maturing Suburb`,`Inner Core`,hh,puma_type)) %>% 
+  select(c(PUMACE10,puma_name),everything())
 
 
+# 10. aggregate the puma_type rows into PUMAs
+
+# 10.1 set aggr function
+puma_aggr_func <- function(grp_id, grp_name){
+  pivot_on_types %>%  
+    group_by({{grp_id}}, {{grp_name}}) %>%
+    summarise(across(.cols = c(dev_sub,reg_urb,rur_twn,mat_sub,inn_cor), sum, na.rm = TRUE)) %>% 
+    rowwise() %>% 
+    ungroup() %>% 
+#    dplyr::rename(PUMACE10 = 1, puma_name = 2) %>% 
+    select(c(PUMACE10,puma_name), everything())
+}
+
+# 10.2 run aggregation for pop by comm type
+puma_aggr <-
+  bind_rows(
+    puma_aggr_func(grp_id = PUMACE10, grp_name = puma_name)) %>% 
+  dplyr::distinct()
 
 
-# 10 export uniq to concat the slice commands
-write.csv(puma_cmtyp08,"H:/0_PROJECTS/2024_puma_comm_type/ipums_puma_2020/puma_cmtyp08_xwalk.csv")
+# 10.3 calc total of suburbs
+puma_total <- puma_aggr %>% 
+  mutate(suburb = (dev_sub + mat_sub)
+  )
+
+# 10.4 calc total pop for each PUMA
+puma_total <- puma_total %>% 
+  mutate(total_pop = (dev_sub + reg_urb + rur_twn + mat_sub + inn_cor)
+  )
+
+
+# 11 calculate the percentages
+# 
+# # 11.1  original types
+# puma_pct <- puma_total %>% 
+#   mutate(
+#     dev_sub_p = round((dev_sub/total_pop),2),
+#     reg_urb_p = round((reg_urb/total_pop),2),
+#     rur_twn_p = round((rur_twn/total_pop),2),
+#     mat_sub_p = round((mat_sub/total_pop),2),
+#     inn_cor_p = round((dev_sub/total_pop),2),
+#     suburb_p = round((suburb/total_pop),2)
+#   )
+
+# 11.1  original types
+puma_pct <- puma_total %>% 
+  mutate(
+    dev_sub_p = round((dev_sub/total_pop),2),
+    reg_urb_p = round((reg_urb/total_pop),2),
+    rur_twn_p = round((rur_twn/total_pop),2),
+    mat_sub_p = round((mat_sub/total_pop),2),
+    inn_cor_p = round((inn_cor/total_pop),2),
+    suburb_p = round((suburb/total_pop),2)
+  )
+
+
+# 12 assign the types based on percentages
+
+# # 12.1 original rates
+# puma_new_types <- puma_pct %>% 
+#   mutate(
+#     puma_type = case_when(
+#       inn_cor_p > 0.7 ~ 'Core',
+#       reg_urb_p > 0.7 ~ 'RegUrbCtr',
+#       suburb_p > 0.7 ~ 'Suburb',
+#       rur_twn_p > 0.7 ~ 'RuralTown',
+#       (reg_urb_p + suburb) > 0.7 ~ 'RegUrbCnt+Suburb',
+#       inn_cor_p <= 0 ~ 'Core'
+#     )
+#   )
+
+# 12.1 original rates
+puma_new_types <- puma_pct %>% 
+  mutate(
+    puma_type = case_when(
+      inn_cor_p > 0.7 ~ 'Core',
+      reg_urb_p > 0.7 ~ 'RegUrbCtr',
+      suburb_p > 0.7 ~ 'Suburb',
+      rur_twn_p > 0.7 ~ 'RuralTown',
+      (reg_urb_p + suburb) > 0.7 ~ 'RegUrbCnt+Suburb',
+      inn_cor_p = 1 ~ 'Core'
+    )
+  )
+
+# 13 export new PUMA Community Types
+write.csv(puma_new_types,"H:/0_PROJECTS/2024_puma_comm_type/ipums_puma_2020/new_puma_types_2024.csv")
 
 
 #####
 
 
-# rm all slices at once
-#rm(list = ls()[grepl("^slice", ls())])
 
-# 10 join to shp for checking 
+#  join to shp for checking 
 
 puma_map <- puma_10_shp %>%
   left_join(.,
-            puma_cmtyp08 %>% select(c(PUMACE10),everything()),
+            puma_new_types %>% select(c(PUMACE10),everything()),
             by = c('PUMACE10' = 'PUMACE10')) %>% 
   arrange(PUMACE10) 
 
-puma_map <- merge(puma_10_shp, puma_cmtyp08, all = TRUE)
+# puma_map <- merge(puma_10_shp, puma_cmtyp08, all = TRUE)
+# 
+# class(puma_10_shp)
 
-class(puma_10_shp)
 
+puma_centroid <- puma_map %>% 
+  st_transform(4326) %>% 
+  mutate(centroids = st_centroid(st_geometry(.)))
 
+puma_xy <- puma_centroid %>%
+  mutate(long = unlist(map(puma_centroid$centroids,1)),
+         lat = unlist(map(puma_centroid$centroids,2)))
+
+map_title = paste0("puma by type")
+
+puma_plot <- ggplot(puma_xy) +
+  geom_sf(aes(fill = puma_type), linewidth = 0, alpha = 0.9) +
+  theme_void() +
+  scale_colour_viridis_d(
+    #    trans = "log", breaks = c(1, 5, 10, 20, 50, 100),
+    name = "pct",
+    guide = guide_legend(
+      keyheight = unit(3, units = "mm"),
+      keywidth = unit(12, units = "mm"),
+      label.position = "bottom",
+      title.position = "top",
+      nrow = 1
+    )
+  ) +
+  labs(
+    title = map_title,
+    subtitle = "chloropleth of community types",
+    caption = "Data: percent formula for each types within PUMA"
+  ) +
+  theme(
+    text = element_text(color = "#22211d"),
+    plot.background = element_rect(fill = "#f5f5f2", color = NA),
+    panel.background = element_rect(fill = "#f5f5f2", color = NA),
+    legend.background = element_rect(fill = "#f5f5f2", color = NA),
+    plot.title = element_text(
+      size = 20, hjust = 0.01, color = "#4e4d47",
+      margin = margin(
+        b = -0.1, t = 0.4, l = 2,
+        unit = "cm"
+      )
+    ),
+    plot.subtitle = element_text(
+      size = 15, hjust = 0.01,
+      color = "#4e4d47",
+      margin = margin(
+        b = -0.1, t = 0.43, l = 2,
+        unit = "cm"
+      )
+    ),
+    plot.caption = element_text(
+      size = 10,
+      color = "#4e4d47",
+      margin = margin(
+        b = 0.3, r = -99, t = 0.3,
+        unit = "cm"
+      )
+    ),
+    legend.position = c(0.1, 0.09)
+  )
+
+puma_plot
 

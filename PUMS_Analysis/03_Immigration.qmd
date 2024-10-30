@@ -1055,6 +1055,7 @@ RPA_foreign_born_table <- household_foreign_born_summary_table_RPA %>%
 ```
 
 #Sub group analysis of hhld where the head of hhld is recent immigrant, e.g. year of entry 2014 or more recent. 
+
 ```{r}
 #Cost burden for recent immigrants - head of hhld 
 #Cost burden - renter and owner cost burden - GRPIP OCPIP
@@ -1144,5 +1145,79 @@ household_owner_burden_recent_immig <- pums %>%
     "Severe cost burden"))) %>%
  arrange(householder_nativity, year_entry, householder_owner_burden)
 
+```
+
+```{r}
+#Export cost burden tables
+ write.xlsx(list('Recent immig renter burden' = household_renter_burden_recent_immig,
+                 'Recent immig owner burden' = household_owner_burden_recent_immig), 
+           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/immig_recent_cost_burden.xlsx") 
+```
+
+```{r}
+#tenure for recent immigrants
+householder_tenure_recent_immig <- pums %>%
+ filter(RT != "H") %>%   # exclude households
+ mutate(Year.Entry = case_when(      # create year of entry groups
+      YOEP < 1934 ~ "Before 1934",
+      YOEP >= 1934 & YOEP <= 2013 ~ "1934 to 2013",
+      YOEP >= 2014 & YOEP <= 2024 ~ "2014 to 2024",
+      TRUE ~ "0")) %>%
+ select(uniq_obs, SERIALNO, WGTP, NATIVITY, TEN, Year.Entry) %>% 
+ group_by(SERIALNO) %>% 
+ summarise(
+    householder_tenure = first(TEN, na.rm = TRUE),  # get the first person's tenure
+    householder_nativity = first(NATIVITY, na.rm = TRUE),  # get nativity of first person (householder)
+    first_weight = first(WGTP, na.rm = TRUE),  # get the weight for the first person (householder)
+    year_entry = first(Year.Entry, na.rm = TRUE),   # get the year entry for the first person (householder)
+    .groups = "drop") %>%
+ filter(householder_nativity == 2) %>%  # filter for foreign-born householders only
+ group_by(year_entry, householder_tenure) %>%  # group by year entry and tenure for summarization
+ summarise(
+    total_weight = sum(first_weight, na.rm = TRUE),  # summarize total weights by year entry and tenure
+    .groups = "drop") %>%
+ group_by(year_entry) %>%  # group by year entry for nativity weight totals
+ mutate(
+    total_weight_by_nativity = sum(total_weight, na.rm = TRUE),  # calculate the total weight for each year entry group
+    percentage_within_nativity = (total_weight / total_weight_by_nativity) * 100  # calculate percentage within each group
+ ) %>%
+ mutate(householder_tenure = case_when(  # rename tenure categories
+    householder_tenure == "1" ~ "Owned with mortgage",
+    householder_tenure == "2" ~ "Owned without mortgage",
+    householder_tenure == "3" ~ "Rented",
+    householder_tenure == "4" ~ "Occupied without payment of rent",
+    TRUE ~ NA_character_)) %>%
+ filter(!is.na(householder_tenure)) %>%
+ arrange(year_entry, householder_tenure)
+
+```
+
+
+```{r}
+#Export tenure table
+write.xlsx(list('Tenure of recent immig' = householder_tenure_recent_immig), 
+           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/immig_recent_tenure.xlsx") 
+```
+
+```{r}
+#Household size for recent immigrants 
+```
+
+```{r}
+#Edu attainment for recent immigrants
+```
+
+```{r}
+#Age of recent immigrant householders 
+
+```
+
+```{r}
+#Count of hhlds headed by recent immigrants by RPA 
+
+```
+
+```{r}
+#Any other household variables for recent immigrants
 ```
 

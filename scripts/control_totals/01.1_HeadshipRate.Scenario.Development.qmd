@@ -38,7 +38,6 @@ knitr::opts_knit$set(root.dir = pums_path)
 library(tidycensus)
 library(tidyverse)
 library(data.table)
-library(reticulate)
 library(mapcdatakeys)
 library(janitor)
 library(readxl)
@@ -299,16 +298,49 @@ pums_data.adj <- pums_data |>
       SFN > 0 & subset.flag.2 == 1 ~ "2",
       .default = "0"
     ),
-    # Create a row ID number to loop through later.
-    ID = row_number()
+    adj.flag.2 = case_when(
+      # Flag for the adjusted household of the subsetted groups
+      # First Subset
+      SFN > 0 & subset.flag.1 == 1 ~ "1",
+      #Second Subset
+      SFN > 0 & subset.flag.2 == 1 ~ "1",
+      .default = "0"
+    )
   )
 
 ```
 
-# 3.2 Redefine SPORDER and Relationship Variables
+# 3.2 Reorder Persons in Households to be Split
+```{r}
+# Reordering persons in the households to be split.
+# Subset of households that will not be split that do not need to be reordered
+pums_data.adj.og <- pums_data.adj |> 
+  filter(adj.flag.2 == "0")
+
+# Subset of households that WILL be split and need to be reordered within their new household.
+pums_data.adj.adj <- pums_data.adj |> 
+  filter(adj.flag.2 == "1") |> 
+  group_by(SERIALNO.adj) |> 
+  dplyr::arrange(desc(AGEP), .by_group = TRUE) |> 
+  ungroup()
+
+# To redefine the person order within a household, we need to make sure the people in the households to be split are at least sort of logically ordered. I am assuming that the oldest person (as captured by AGEP) is the "head" (SPORDER == 1) of the household. We do not want children to head a household in which they have a parent, which they should because that is the definition of a subfamily when they have children.
+
+# Rebinding the pums data subsets with the people in the households to be split properly arranged by age.
+pums_data.adj <- rbind(pums_data.adj.og, pums_data.adj.adj)
+
+# Removing the interim subsets I no longer need.
+rm(pums_data.adj.og, pums_data.adj.adj)
+```
+
+# 3.3 Redefine SPORDER and Relationship Variables
 ```{r}
 # Create a test data frame before putting this into production
 pums_data.adj <- pums_data.adj |>
+  mutate(
+    # Create a row ID number to loop through later.
+    ID = row_number()
+  ) |> 
   group_by(SERIALNO.adj) |> 
   mutate(
     # Create a new SPORDER variable based on the order of people in the new households (if they are split into new households).
@@ -339,9 +371,10 @@ pums_data.adj <- pums_data.adj |>
 # List of assumptions:
 # 1. Cant determine the kind of spouse or child non-reference persons are in the new, split households. Could distinguish same or opposite sex spousal relationship with "SEX" variable added to the PUMS data.
 # 2. Can we use RELSHIPP to help us be more correct? What about for people who are non-relatives?
+
 ```
 
-# 3.3 Re-create households variables for split households
+# 3.4 Re-create households variables for split households
 ```{r}
 pums_data.adj <- pums_data.adj |> 
   mutate(
@@ -422,7 +455,7 @@ test <- pums_data.adj |>
 # 4. 
 ```
 
-# 3.4 QA/QC - Check Split Households are Equal to The Number of Households We Expect to Be Split
+# 3.5 QA/QC - Check Split Households are Equal to The Number of Households We Expect to Be Split
 ```{r}
 #===============================================================================
 # Analyze Subset #1
@@ -592,7 +625,11 @@ hdsp.r_compare <- full_join(
     # Fill in Zeros where NAs exist from new headship rate groups being created in the split household tabulation.
     across(starts_with("freq"), ~replace_na(.,0)),
     # Compare differences in headship rates.
-    hdsh.r_comp = freq-freq.split
+    hdsh.r_comp = freq.split-freq
+  ) |> 
+  filter(
+    # Filter for the three household types.
+    var %in% c("hhderchild", "hhdernochild", "single")
   )
 ```
 

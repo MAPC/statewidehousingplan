@@ -23,7 +23,10 @@ root <- paste0(base, "/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Reg
 rwt_path <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Reweighter/")
 
 #PUMS K drive filepath
-pums_path <- paste0(base, "/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS/ipums_2021/")
+pums_path <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS/ipums_2000/")
+
+#PUMA Crosswalk path
+puma.xwalk_path <- "K:/DataServices/Datasets/Data Keys/PUMAs/PUMA_to_RPA_xwalks/"
 
 #Set output filepath
 output_path <- paste0(base, "/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS/outputs/")
@@ -35,12 +38,10 @@ knitr::opts_knit$set(root.dir = pums_path)
 # 0.2 - Set package dependencies, set environment, set up data keys
 
 ```{r}
-library(tidycensus)
 library(tidyverse)
 library(data.table)
 library(mapcdatakeys)
 library(janitor)
-library(readxl)
 
 # Remove scientific notation
 options(scipen = 999)
@@ -52,25 +53,20 @@ set.seed(351)
 source("C:/Project_Work/statewidehousingplan/PUMS_Analysis/PUMS_Helper_Functions.R")
 
 # Load PUMA x RPA Crosswalk
-xw <- read.csv(paste0(rwt_path, "PUMS_data/PUMA10_RPA_crosswalk.csv")) |> 
-  mutate(PUMA = str_pad(PUMA, 5, "left", pad = 0))
+xw <- read.csv(paste0(puma.xwalk_path, "PUMA_2000Geog.csv"))
 
 ```
 
 # 1.0 Load 2000 5% PUMS Records and Create Variables Needed to Calculate Headship Rates
 ```{r}
 # List of PUMS variables
-variable_list <- c('RT', 'PUMA', 'ADJHSG','ADJINC','NP','TYPEHUGQ','BDSP','RMSP','CPLT','HHLDRAGEP',
-                   'HHLDRRAC1P','HHLDRHISP', 'HHT', 'HHT2', 'HINCP', 'HUGCL', 'HUPAC', 'HUPAOC',
-                   'HUPARC', 'LNGI', 'MULTG', 'NPF', 'NPP', 'NR','NRC', 'PARTNER', 'PSF','R18',
-                   'AGEP','RELSHIPP','RAC1P','OC','SFN','SFR','TEN', "SEX", "PINCP", "ESR")
 
 # Query {tidycensus} for 2017-2021 5-Year PUMS data
-pums_data <- pums_query(var.list = variable_list, yr = vintage, srvy = "acs5") |>
+pums_data <- read.csv(paste0(pums_path, "pums_overcrowding_2000_V_2024-09-18.csv")) |>
   # General Data Cleaning
   mutate(
     # Generate five-year age groupings to match UMDI population projections data.
-    ageCAT6 = cut(AGEP, breaks = c(-Inf, seq(4, 84, 5), Inf), labels = 1:18),
+    ageCAT6 = cut(AGE, breaks = c(-Inf, seq(4, 84, 5), Inf), labels = 1:18),
     # Counts as Worker
     # NOTE: Categories are (0) under 16 or not in labor force, or (1) in labor force or non-civilian worker
     worker = case_when(

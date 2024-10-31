@@ -494,6 +494,90 @@ if(sum(sum(subset.1$new.hhds), sum(subset.2$new.hhds)) != sum(sum(subset.1.adj.t
 }
 
 ```
+# 3.5 Analysis of Subset Households
+```{r}
+# Full dataframe of subset households.
+subset.adj.test <- bind_rows(subset.1.adj.test, subset.2.adj.test) |> 
+  # Join the PUMA to RPA ceosswalk to the PUMS data
+  left_join(
+    xw,
+    by = c('PUMA')
+  ) |> 
+  mutate(
+    WAGPALLC_US = 
+      cut(
+        HINCP.adj.2021USD,
+        breaks = c(-Inf, 35000, 75000, 125000, 225000, Inf),
+        labels = c("1", "2", "3", "4", "5")
+      )
+  )
+  
+#Households by RPA
+tbl.1 <- subset.adj.test |> 
+  filter(SPORDER.adj == 1 & TYPEHUGQ == 1) |> 
+  group_by(rpa_acr) |> 
+  summarise(
+    hhds = sum(WGTP)
+  ) |> 
+  ungroup()
+
+# Households by household type
+tbl.2 <- subset.adj.test |> 
+  filter(SPORDER.adj == 1 & TYPEHUGQ == 1) |> 
+  group_by(
+    HHtype
+  ) |> 
+  summarise(
+    hhds = sum(WGTP)
+  ) |> 
+  ungroup()
+
+#Households by Household Types and RPA
+tbl.3 <- subset.adj.test |> 
+  filter(SPORDER.adj == 1 & TYPEHUGQ == 1) |> 
+  group_by(
+    rpa_acr,
+    HHtype
+  ) |> 
+  summarise(
+    hhds = sum(WGTP)
+  ) |> 
+  ungroup()
+
+#Households by Household Size
+tbl.4 <- subset.adj.test |> 
+  filter(SPORDER.adj == 1 & TYPEHUGQ == 1) |> 
+  group_by(
+    NP.adj
+  ) |> 
+  summarise(
+    hhds = sum(WGTP)
+  ) |> 
+  ungroup()
+
+#Households by Presence of Children
+tbl.5 <- subset.adj.test |> 
+  filter(SPORDER.adj == 1 & TYPEHUGQ == 1) |> 
+  group_by(
+    Child_Total
+  ) |> 
+  summarise(
+    hhds = sum(WGTP)
+  ) |> 
+  ungroup()
+
+#Households by Household Size and Presence of Children
+tbl.6 <- subset.adj.test |> 
+  filter(SPORDER.adj == 1 & TYPEHUGQ == 1) |> 
+  group_by(
+    NP.adj,
+    Child_Total
+  ) |> 
+  summarise(
+    hhds = sum(WGTP)
+  ) |> 
+  ungroup()
+```
 
 # 4.0 Calculate Headship Rates for Split Households PUMS
 ```{r}

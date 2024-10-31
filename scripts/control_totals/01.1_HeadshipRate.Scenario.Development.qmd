@@ -577,6 +577,14 @@ tbl.6 <- subset.adj.test |>
     hhds = sum(WGTP)
   ) |> 
   ungroup()
+
+#============
+# TODO:
+# 1. Income
+# 2. Age of household
+# 3. Workers
+# 4. Race/Eth
+# 5. Educational Attainment
 ```
 
 # 4.0 Calculate Headship Rates for Split Households PUMS
@@ -723,6 +731,12 @@ hdsp.r_compare <- full_join(
     # Filter for the three household types.
     var %in% c("hhderchild", "hhdernochild", "single")
   )
+
+write.csv(
+  hdsp.r_compare,
+  paste0(root,"Scenario_2/headship.rates.comparison_1721.hsr_to_1721.household.split.hsr.csv"),
+  row.names = FALSE
+)
 ```
 
 # 6.0 Compare 2000 Headship Rates to 
@@ -816,6 +830,13 @@ hdsp.r_2000_1721.split_comparison <- full_join(
   mutate(
     diff = freq.1721.split-freq.2000
   )
+
+# Write to .csv
+write.csv(
+  hdsp.r_2000_1721.split_comparison,
+  paste0(root,"Scenario_2/headship.rates.comparison_2000.hsr_to_1721.household.split.hsr.csv"),
+  row.names = FALSE
+)
 
 ```
 

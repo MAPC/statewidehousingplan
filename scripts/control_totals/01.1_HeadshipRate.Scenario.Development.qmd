@@ -196,6 +196,7 @@ pums_data <- pums_query(var.list = variable_list, yr = vintage, srvy = "acs5") |
 ```
 
 # 2.0 Check Size of Subsets Being Used to Create New Households and Generate Estimates of the Number of New Households Created by Splitting Households.
+
 ```{r}
 #===============================================================================
 # -.1 Calculate the number of non-multigenerational households with children with at least one subfamily. Estimate the number of new households created by splitting subfamilies into independent household units. A household with one subfamily will become two households. A household with two subfamilies will become three households. And so on and so forth.
@@ -262,6 +263,7 @@ print(paste0("The housheold splitting process will generate ", sum(subset.1$new.
 ```
 
 # 3.0 Seperate Households - Redefine SERIALNO to separate subfamilies into separate households
+
 ```{r}
 # Create a new SERIALNO variable that represents subfamilies and original households as distinct households.
 pums_data.adj <- pums_data |> 
@@ -275,10 +277,10 @@ pums_data.adj <- pums_data |>
       SFN >= 4 & subset.flag.1 == 1 ~ paste0(SERIALNO,".1.sf4.adj"),
       # Second Subset
       SFN == 0 & subset.flag.2 == 1 ~ paste0(SERIALNO, ".2.og"),
-      SFN == 1 & subset.flag.2 == 1 ~ paste0(SERIALNO,".1.sf1.adj"),
-      SFN == 2 & subset.flag.2 == 1 ~ paste0(SERIALNO,".1.sf2.adj"),
-      SFN == 3 & subset.flag.2 == 1 ~ paste0(SERIALNO,".1.sf3.adj"),
-      SFN >= 4 & subset.flag.2 == 1 ~ paste0(SERIALNO,".1.sf4.adj"),
+      SFN == 1 & subset.flag.2 == 1 ~ paste0(SERIALNO,".2.sf1.adj"),
+      SFN == 2 & subset.flag.2 == 1 ~ paste0(SERIALNO,".2.sf2.adj"),
+      SFN == 3 & subset.flag.2 == 1 ~ paste0(SERIALNO,".2.sf3.adj"),
+      SFN >= 4 & subset.flag.2 == 1 ~ paste0(SERIALNO,".2.sf4.adj"),
       # Default to original SERIALNO for all other households.
       .default = SERIALNO
     ),
@@ -311,6 +313,7 @@ pums_data.adj <- pums_data |>
 ```
 
 # 3.1 Reorder Persons in Households to be Split
+
 ```{r}
 # Reordering persons in the households to be split.
 # Subset of households that will not be split that do not need to be reordered
@@ -334,6 +337,7 @@ rm(pums_data.adj.og, pums_data.adj.adj)
 ```
 
 # 3.2 Redefine SPORDER and Relationship Variables
+
 ```{r}
 # Create a test data frame before putting this into production
 pums_data.adj <- pums_data.adj |>
@@ -357,7 +361,7 @@ pums_data.adj <- pums_data.adj |>
       .default = "Something's Wrong!"
     ),
     # Adjusting the Subfamily Number variable to reflect having split subfamilies out from their original household.
-    SFN.ajd = case_when(
+    SFN.adj = case_when(
       adj.flag %in% c("1","2") ~ 0,
       .default = SFN
     ),
@@ -375,6 +379,7 @@ pums_data.adj <- pums_data.adj |>
 ```
 
 # 3.3 Re-create households variables for split households
+
 ```{r}
 pums_data.adj <- pums_data.adj |> 
   mutate(
@@ -456,6 +461,7 @@ test <- pums_data.adj |>
 ```
 
 # 3.4 QA/QC - Check Split Households are Equal to The Number of Households We Expect to Be Split
+
 ```{r}
 #===============================================================================
 # Analyze Subset #1
@@ -494,7 +500,9 @@ if(sum(sum(subset.1$new.hhds), sum(subset.2$new.hhds)) != sum(sum(subset.1.adj.t
 }
 
 ```
+
 # 3.5 Analysis of Subset Households
+
 ```{r}
 # Full dataframe of subset households.
 subset.adj.test <- bind_rows(subset.1.adj.test, subset.2.adj.test) |> 
@@ -588,6 +596,7 @@ tbl.6 <- subset.adj.test |>
 ```
 
 # 4.0 Calculate Headship Rates for Split Households PUMS
+
 ```{r}
 # Generating headship rates by RPA and 5-year age group for the ACS 2017-2022 PUMS
 headship_rates.split <- pums_data.adj |> 
@@ -656,6 +665,7 @@ write.csv(
 ```
 
 # 5.0 Calculate Headship Rates for 2017-2021 5-Year ACS Vintage
+
 ```{r}
 # Generating headship rates by RPA and 5-year age group for the ACS 2017-2022 PUMS
 headship_rates <- pums_data |> 
@@ -714,6 +724,7 @@ rm(hr_check)
 ```
 
 # 5.1 Compare Split Household Headship Rates to Current PUMS Vintage Headships Rates
+
 ```{r}
 # Join 2017-2021 5-year ACS PUMS data Headship Rates to the Split Households Headship Rates
 hdsp.r_compare <- full_join(
@@ -739,7 +750,8 @@ write.csv(
 )
 ```
 
-# 6.0 Compare 2000 Headship Rates to 
+# 6.0 Compare 2000 Headship Rates to
+
 ```{r}
 # Load in spreadsheet with all previously calculated headship rates.
 hdsp.r_2000 <- read.csv(paste0(rwt_path,"Headship_rates/headship_rate_comparison.csv")) |> 
@@ -839,5 +851,3 @@ write.csv(
 )
 
 ```
-
-

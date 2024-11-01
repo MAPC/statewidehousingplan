@@ -154,7 +154,7 @@ pums_RPA <- left_join(
 
 # State-level
 
-Identify households whose head of household is foreign born.
+1) Identify households whose head of household is foreign born
 
 ```{r}
 #Number and share of hhlds in the state where the head of household is foreign born
@@ -165,23 +165,24 @@ household_data <- pums %>%
 filter(RT == "H") %>%
 filter(TYPEHUGQ == 1) %>%                # filters out group quarters
 filter(NP > 0)                           # filter out vacant units that have 0 people in it 
+
 #Sum weights for total household number
 total_weighted_households <- sum(household_data$WGTP, na.rm = TRUE) 
 
 #Calculate number of hhlds with foreign born head of household
 household_foreign_born_summary_table <- pums %>%
-  filter(RT != "H") %>%   # exclude hhlds because nativity is a person-level data point
-  group_by(SERIALNO) %>%  # group by household 
-  summarise(first_weight = first(WGTP, na.rm = TRUE), # get the first person's weight for hhld
-    NATIVITY = first(NATIVITY), .groups = "drop") %>% # get the nativity for the first person        
-  group_by(NATIVITY) %>%                              # group by nativity to calculate total weights for each type
+  filter(RT != "H") %>%       # exclude hhld data points because nativity is a person-level data point
+  group_by(SERIALNO) %>%      # group by household 
+  summarise(first_weight = first(WGTP, na.rm = TRUE),     # get the first person's weight for hhld (head of household)
+    NATIVITY = first(NATIVITY), .groups = "drop") %>%     # get the nativity for the first person        
+  group_by(NATIVITY) %>%                                  # group by nativity to calculate total weights for each type
   summarise(total_by_nativity= sum(first_weight, na.rm = TRUE), # sum the weights by nativity
     .groups = "drop") %>%                                       
-  mutate(NATIVITY = case_when(                             # rename variables 
+  mutate(NATIVITY = case_when(                            # rename variables 
     NATIVITY == 1 ~ "Native",
     NATIVITY == 2 ~ "Foreign born",
     TRUE ~ "Unknown")) %>%
-  mutate(percentage_of_total = (total_by_nativity / total_weighted_households) * 100) # Calculate percent out of all hhlds
+  mutate(percentage_of_total = (total_by_nativity / total_weighted_households) * 100) # calculate percent out of all hhlds
 
 ```
 
@@ -194,10 +195,10 @@ household_foreign_born_summary_table <- pums %>%
 ```{r}
 #Checking calculation of the weighted number of foreign born hhlds
 households_foreign_born <- pums %>%
- filter(RT != "H") %>%   # exclude hhlds because nativity is a person-level data point
+ filter(RT != "H") %>%   # exclude hhld data points
  group_by(SERIALNO) %>% 
  summarise(
-    first_weight = first(WGTP, na.rm = TRUE),  # get the first person's weight for the household
+    first_weight = first(WGTP, na.rm = TRUE),               # get the first person's weight for the household
     first_person_nativity = first(NATIVITY, na.rm = TRUE),  # get the nativity of the first person
     .groups = "drop") %>%
   filter(first_person_nativity == 2) 
@@ -206,22 +207,24 @@ households_foreign_born <- pums %>%
 total_foreign_hhld <- sum(households_foreign_born$first_weight)
 ```
 
+2) Characteristics and demographics of households that have a foreign-born head of household
+
 ```{r}
 #Household type - HHT variable 
 household_type_foreign_born <- pums %>%
-  filter(RT != "H") %>%   # exclude hhlds because nativity is a person-level data point
+  filter(RT != "H") %>%   # exclude hhld data points
   select(uniq_obs, SERIALNO, WGTP, HHT, NATIVITY) %>% 
-  group_by(SERIALNO) %>% 
+  group_by(SERIALNO) %>%  # group by hhld
   summarise(
-    household_type = first(HHT, na.rm = TRUE),  # get the first person's household type
+    household_type = first(HHT, na.rm = TRUE),             # get the first person's household type (householder)
     householder_nativity = first(NATIVITY, na.rm = TRUE),  # get nativity of first person (householder)
-    first_weight = first(WGTP, na.rm = TRUE),  # get the weight for the first person (householder)
+    first_weight = first(WGTP, na.rm = TRUE),              # get the weight for the first person (householder)
     .groups = "drop") %>%
-  group_by(householder_nativity, household_type) %>%  # group by nativity and type
+  group_by(householder_nativity, household_type) %>%       # group by nativity and hhld type
   summarise(
-    total_weight = sum(first_weight, na.rm = TRUE),  # summarize total weights for each nativity and type
+    total_weight = sum(first_weight, na.rm = TRUE),        # sum total weights for each nativity and type
     .groups = "drop") %>%
-  group_by(householder_nativity) %>%  # group by nativity to calculate totals within each group
+  group_by(householder_nativity) %>%            # group by nativity to calculate totals within each group
   mutate(
     total_weight_by_nativity = sum(total_weight, na.rm = TRUE),  # calculate the total weight for each nativity group
     percentage_within_nativity = (total_weight / total_weight_by_nativity) * 100) %>%  # calculate percentage within each group
@@ -245,7 +248,7 @@ household_type_foreign_born <- pums %>%
 
 ```{r}
 #Export hhld type table
- write.xlsx(list('Type of hhld' = household_type_foreign_born), 
+ write.xlsx(list('Hhld type' = household_type_foreign_born), 
            file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/immig_hhld_type.xlsx") 
 ```
 
@@ -263,21 +266,21 @@ householder_age_foreign_born <- pums %>%
     HHLDRAGEP >= 75 ~ "75 and over")) %>% 
  group_by(SERIALNO) %>% 
  summarise(
-    householder_age = first(HHLDRAGEP, na.rm = TRUE),  # get the first person's householder age
+    householder_age = first(HHLDRAGEP, na.rm = TRUE),      # get the first person's householder age
     householder_nativity = first(NATIVITY, na.rm = TRUE),  # get nativity of first person (householder)
-    first_weight = first(WGTP, na.rm = TRUE),  # get the weight for the first person (householder)
-    age_range = first(age_range, na.rm = TRUE),  # get age range for the first person (householder)
+    first_weight = first(WGTP, na.rm = TRUE),              # get the weight for the first person (householder)
+    age_range = first(age_range, na.rm = TRUE),            # get age range for the first person (householder)
     .groups = "drop") %>%
-  group_by(householder_nativity, age_range) %>%  # group by nativity and age range
+  group_by(householder_nativity, age_range) %>%            # group by nativity and age range
   summarise(
-    total_weight = sum(first_weight, na.rm = TRUE),  # summarize total weights for each nativity and age range
+    total_weight = sum(first_weight, na.rm = TRUE),        # sum total weights for each nativity and age range
     .groups = "drop") %>%
-  group_by(householder_nativity) %>%  # group by nativity to calculate totals within each group
+  group_by(householder_nativity) %>%                 # group by nativity to calculate totals within each group
   mutate(
     total_weight_by_nativity = sum(total_weight, na.rm = TRUE),  # calculate the total weight for each nativity group
     percentage_within_nativity = (total_weight / total_weight_by_nativity) * 100  # calculate percentage within each group
   ) %>%
-  mutate(householder_nativity = case_when(  # rename nativity categories
+  mutate(householder_nativity = case_when(            # rename nativity categories
     householder_nativity == 1 ~ "Native",
     householder_nativity == 2 ~ "Foreign born",
     TRUE ~ "Unknown")) %>%
@@ -316,11 +319,11 @@ household_age_by_nativity <- pums %>%
   summarise(
     total_weight = sum(first_weight, na.rm = TRUE),  # calculate total weight for each age and nativity group
     .groups = "drop") %>%
-  group_by(householder_age_range) %>%  # group by age range to calculate percentages within each age group
+  group_by(householder_age_range) %>%     # group by age range to calculate percentages within each age group
   mutate(
-    total_weight_by_age_range = sum(total_weight, na.rm = TRUE),  # total weight by age group
+    total_weight_by_age_range = sum(total_weight, na.rm = TRUE),                         # total weight by age group
     percentage_within_age_range = (total_weight / total_weight_by_age_range) * 100) %>%  # calculate percentage within each age group
-    mutate (householder_age_range = factor(householder_age_range, levels = c(   # order groups in correct order
+    mutate (householder_age_range = factor(householder_age_range, levels = c(     # order groups in correct order
       "5-17",
       "18-34",
       "35-64",
@@ -344,15 +347,15 @@ householder_race_foreign_born <- pums %>%
  select(uniq_obs, SERIALNO, PUMA, WGTP, HHLDRRAC1P, HHLDRHISP, NATIVITY) %>% 
  group_by(SERIALNO) %>% 
  summarise(
-    householder_race = first(HHLDRRAC1P, na.rm = TRUE),  # get the first person's householder race
+    householder_race = first(HHLDRRAC1P, na.rm = TRUE),    # get the first person's householder race
     householder_nativity = first(NATIVITY, na.rm = TRUE),  # get nativity of first person (householder)
-    first_weight = first(WGTP, na.rm = TRUE),  # get the weight for the first person (householder)
+    first_weight = first(WGTP, na.rm = TRUE),              # get the weight for the first person (householder)
     .groups = "drop") %>%
-  group_by(householder_nativity, householder_race) %>%  # group by nativity and race
+  group_by(householder_nativity, householder_race) %>%     # group by nativity and race
   summarise(
-    total_weight = sum(first_weight, na.rm = TRUE),  # summarize total weights for each nativity and race
+    total_weight = sum(first_weight, na.rm = TRUE),        # sum total weights for each nativity and race
     .groups = "drop") %>%
-  group_by(householder_nativity) %>%  # group by nativity to calculate totals within each group
+  group_by(householder_nativity) %>%       # group by nativity to calculate race totals within each group
   mutate(
     total_weight_by_nativity = sum(total_weight, na.rm = TRUE),  # calculate the total weight for each nativity group
     percentage_within_nativity = (total_weight / total_weight_by_nativity) * 100  # calculate percentage within each group
@@ -364,7 +367,7 @@ householder_race_foreign_born <- pums %>%
   mutate(householder_race = case_when(  # rename race categories
     householder_race == 1 ~ "White alone",
     householder_race == 2 ~ "Black or African American alone",
-    householder_race == 3 ~ "American Native alone",
+    householder_race == 3 ~ "American Indian alone",
     householder_race == 4 ~ "Alaska Native alone",
     householder_race == 5 ~ "American Indian and Alaska Native",
     householder_race == 6 ~ "Asian alone",
@@ -375,27 +378,27 @@ householder_race_foreign_born <- pums %>%
 ```
 
 ```{r}
-# Ethnicity of householder
+#Ethnicity of householder
 householder_hisp_foreign_born <- pums %>%
   filter(RT != "H") %>%   # exclude hhlds 
   select(uniq_obs, SERIALNO, PUMA, WGTP, HHLDRRAC1P, HHLDRHISP, NATIVITY) %>% 
   group_by(SERIALNO) %>% 
   summarise(
-    householder_hisp = first(HHLDRHISP, na.rm = TRUE),  # get the first person's householder ethnicity
+    householder_hisp = first(HHLDRHISP, na.rm = TRUE),     # get the first person's householder ethnicity
     householder_nativity = first(NATIVITY, na.rm = TRUE),  # get nativity of first person (householder)
-    first_weight = first(WGTP, na.rm = TRUE),  # Get the weight for the first person (householder)
+    first_weight = first(WGTP, na.rm = TRUE),              # get the weight for the first person (householder)
     .groups = "drop") %>%
   mutate(householder_hisp = case_when(     # rename race categories, and group detailed Hispanic into one category
     householder_hisp == "1" ~ "Not Hispanic or Latino",
-    as.numeric(householder_hisp) >= 2 & as.numeric(householder_hisp) <= 24 ~ "Hispanic or Latino",  # convert to numeric for comparison
+    as.numeric(householder_hisp) >= 2 & as.numeric(householder_hisp) <= 24 ~ "Hispanic or Latino", # convert to numeric to group
     is.na(householder_hisp) | householder_hisp == "" ~ "Unknown",  # for NA and empty strings
     TRUE ~ NA_character_)) %>%
-  filter(!is.na(householder_hisp)) %>%  # remove rows where householder_hisp is NA
+  filter(!is.na(householder_hisp)) %>%                  # remove rows where householder_hisp is NA
   group_by(householder_nativity, householder_hisp) %>%  # group by nativity and hispanic status
   summarise(
-    total_weight = sum(first_weight, na.rm = TRUE),  # summarize total weights for each nativity and race
+    total_weight = sum(first_weight, na.rm = TRUE),     # sum total weights for each nativity and race
     .groups = "drop") %>%
-  group_by(householder_nativity) %>%  # group by nativity to calculate totals within each group
+  group_by(householder_nativity) %>%                    # group by nativity to calculate totals within each group
   mutate(
     total_weight_by_nativity = sum(total_weight, na.rm = TRUE),  # calculate the total weight for each nativity group
     percentage_within_nativity = (total_weight / total_weight_by_nativity) * 100) %>%  # calculate percentage within each group
@@ -409,31 +412,31 @@ householder_hisp_foreign_born <- pums %>%
 #Race for only non-hispanic householders 
 householder_race_non_hisp <- pums %>%
  filter(RT != "H") %>%   # exclude hhlds 
- filter(as.numeric(HHLDRHISP) == 1) %>% # for non-hispanic only
+ filter(as.numeric(HHLDRHISP) == 1) %>%  # for non-hispanic hhldrs only
  select(uniq_obs, SERIALNO, PUMA, WGTP, HHLDRRAC1P, HHLDRHISP, NATIVITY) %>% 
  group_by(SERIALNO) %>% 
  summarise(
     householder_race = first(HHLDRRAC1P, na.rm = TRUE),    # get the first person's householder race
     householder_nativity = first(NATIVITY, na.rm = TRUE),  # get nativity of first person (householder)
-    first_weight = first(WGTP, na.rm = TRUE),  # get the weight for the first person (householder)
+    first_weight = first(WGTP, na.rm = TRUE),              # get the weight for the first person (householder)
     .groups = "drop") %>%
-  group_by(householder_nativity, householder_race) %>%  # group by nativity and race
+  group_by(householder_nativity, householder_race) %>%     # group by nativity and race
   summarise(
-    total_weight = sum(first_weight, na.rm = TRUE),  # summarize total weights for each nativity and race
+    total_weight = sum(first_weight, na.rm = TRUE),        # sum total weights for each nativity and race
     .groups = "drop") %>%
-  group_by(householder_nativity) %>%  # group by nativity to calculate totals within each group
+  group_by(householder_nativity) %>%       # group by nativity to calculate totals within each group
   mutate(
-    total_weight_by_nativity = sum(total_weight, na.rm = TRUE),  # calculate the total weight for each nativity group
+    total_weight_by_nativity = sum(total_weight, na.rm = TRUE),       # calculate the total weight for each nativity group
     percentage_within_nativity = (total_weight / total_weight_by_nativity) * 100  # calculate percentage within each group
   ) %>%
   mutate(householder_nativity = case_when(  # rename nativity categories
     householder_nativity == 1 ~ "Native",
     householder_nativity == 2 ~ "Foreign born",
     TRUE ~ "Unknown")) %>%
-  mutate(householder_race = case_when(  # rename race categories
+  mutate(householder_race = case_when(      # rename race categories
     householder_race == 1 ~ "White alone",
     householder_race == 2 ~ "Black or African American alone",
-    householder_race == 3 ~ "American Native alone",
+    householder_race == 3 ~ "American Indian alone",
     householder_race == 4 ~ "Alaska Native alone",
     householder_race == 5 ~ "American Indian and Alaska Native",
     householder_race == 6 ~ "Asian alone",
@@ -445,18 +448,17 @@ householder_race_non_hisp <- pums %>%
 
 ```{r}
 #Export race and ethnicity tables 
- write.xlsx(list('Race of householder by nativity' = householder_race_foreign_born, 
+ write.xlsx(list('Race of hhldr by nativity' = householder_race_foreign_born, 
                  'Ethnicity of hhldr by nativity' = householder_hisp_foreign_born, 
-                 'Race of non-hisp householder' = householder_race_non_hisp), 
+                 'Race of non-hisp hhldr' = householder_race_non_hisp), 
            file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/immig_race_eth_of_hhlder.xlsx") 
 ```
 
 
 ```{r}
 #Year of entry, YOEP - bottom coded at 1934, so 1933 is everything before then 
-
 household_year_entry_foreign_born <- pums %>%
- filter(RT != "H") %>%   # exclude hhlds 
+ filter(RT != "H") %>%               # exclude hhlds 
  mutate(Year.Entry = case_when(      # create year of entry groups
       YOEP < 1934 ~ "Before 1934",
       YOEP >= 1934 & YOEP <= 1953 ~ "1934 to 1953",
@@ -469,16 +471,16 @@ household_year_entry_foreign_born <- pums %>%
  select(uniq_obs, SERIALNO, WGTP, NATIVITY, Year.Entry) %>% 
  group_by(SERIALNO) %>% 
  summarise(
-    householder_entry = first(Year.Entry, na.rm = TRUE),  # get the first person's year of entry
+    householder_entry = first(Year.Entry, na.rm = TRUE),   # get the first person's year of entry group (householder)
     householder_nativity = first(NATIVITY, na.rm = TRUE),  # get nativity of first person (householder)
-    first_weight = first(WGTP, na.rm = TRUE),  # get the weight for the first person (householder)
+    first_weight = first(WGTP, na.rm = TRUE),              # get the weight for the first person (householder)
     .groups = "drop") %>%
-  filter(householder_nativity == 2) %>% # only including foreign born hhlds 
-  group_by(householder_nativity, householder_entry) %>%  # group by nativity and year of entry
+  filter(householder_nativity == 2) %>%                    # only including foreign born hhlds 
+  group_by(householder_nativity, householder_entry) %>%    # group by nativity and year of entry
   summarise(
-    total_weight = sum(first_weight, na.rm = TRUE),  # summarize total weights for each nativity and year of entry
+    total_weight = sum(first_weight, na.rm = TRUE),        # sum total weights for each nativity and year of entry group
     .groups = "drop") %>%
-  group_by(householder_nativity) %>%  # group by nativity to calculate totals within each group
+  group_by(householder_nativity) %>%                       # group by nativity to calculate totals within each group
   mutate(
     total_weight_by_nativity = sum(total_weight, na.rm = TRUE),  # calculate the total weight for each nativity group
     percentage_within_nativity = (total_weight / total_weight_by_nativity) * 100) %>%  # calculate percentage within each group
@@ -497,43 +499,51 @@ household_year_entry_foreign_born <- pums %>%
 
 ```{r}
 #Export year of entry table 
- write.xlsx(list('Year entry of householder' = household_year_entry_foreign_born), 
-           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/immig_year_entry_hhlder.xlsx") 
+ write.xlsx(list('Year entry of hhldr' = household_year_entry_foreign_born), 
+           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/immig_year_entry_hhldr.xlsx") 
 ```
 
 
 ```{r}
-#Size of hhld
-#NP is number of persons associated with housing record
-
+#Size of hhld - NP is number of persons associated with housing record
 #Size of household by number of people by nativity 
 household_size_foreign_born <- pums %>%
  filter(RT != "H") %>%   # exclude hhlds 
  select(uniq_obs, SERIALNO, WGTP, NATIVITY, NP) %>% 
  group_by(SERIALNO) %>% 
  summarise(
-    household_size = first(NP, na.rm = TRUE),  # get the number of people in hhld for first person
+    household_size = first(NP, na.rm = TRUE),              # get the number of people in hhld for first person
     householder_nativity = first(NATIVITY, na.rm = TRUE),  # get nativity of first person (householder)
-    first_weight = first(WGTP, na.rm = TRUE),  # get the weight for the first person (householder)
+    first_weight = first(WGTP, na.rm = TRUE),              # get the weight for the first person (householder)
     .groups = "drop") %>%
-  mutate(household_size_category = case_when(   # create household size categories
+  mutate(household_size_category = case_when(              # create household size categories
     household_size >= 10 ~ "10 or more",
-    household_size < 10 ~ as.character(household_size),  # keep sizes less than 10 as strings to categorize them
+    household_size < 10 ~ as.character(household_size),    # sizes less than 10 as strings to categorize them
     TRUE ~ "Unknown")) %>%
   group_by(householder_nativity, household_size_category) %>%  # group by nativity and size
   summarise(
-    total_weight = sum(first_weight, na.rm = TRUE),  # summarize total weights for each nativity and size
+    total_weight = sum(first_weight, na.rm = TRUE),            # sum total weights for each nativity and size
     .groups = "drop") %>%
-  group_by(householder_nativity) %>%  # group by nativity to calculate totals within each group
+  group_by(householder_nativity) %>%                       # group by nativity to calculate totals within each group
   mutate(
     total_weight_by_nativity = sum(total_weight, na.rm = TRUE),  # calculate the total weight for each nativity group
     percentage_within_nativity = (total_weight / total_weight_by_nativity) * 100) %>%  # calculate percentage within each group
-  mutate(householder_nativity = case_when(  # rename nativity categories
+  mutate(householder_nativity = case_when(     # rename nativity categories
     householder_nativity == 1 ~ "Native",
     householder_nativity == 2 ~ "Foreign born",
     TRUE ~ "Unknown")) %>%
+    mutate (household_size_category = factor(household_size_category, levels = c(      # order groups in correct order
+     "1",
+     "2",
+     "3",
+     "4",
+     "5",
+     "6",
+     "7",
+     "8",
+     "9",
+     "10 or more"))) %>%
   arrange(householder_nativity, household_size_category)
-
 ```
 
 ```{r}
@@ -543,16 +553,16 @@ median_household_size_by_nativity <- pums %>%
   select(SERIALNO, NATIVITY, NP) %>%  
   group_by(SERIALNO) %>% 
   summarise(
-    household_size = first(NP, na.rm = TRUE),  # get the number of people in hhld for the first person
+    household_size = first(NP, na.rm = TRUE),              # get the number of people in hhld for the first person
     householder_nativity = first(NATIVITY, na.rm = TRUE),  # get nativity of the first person (householder)
     .groups = "drop"
   ) %>%
   group_by(householder_nativity) %>%  # group by nativity
   summarise(
-    median_household_size = median(household_size, na.rm = TRUE),  # galculate median household size
+    median_household_size = median(household_size, na.rm = TRUE),  # calculate median household size
     .groups = "drop"
   ) %>%
-  mutate(householder_nativity = case_when(  # Rename nativity categories
+  mutate(householder_nativity = case_when(  # rename nativity categories
     householder_nativity == 1 ~ "Native",
     householder_nativity == 2 ~ "Foreign born",
     TRUE ~ "Unknown"))
@@ -567,19 +577,19 @@ household_children_foreign_born <- pums %>%
  select(uniq_obs, SERIALNO, WGTP, NATIVITY, HUPAC) %>% 
  group_by(SERIALNO) %>% 
  summarise(
-    household_children = first(HUPAC, na.rm = TRUE),  # get the presence of children in hhld for first person
+    household_children = first(HUPAC, na.rm = TRUE),       # get the presence of children in hhld for first person
     householder_nativity = first(NATIVITY, na.rm = TRUE),  # get nativity of first person (householder)
-    first_weight = first(WGTP, na.rm = TRUE),  # get the weight for the first person (householder)
+    first_weight = first(WGTP, na.rm = TRUE),              # get the weight for the first person (householder)
     .groups = "drop") %>%
-  group_by(householder_nativity, household_children) %>%  # group by nativity and size
+  group_by(householder_nativity, household_children) %>%   # group by nativity and children category
   summarise(
-    total_weight = sum(first_weight, na.rm = TRUE),  # summarize total weights for each nativity and size
+    total_weight = sum(first_weight, na.rm = TRUE),        # sum total weights for each nativity and children category
     .groups = "drop") %>%
-  group_by(householder_nativity) %>%  # group by nativity to calculate totals within each group
+  group_by(householder_nativity) %>%                       # group by nativity to calculate totals within each group
   mutate(
     total_weight_by_nativity = sum(total_weight, na.rm = TRUE),  # calculate the total weight for each nativity group
     percentage_within_nativity = (total_weight / total_weight_by_nativity) * 100) %>%  # calculate percentage within each group
-  mutate(householder_nativity = case_when(  # rename nativity categories
+  mutate(householder_nativity = case_when(                 # rename nativity categories
     householder_nativity == 1 ~ "Native",
     householder_nativity == 2 ~ "Foreign born",
     TRUE ~ "Unknown")) %>%
@@ -608,15 +618,15 @@ householder_income_foreign_born <- pums %>%
  select(uniq_obs, SERIALNO, WGTP, NATIVITY, HH.Income.Grp) %>% 
  group_by(SERIALNO) %>% 
  summarise(
-    householder_income = first(HH.Income.Grp, na.rm = TRUE),  # get the first person's income
+    householder_income = first(HH.Income.Grp, na.rm = TRUE),  # get the first person's hhld income
     householder_nativity = first(NATIVITY, na.rm = TRUE),     # get nativity of first person (householder)
-    first_weight = first(WGTP, na.rm = TRUE),  # get the weight for the first person (householder)
+    first_weight = first(WGTP, na.rm = TRUE),                 # get the weight for the first person (householder)
     .groups = "drop") %>%
-  group_by(householder_nativity, householder_income) %>%  # group by nativity and income
+  group_by(householder_nativity, householder_income) %>%      # group by nativity and income
   summarise(
-    total_weight = sum(first_weight, na.rm = TRUE),  # summarize total weights for each nativity and income
+    total_weight = sum(first_weight, na.rm = TRUE),           # sum total weights for each nativity and income
     .groups = "drop") %>%
-  group_by(householder_nativity) %>%  # group by nativity to calculate totals within each group
+  group_by(householder_nativity) %>%                 # group by nativity to calculate totals within each group
   mutate(
     total_weight_by_nativity = sum(total_weight, na.rm = TRUE),  # calculate the total weight for each nativity group
     percentage_within_nativity = (total_weight / total_weight_by_nativity) * 100) %>% # calculate percentage within each group
@@ -632,7 +642,6 @@ householder_income_foreign_born <- pums %>%
       "$225,000 or more", 
       "0"))) %>%
   arrange(householder_nativity, householder_income)
-
 ```
 
 ```{r}
@@ -648,24 +657,24 @@ householder_tenure_foreign_born <- pums %>%
  select(uniq_obs, SERIALNO, WGTP, NATIVITY, TEN) %>% 
  group_by(SERIALNO) %>% 
  summarise(
-    householder_tenure = first(TEN, na.rm = TRUE),  # get the first person's tenure
+    householder_tenure = first(TEN, na.rm = TRUE),         # get the first person's tenure for hhld
     householder_nativity = first(NATIVITY, na.rm = TRUE),  # get nativity of first person (householder)
-    first_weight = first(WGTP, na.rm = TRUE),  # get the weight for the first person (householder)
+    first_weight = first(WGTP, na.rm = TRUE),              # get the weight for the first person (householder)
     .groups = "drop") %>%
-  group_by(householder_nativity, householder_tenure) %>%  # group by nativity and tenure
+  group_by(householder_nativity, householder_tenure) %>%   # group by nativity and tenure
   summarise(
-    total_weight = sum(first_weight, na.rm = TRUE),  # summarize total weights for each nativity and tenure
+    total_weight = sum(first_weight, na.rm = TRUE),        # sum total weights for each nativity and tenure
     .groups = "drop") %>%
-  group_by(householder_nativity) %>%  # group by nativity to calculate totals within each group
+  group_by(householder_nativity) %>%              # group by nativity to calculate totals within each group
   mutate(
-    total_weight_by_nativity = sum(total_weight, na.rm = TRUE),  # calculate the total weight for each nativity group
+    total_weight_by_nativity = sum(total_weight, na.rm = TRUE),       # calculate the total weight for each nativity group
     percentage_within_nativity = (total_weight / total_weight_by_nativity) * 100  # calculate percentage within each group
   ) %>%
-  mutate(householder_nativity = case_when(  # rename nativity categories
+  mutate(householder_nativity = case_when(                # rename nativity categories
     householder_nativity == 1 ~ "Native",
     householder_nativity == 2 ~ "Foreign born",
     TRUE ~ "Unknown")) %>%
-  mutate(householder_tenure = case_when(                             # rename tenure variables 
+  mutate(householder_tenure = case_when(                  # rename tenure variables 
     householder_tenure == 1 ~ "Owned with mortgage",
     householder_tenure == 2 ~ "Owned without mortgage",
     householder_tenure == 3 ~ "Rented",
@@ -673,13 +682,12 @@ householder_tenure_foreign_born <- pums %>%
     TRUE ~ NA_character_)) %>%
   filter(!is.na(householder_tenure)) %>%
   arrange(householder_nativity, householder_tenure)
-
 ```
 
 ```{r}
 #Export tenure table
  write.xlsx(list('Tenure of householder' = householder_tenure_foreign_born), 
-           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/immig_tenure_hhlder.xlsx") 
+           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/immig_tenure_hhldr.xlsx") 
 ```
 
 
@@ -698,24 +706,24 @@ household_renter_burden_foreign_born <- pums %>%
  select(uniq_obs, SERIALNO, WGTP, NATIVITY, Cost.Burden) %>% 
  group_by(SERIALNO) %>% 
  summarise(
-    householder_renter_burden = first(Cost.Burden, na.rm = TRUE),  # get the first person's cost burden
-    householder_nativity = first(NATIVITY, na.rm = TRUE),  # get nativity of first person (householder)
-    first_weight = first(WGTP, na.rm = TRUE),  # get the weight for the first person (householder)
+    householder_renter_burden = first(Cost.Burden, na.rm = TRUE),  # get the first person's cost burden (householder)
+    householder_nativity = first(NATIVITY, na.rm = TRUE),          # get nativity of first person (householder)
+    first_weight = first(WGTP, na.rm = TRUE),                      # get the weight for the first person (householder)
     .groups = "drop") %>%
-  group_by(householder_nativity, householder_renter_burden) %>%  # group by nativity and cost burden
+  group_by(householder_nativity, householder_renter_burden) %>%    # group by nativity and cost burden group
   summarise(
-    total_weight = sum(first_weight, na.rm = TRUE),  # summarize total weights for each nativity and cost burden
+    total_weight = sum(first_weight, na.rm = TRUE),                # sum total weights for each nativity and cost burden
     .groups = "drop") %>%
-  group_by(householder_nativity) %>%  # group by nativity to calculate totals within each group
+  group_by(householder_nativity) %>%                           # group by nativity to calculate totals within each group
   mutate(
-    total_weight_by_nativity = sum(total_weight, na.rm = TRUE),  # calculate the total weight for each nativity group
+    total_weight_by_nativity = sum(total_weight, na.rm = TRUE),    # calculate the total weight for each nativity group
     percentage_within_nativity = (total_weight / total_weight_by_nativity) * 100  # calculate percentage within each group
   ) %>%
-  mutate(householder_nativity = case_when(  # rename nativity categories
+  mutate(householder_nativity = case_when(     # rename nativity categories
     householder_nativity == 1 ~ "Native",
     householder_nativity == 2 ~ "Foreign born",
     TRUE ~ "Unknown")) %>%
-   mutate (householder_renter_burden = factor(householder_renter_burden, levels = c(        # order groups in correct order
+   mutate (householder_renter_burden = factor(householder_renter_burden, levels = c(   # order groups in correct order
       "No cost burden", 
       "Cost burden", 
       "Severe cost burden"))) %>%
@@ -723,9 +731,9 @@ household_renter_burden_foreign_born <- pums %>%
 
 #Owner cost burden 
 household_owner_burden_foreign_born <- pums %>%
- filter(RT != "H") %>%   # exclude hhlds
- filter(TEN == 1 | TEN == 2) %>%                 # filter for just owners
- mutate(Cost.Burden = case_when(                 # create cost burden groups 
+ filter(RT != "H") %>%                # exclude hhlds
+ filter(TEN == 1 | TEN == 2) %>%      # filter for just owners
+ mutate(Cost.Burden = case_when(      # create cost burden groups 
       OCPIP <= 30 ~ "No cost burden",
       OCPIP > 30 & OCPIP <= 50 ~ "Cost burden",
       OCPIP > 50 ~ "Severe cost burden",
@@ -733,29 +741,28 @@ household_owner_burden_foreign_born <- pums %>%
  select(uniq_obs, SERIALNO, WGTP, NATIVITY, Cost.Burden) %>% 
  group_by(SERIALNO) %>% 
  summarise(
-    householder_owner_burden = first(Cost.Burden, na.rm = TRUE),  # get the first person's cost burden
-    householder_nativity = first(NATIVITY, na.rm = TRUE),  # get nativity of first person (householder)
-    first_weight = first(WGTP, na.rm = TRUE),  # get the weight for the first person (householder)
+    householder_owner_burden = first(Cost.Burden, na.rm = TRUE),  # get the first person's cost burden (householder)
+    householder_nativity = first(NATIVITY, na.rm = TRUE),         # get nativity of first person (householder)
+    first_weight = first(WGTP, na.rm = TRUE),                     # get the weight for the first person (householder)
     .groups = "drop") %>%
-  group_by(householder_nativity, householder_owner_burden) %>%  # group by nativity and cost burden
+  group_by(householder_nativity, householder_owner_burden) %>%    # group by nativity and cost burden
   summarise(
-    total_weight = sum(first_weight, na.rm = TRUE),  # summarize total weights for each nativity and cost burden
+    total_weight = sum(first_weight, na.rm = TRUE),               # sum total weights for each nativity and cost burden
     .groups = "drop") %>%
-  group_by(householder_nativity) %>%  # group by nativity to calculate totals within each group
+  group_by(householder_nativity) %>%                    # group by nativity to calculate totals within each group
   mutate(
-    total_weight_by_nativity = sum(total_weight, na.rm = TRUE),  # calculate the total weight for each nativity group
+    total_weight_by_nativity = sum(total_weight, na.rm = TRUE),   # calculate the total weight for each nativity group
     percentage_within_nativity = (total_weight / total_weight_by_nativity) * 100  # calculate percentage within each group
   ) %>%
-  mutate(householder_nativity = case_when(  # rename nativity categories
+  mutate(householder_nativity = case_when(                        # rename nativity categories
     householder_nativity == 1 ~ "Native",
     householder_nativity == 2 ~ "Foreign born",
     TRUE ~ "Unknown")) %>%
-   mutate (householder_owner_burden = factor(householder_owner_burden, levels = c(            # order groups in correct order
+   mutate (householder_owner_burden = factor(householder_owner_burden, levels = c(      # order groups in correct order
       "No cost burden", 
       "Cost burden", 
       "Severe cost burden"))) %>%
    arrange(householder_nativity, householder_owner_burden)
-
 ```
 
 ```{r}
@@ -767,30 +774,30 @@ household_owner_burden_foreign_born <- pums %>%
 
 
 ```{r}
-#English language proficiency 
+#English language proficiency - ENG
 household_english_foreign_born <- pums %>%
  filter(RT != "H") %>%   # exclude hhlds
  select(uniq_obs, SERIALNO, WGTP, NATIVITY, ENG) %>% 
  group_by(SERIALNO) %>% 
  summarise(
-    householder_english = first(ENG, na.rm = TRUE),  # get the first person's english level
+    householder_english = first(ENG, na.rm = TRUE),        # get the first person's english level (householder)
     householder_nativity = first(NATIVITY, na.rm = TRUE),  # get nativity of first person (householder)
-    first_weight = first(WGTP, na.rm = TRUE),  # get the weight for the first person (householder)
+    first_weight = first(WGTP, na.rm = TRUE),              # get the weight for the first person (householder)
     .groups = "drop") %>%
-  filter(householder_nativity == 2) %>% # only including foreign born hhlds 
-  group_by(householder_nativity, householder_english) %>%  # group by nativity and tenure
+  filter(householder_nativity == 2) %>%                    # only including foreign born hhlds 
+  group_by(householder_nativity, householder_english) %>%  # group by nativity and english level
   summarise(
-    total_weight = sum(first_weight, na.rm = TRUE),  # summarize total weights for each nativity and tenure
+    total_weight = sum(first_weight, na.rm = TRUE),        # sum total weights for each nativity and english level
     .groups = "drop") %>%
-  group_by(householder_nativity) %>%  # group by nativity to calculate totals within each group
+  group_by(householder_nativity) %>%                       # group by nativity to calculate totals within each group
   mutate(
     total_weight_by_nativity = sum(total_weight, na.rm = TRUE),  # calculate the total weight for each nativity group
     percentage_within_nativity = (total_weight / total_weight_by_nativity) * 100) %>%  # calculate percentage within each group
-  mutate(householder_nativity = case_when(  # rename nativity categories
+  mutate(householder_nativity = case_when(       # rename nativity categories
     householder_nativity == 1 ~ "Native",
     householder_nativity == 2 ~ "Foreign born",
     TRUE ~ "Unknown")) %>%
-  mutate(householder_english = case_when(                             # rename variables 
+  mutate(householder_english = case_when(        # rename variables 
     householder_english == 1 ~ "Very well",
     householder_english == 2 ~ "Well",
     householder_english == 3 ~ "Not well",
@@ -800,32 +807,30 @@ household_english_foreign_born <- pums %>%
 ```
 
 ```{r}
-#English spoken at home
-#LANX is language other than english spoken at home
-
+#English spoken at home - LANX is language other than english spoken at home
 household_language_foreign_born <- pums %>%
  filter(RT != "H") %>%   # exclude hhlds
  select(uniq_obs, SERIALNO, WGTP, NATIVITY, LANX) %>% 
  group_by(SERIALNO) %>% 
  summarise(
-    householder_language = first(LANX, na.rm = TRUE),      # get the first person's language
+    householder_language = first(LANX, na.rm = TRUE),      # get the first person's language (householder)
     householder_nativity = first(NATIVITY, na.rm = TRUE),  # get nativity of first person (householder)
-    first_weight = first(WGTP, na.rm = TRUE),  # get the weight for the first person (householder)
+    first_weight = first(WGTP, na.rm = TRUE),              # get the weight for the first person (householder)
     .groups = "drop") %>%
   #filter(householder_nativity == 2) %>%       # if only including foreign born hhlds 
-  group_by(householder_nativity, householder_language) %>%  # group by nativity and lang
+  group_by(householder_nativity, householder_language) %>% # group by nativity and language
   summarise(
-    total_weight = sum(first_weight, na.rm = TRUE),  # summarize total weights for each nativity and language
+    total_weight = sum(first_weight, na.rm = TRUE),        # sum total weights for each nativity and language
     .groups = "drop") %>%
-  group_by(householder_nativity) %>%  # group by nativity to calculate totals within each group
+  group_by(householder_nativity) %>%                 # group by nativity to calculate totals within each group
   mutate(
     total_weight_by_nativity = sum(total_weight, na.rm = TRUE),  # calculate the total weight for each nativity group
     percentage_within_nativity = (total_weight / total_weight_by_nativity) * 100 ) %>%  # calculate percentage within each group
-    mutate(householder_nativity = case_when(  # rename nativity categories
+    mutate(householder_nativity = case_when(                    # rename nativity categories
     householder_nativity == 1 ~ "Native",
     householder_nativity == 2 ~ "Foreign born",
     TRUE ~ NA_character_)) %>%
-    mutate(householder_language = case_when(                             # rename variables 
+    mutate(householder_language = case_when(                    # rename variables 
     householder_language == 1 ~ "Yes, speaks another language",
     householder_language == 2 ~ "No, speaks only English",
     TRUE ~ NA_character_)) %>%
@@ -835,39 +840,35 @@ household_language_foreign_born <- pums %>%
 ```
 
 ```{r}
-#Limited english speaking hhld
-#LNGI is a hhld variable for limited english speaking household
-
+#Limited english speaking hhld - LNGI is a hhld variable for limited english speaking household
 household_limited_lang_foreign_born <- pums %>%
  filter(RT != "H") %>%   # exclude hhlds
  select(uniq_obs, SERIALNO, WGTP, NATIVITY, LNGI) %>% 
  group_by(SERIALNO) %>% 
  summarise(
-    householder_language = first(LNGI, na.rm = TRUE),      # get the first person's language
+    householder_language = first(LNGI, na.rm = TRUE),      # get the first person's language (householder)
     householder_nativity = first(NATIVITY, na.rm = TRUE),  # get nativity of first person (householder)
-    first_weight = first(WGTP, na.rm = TRUE),  # get the weight for the first person (householder)
+    first_weight = first(WGTP, na.rm = TRUE),              # get the weight for the first person (householder)
     .groups = "drop") %>%
-  filter(householder_nativity == 2) %>%       # if only including foreign born hhlds 
-  group_by(householder_nativity, householder_language) %>%  # group by nativity and lang
+  filter(householder_nativity == 2) %>%                     # only including foreign born hhlds 
+  group_by(householder_nativity, householder_language) %>%  # group by nativity and language
   summarise(
-    total_weight = sum(first_weight, na.rm = TRUE),  # summarize total weights for each nativity and language
+    total_weight = sum(first_weight, na.rm = TRUE),         # sum total weights for each nativity and language
     .groups = "drop") %>%
-  group_by(householder_nativity) %>%  # group by nativity to calculate totals within each group
+  group_by(householder_nativity) %>%                       # group by nativity to calculate totals within each group
   mutate(
     total_weight_by_nativity = sum(total_weight, na.rm = TRUE),  # calculate the total weight for each nativity group
-    percentage_within_nativity = (total_weight / total_weight_by_nativity) * 100  # calculate percentage within each group
-  ) %>%
-    mutate(householder_nativity = case_when(  # rename nativity categories
+    percentage_within_nativity = (total_weight / total_weight_by_nativity) * 100) %>%  # calculate percentage within each group
+    mutate(householder_nativity = case_when(                     # rename nativity categories
     householder_nativity == 1 ~ "Native",
     householder_nativity == 2 ~ "Foreign born",
     TRUE ~ NA_character_)) %>%
-    mutate(householder_language = case_when(                             # rename variables 
+    mutate(householder_language = case_when(                          # rename variables 
     householder_language == 1 ~ "At least one person speaks English",
     householder_language == 2 ~ "No one speaks English",
     TRUE ~ NA_character_)) %>%
   filter(!is.na(householder_language)) %>%
   arrange(householder_nativity, householder_language)
-
 ```
 
 
@@ -887,24 +888,24 @@ household_world_origin_foreign_born <- pums %>%
  select(uniq_obs, SERIALNO, WGTP, NATIVITY, WAOB) %>% 
  group_by(SERIALNO) %>% 
  summarise(
-    householder_origin = first(WAOB, na.rm = TRUE),        # get the first person's place of birth
+    householder_origin = first(WAOB, na.rm = TRUE),        # get the first person's place of origin (householder)
     householder_nativity = first(NATIVITY, na.rm = TRUE),  # get nativity of first person (householder)
-    first_weight = first(WGTP, na.rm = TRUE),  # get the weight for the first person (householder)
+    first_weight = first(WGTP, na.rm = TRUE),              # get the weight for the first person (householder)
     .groups = "drop") %>%
-  group_by(householder_nativity, householder_origin) %>%  # group by nativity and tenure
+  group_by(householder_nativity, householder_origin) %>%   # group by nativity and place of origin
   summarise(
-    total_weight = sum(first_weight, na.rm = TRUE),  # summarize total weights for each nativity and tenure
+    total_weight = sum(first_weight, na.rm = TRUE),  # summarize total weights for each nativity and place of origin
     .groups = "drop") %>%
-  group_by(householder_nativity) %>%  # group by nativity to calculate totals within each group
+  group_by(householder_nativity) %>%                 # group by nativity to calculate totals within each group
   mutate(
-    total_weight_by_nativity = sum(total_weight, na.rm = TRUE),  # calculate the total weight for each nativity group
+    total_weight_by_nativity = sum(total_weight, na.rm = TRUE),       # calculate the total weight for each nativity group
     percentage_within_nativity = (total_weight / total_weight_by_nativity) * 100  # calculate percentage within each group
   ) %>%
-  mutate(householder_nativity = case_when(  # rename nativity categories
+  mutate(householder_nativity = case_when(           # rename nativity categories
     householder_nativity == 1 ~ "Native",
     householder_nativity == 2 ~ "Foreign born",
     TRUE ~ "Unknown")) %>%
-  mutate(householder_origin = case_when(                             # rename variables 
+  mutate(householder_origin = case_when(             # rename variables 
     householder_origin == 1 ~ "US state",
     householder_origin == 2 ~ "PR and US Islands",
     householder_origin == 3 ~ "Latin America",
@@ -926,8 +927,8 @@ household_world_origin_foreign_born <- pums %>%
 ```{r}
 #Educational attainment for  head of household - SCHL variable
 householder_edu_foreign_born <- pums %>%
- filter(RT != "H") %>%    # exclude hhlds 
- filter(AGEP >= 25) %>%   # only adults 25+
+ filter(RT != "H") %>%        # exclude hhlds 
+ filter(AGEP >= 25) %>%       # only adults 25+ 
  mutate(EDU = case_when(      # create edu groups
       as.numeric(SCHL) >= 1 & as.numeric(SCHL) <= 15 ~ "Less than high school diploma",
       as.numeric(SCHL) >= 16 & as.numeric(SCHL) <= 17 ~ "High school diploma or equivalent",
@@ -939,19 +940,18 @@ householder_edu_foreign_born <- pums %>%
  select(uniq_obs, SERIALNO, WGTP, NATIVITY, EDU) %>% 
  group_by(SERIALNO) %>% 
  summarise(
-    householder_edu = first(EDU, na.rm = TRUE),  # get the first person's educational attainment
+    householder_edu = first(EDU, na.rm = TRUE),            # get the first person's educational attainment (householder)
     householder_nativity = first(NATIVITY, na.rm = TRUE),  # get nativity of first person (householder)
-    first_weight = first(WGTP, na.rm = TRUE),  # get the weight for the first person (householder)
+    first_weight = first(WGTP, na.rm = TRUE),              # get the weight for the first person (householder)
     .groups = "drop") %>%
-  group_by(householder_nativity, householder_edu) %>%  # group by nativity and year of entry
+  group_by(householder_nativity, householder_edu) %>%      # group by nativity and edu attainment
   summarise(
-    total_weight = sum(first_weight, na.rm = TRUE),  # summarize total weights for each nativity and year of entry
-    .groups = "drop") %>%
-  group_by(householder_nativity) %>%  # group by nativity to calculate totals within each group
+    total_weight = sum(first_weight, na.rm = TRUE)) %>%  # summarize total weights for each nativity and edu attainment
+  group_by(householder_nativity) %>%                     # group by nativity to calculate totals within each group
   mutate(
     total_weight_by_nativity = sum(total_weight, na.rm = TRUE),  # calculate the total weight for each nativity group
     percentage_within_nativity = (total_weight / total_weight_by_nativity) * 100) %>%  # calculate percentage within each group
-    mutate(householder_nativity = case_when(  # rename nativity categories
+    mutate(householder_nativity = case_when(                     # rename nativity categories
     householder_nativity == 1 ~ "Native",
     householder_nativity == 2 ~ "Foreign born",
     TRUE ~ "Unknown")) %>%
@@ -966,7 +966,7 @@ householder_edu_foreign_born <- pums %>%
 ```
 
 ```{r}
-#Edu attainment for all household members 
+#Edu attainment for all household members, not just head of hhld
 household_member_edu_foreign_born <- pums %>%
  filter(RT != "H") %>%      # exclude households
  filter(AGEP >= 25) %>%     # only population 25 and over
@@ -979,20 +979,19 @@ household_member_edu_foreign_born <- pums %>%
       as.numeric(SCHL) >= 22 & as.numeric(SCHL) <= 24 ~ "Graduate, professional, or doctorate degree",
       TRUE ~ "0")) %>% 
  select(uniq_obs, SERIALNO, WGTP, NATIVITY, EDU) %>%
- group_by(SERIALNO, EDU, NATIVITY) %>%  # group by household ID, education, and nativity
+ group_by(SERIALNO, EDU, NATIVITY) %>%               # group by household ID, education, and nativity
  summarise(
-    total_weight = sum(WGTP, na.rm = TRUE),  # sum weights for each edu level within households
+    total_weight = sum(WGTP, na.rm = TRUE),          # sum weights for each edu level within households - not just 1st person
     .groups = "drop") %>%
- group_by(NATIVITY, EDU) %>%  # group by nativity and education
+ group_by(NATIVITY, EDU) %>%                         # group by nativity and education
  summarise(
     total_weight_by_edu_nativity = sum(total_weight, na.rm = TRUE),  # total weight by edu and nativity group
     .groups = "drop") %>%
  group_by(NATIVITY) %>%
  mutate(
-    total_weight_by_nativity = sum(total_weight_by_edu_nativity, na.rm = TRUE),  # calculate nativity group totals
-    percentage_within_nativity = (total_weight_by_edu_nativity / total_weight_by_nativity) * 100  # calculate percentage
- ) %>%
- mutate(NATIVITY = case_when(  # rename nativity categories
+    total_weight_by_nativity = sum(total_weight_by_edu_nativity, na.rm = TRUE),             # calculate nativity group totals
+    percentage_within_nativity = (total_weight_by_edu_nativity / total_weight_by_nativity) * 100) %>%  # calculate percentage
+ mutate(NATIVITY = case_when(                # rename nativity categories
     NATIVITY == 1 ~ "Native",
     NATIVITY == 2 ~ "Foreign born",
     TRUE ~ "Unknown")) %>%
@@ -1015,22 +1014,22 @@ write.xlsx(list('Householder edu attainment' = householder_edu_foreign_born,
 
 # RPA level
 
-Identify households whose head of household is foreign born in each RPA
+3) Identify households whose head of household is foreign born in each RPA
 
 ```{r}
 #Calculate the total number of households in sample by RPA
 household_data_RPA <- pums_RPA %>%
   filter(RT == "H") %>%
-  filter(TYPEHUGQ == 1) %>%
+  filter(TYPEHUGQ == 1) %>%  # no group quarters
   filter(NP > 0) %>%         # excluding vacant units
   group_by(rpa_acr) %>%
   summarise(total_weighted_sum = sum(WGTP)) 
 
-#calculate share of foreign born for each RPA
+#calculate number of foreign born heads of hhlds for each RPA
 household_foreign_born_summary_table_RPA <- pums_RPA %>%
-  filter(RT != "H") %>%   # exclude hhlds because nativity is a person-level data point
+  filter(RT != "H") %>%            # exclude hhlds because nativity is a person-level data point
   group_by(SERIALNO, rpa_acr) %>%  # group by household and rpa
-  summarise(first_weight = first(WGTP, na.rm = TRUE), # get the first person's weight for hhld - head of hhld
+  summarise(first_weight = first(WGTP, na.rm = TRUE),           # get the first person's weight for hhld - head of hhld
     NATIVITY = first(NATIVITY), .groups = "drop") %>%           # get the nativity for the first person                          
   group_by(NATIVITY, rpa_acr) %>%                               # group by nativity to calculate total weights for each type
   summarise(total_by_nativity= sum(first_weight, na.rm = TRUE), # sum the weights by nativity
@@ -1040,12 +1039,11 @@ household_foreign_born_summary_table_RPA <- pums_RPA %>%
     NATIVITY == 2 ~ "Foreign born",
     TRUE ~ "Unknown")) 
 
-#combine tables  
+#combine tables and calculate share of foreign hhldrs of all hhlds
 RPA_foreign_born_table <- household_foreign_born_summary_table_RPA %>%
   left_join(household_data_RPA, by = c("rpa_acr")) %>%
   mutate(percentage = (total_by_nativity / total_weighted_sum) * 100) %>%
   arrange(rpa_acr)
-
 ```
 
 ```{r}
@@ -1054,11 +1052,12 @@ RPA_foreign_born_table <- household_foreign_born_summary_table_RPA %>%
            file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/immig_RPA.xlsx") 
 ```
 
-#Sub group analysis of hhld where the head of hhld is recent immigrant, e.g. year of entry 2014 or more recent
+# Sub group analysis of recent immigrants
+
+4) Analysis of hhlds where the head of hhld is a recent immigrant: year of entry 2014 or more recent
 
 ```{r}
-#Cost burden for recent immigrants - head of hhld 
-#Cost burden - renter and owner cost burden - GRPIP OCPIP
+#Cost burden for recent immigrants - head of hhld - renter and owner cost burden - GRPIP OCPIP
 
 #Renter cost burden 
 household_renter_burden_recent_immig <- pums %>%
@@ -1069,7 +1068,7 @@ household_renter_burden_recent_immig <- pums %>%
       GRPIP > 30 & GRPIP <= 50 ~ "Cost burden",
       GRPIP > 50 ~ "Severe cost burden",
       TRUE ~ "0")) %>%
- mutate(Year.Entry = case_when(      # create year of entry groups
+ mutate(Year.Entry = case_when(       # create year of entry groups
       YOEP < 1934 ~ "Before 1934",
       YOEP >= 1934 & YOEP <= 2013 ~ "1934 to 2013",
       YOEP >= 2014 & YOEP <= 2024 ~ "2014 and later",
@@ -1077,26 +1076,25 @@ household_renter_burden_recent_immig <- pums %>%
  select(uniq_obs, SERIALNO, WGTP, NATIVITY, Cost.Burden, Year.Entry) %>%
  group_by(SERIALNO) %>%
  summarise(
-    householder_renter_burden = first(Cost.Burden, na.rm = TRUE),  # get the first person's cost burden
-    householder_nativity = first(NATIVITY, na.rm = TRUE),  # get nativity of first person (householder)
-    first_weight = first(WGTP, na.rm = TRUE),  # get the weight for the first person (householder)
-    year_entry = first(Year.Entry, na.rm = TRUE),  # get the year entry for the first person (householder)
+    householder_renter_burden = first(Cost.Burden, na.rm = TRUE),  # get the first person's cost burden (householder)
+    householder_nativity = first(NATIVITY, na.rm = TRUE),          # get nativity of first person (householder)
+    first_weight = first(WGTP, na.rm = TRUE),                      # get the weight for the first person (householder)
+    year_entry = first(Year.Entry, na.rm = TRUE),                  # get the year entry for the first person (householder)
     .groups = "drop") %>%
- filter(householder_nativity == 2) %>%  # filter for foreign-born householders only
+ filter(householder_nativity == 2) %>%                             # filter for foreign-born householders only
  group_by(householder_nativity, year_entry, householder_renter_burden) %>%  # group by nativity, year entry, and cost burden
  summarise(
-    total_weight = sum(first_weight, na.rm = TRUE),  # summarize total weights for each nativity, year entry, and cost burden
+    total_weight = sum(first_weight, na.rm = TRUE),       # sum total weights for each nativity, year entry, and cost burden
     .groups = "drop") %>%
- group_by(householder_nativity, year_entry) %>%  # group by nativity and year entry to calculate totals within each group
+ group_by(householder_nativity, year_entry) %>%     # group by nativity and year entry to calculate totals within each group
  mutate(
-    total_weight_by_entry = sum(total_weight, na.rm = TRUE),  # calculate the total weight for each nativity group
-    percentage_within_entry = (total_weight / total_weight_by_entry) * 100  # calculate percentage within each group
- ) %>%
+    total_weight_by_entry = sum(total_weight, na.rm = TRUE),                  # calculate the total weight for each group
+    percentage_within_entry = (total_weight / total_weight_by_entry) * 100) %>%  # calculate percentage within each group
  mutate(householder_nativity = case_when(  # rename nativity categories
     householder_nativity == 1 ~ "Native",
     householder_nativity == 2 ~ "Foreign born",
     TRUE ~ "Unknown")) %>%
- mutate(householder_renter_burden = factor(householder_renter_burden, levels = c(        # order groups in correct order
+ mutate(householder_renter_burden = factor(householder_renter_burden, levels = c(       # order groups in correct order
     "No cost burden", 
     "Cost burden", 
     "Severe cost burden"))) %>%
@@ -1105,14 +1103,14 @@ household_renter_burden_recent_immig <- pums %>%
 
 #Owner cost burden 
 household_owner_burden_recent_immig <- pums %>%
- filter(RT != "H") %>%   # exclude hhlds
- filter(TEN == 1 | TEN == 2) %>%                 # filter for just owners
- mutate(Cost.Burden = case_when(                 # create cost burden groups 
+ filter(RT != "H") %>%                    # exclude hhlds
+ filter(TEN == 1 | TEN == 2) %>%          # filter for just owners
+ mutate(Cost.Burden = case_when(          # create cost burden groups 
       OCPIP <= 30 ~ "No cost burden",
       OCPIP > 30 & OCPIP <= 50 ~ "Cost burden",
       OCPIP > 50 ~ "Severe cost burden",
       TRUE ~ "0")) %>% 
- mutate(Year.Entry = case_when(      # create year of entry groups
+ mutate(Year.Entry = case_when(           # create year of entry groups
       YOEP < 1934 ~ "Before 1934",
       YOEP >= 1934 & YOEP <= 2013 ~ "1934 to 2013",
       YOEP >= 2014 & YOEP <= 2024 ~ "2014 and later",
@@ -1120,19 +1118,19 @@ household_owner_burden_recent_immig <- pums %>%
  select(uniq_obs, SERIALNO, WGTP, NATIVITY, Cost.Burden, Year.Entry) %>%
  group_by(SERIALNO) %>%
  summarise(
-    householder_owner_burden = first(Cost.Burden, na.rm = TRUE),  # get the first person's cost burden
-    householder_nativity = first(NATIVITY, na.rm = TRUE),  # get nativity of first person (householder)
-    first_weight = first(WGTP, na.rm = TRUE),  # get the weight for the first person (householder)
-    year_entry = first(Year.Entry, na.rm = TRUE),  # get the year entry for the first person (householder)
+    householder_owner_burden = first(Cost.Burden, na.rm = TRUE),  # get the first person's cost burden (householder)
+    householder_nativity = first(NATIVITY, na.rm = TRUE),         # get nativity of first person (householder)
+    first_weight = first(WGTP, na.rm = TRUE),                     # get the weight for the first person (householder)
+    year_entry = first(Year.Entry, na.rm = TRUE),                 # get the year entry for the first person (householder)
     .groups = "drop") %>%
- filter(householder_nativity == 2) %>%  # filter for foreign-born householders only
+ filter(householder_nativity == 2) %>%                            # filter for foreign-born householders only
  group_by(householder_nativity, year_entry, householder_owner_burden) %>%  # group by nativity, year entry, and cost burden
  summarise(
-    total_weight = sum(first_weight, na.rm = TRUE),  # summarize total weights for each nativity, year entry, and cost burden
+    total_weight = sum(first_weight, na.rm = TRUE),      # sum total weights for each nativity, year entry, and cost burden
     .groups = "drop") %>%
- group_by(householder_nativity, year_entry) %>%  # group by nativity and year entry to calculate totals within each group
+ group_by(householder_nativity, year_entry) %>%    # group by nativity and year entry to calculate totals within each group
  mutate(
-    total_weight_by_entry = sum(total_weight, na.rm = TRUE),  # calculate the total weight for each nativity group
+    total_weight_by_entry = sum(total_weight, na.rm = TRUE),             # calculate the total weight for each group
     percentage_within_entry = (total_weight / total_weight_by_entry) * 100  # calculate percentage within each group
  ) %>%
  mutate(householder_nativity = case_when(  # rename nativity categories
@@ -1166,7 +1164,7 @@ householder_tenure_recent_immig <- pums %>%
  select(uniq_obs, SERIALNO, WGTP, NATIVITY, TEN, Year.Entry) %>% 
  group_by(SERIALNO) %>% 
  summarise(
-    householder_tenure = first(TEN, na.rm = TRUE),         # get the first person's tenure
+    householder_tenure = first(TEN, na.rm = TRUE),         # get the first person's tenure (householder)
     householder_nativity = first(NATIVITY, na.rm = TRUE),  # get nativity of first person (householder)
     first_weight = first(WGTP, na.rm = TRUE),              # get the weight for the first person (householder)
     year_entry = first(Year.Entry, na.rm = TRUE),          # get the year entry for the first person (householder)
@@ -1174,13 +1172,13 @@ householder_tenure_recent_immig <- pums %>%
  filter(householder_nativity == 2) %>%                     # filter for foreign-born householders only
  group_by(year_entry, householder_tenure) %>%              # group by year entry and tenure for sum
  summarise(
-    total_weight = sum(first_weight, na.rm = TRUE),        # summarize total weights by year entry and tenure
+    total_weight = sum(first_weight, na.rm = TRUE),        # sum total weights by year entry and tenure
     .groups = "drop") %>%
- group_by(year_entry) %>%                                  # group by year entry for nativity weight totals
+ group_by(year_entry) %>%                                  # group by year entry for weight totals
  mutate(
     total_weight_by_entry = sum(total_weight, na.rm = TRUE),       # calculate the total weight for each year entry group
     percentage_within_nativity = (total_weight / total_weight_by_entry) * 100) %>%  # calculate percentage within each group
- mutate(householder_tenure = case_when(                               # rename tenure categories
+ mutate(householder_tenure = case_when(                            # rename tenure categories
     householder_tenure == "1" ~ "Owned with mortgage",
     householder_tenure == "2" ~ "Owned without mortgage",
     householder_tenure == "3" ~ "Rented",
@@ -1188,7 +1186,6 @@ householder_tenure_recent_immig <- pums %>%
     TRUE ~ NA_character_)) %>%
  filter(!is.na(householder_tenure)) %>%
  arrange(year_entry, householder_tenure)
-
 ```
 
 ```{r}
@@ -1200,9 +1197,8 @@ write.xlsx(list('Tenure of recent immig' = householder_tenure_recent_immig),
 ```{r}
 #Household size for recent immigrants 
 household_size_recent_immig <- pums %>%
- filter(RT != "H") %>%      # exclude hhlds 
- #filter(NATIVITY == 2) %>%  # filter for only foreign born
- mutate(Year.Entry = case_when(      # create year of entry groups
+ filter(RT != "H") %>%            # exclude hhlds 
+ mutate(Year.Entry = case_when(   # create year of entry groups
       YOEP < 1934 ~ "Before 1934",
       YOEP >= 1934 & YOEP <= 2013 ~ "1934 to 2013",
       YOEP >= 2014 & YOEP <= 2024 ~ "2014 and later",
@@ -1215,18 +1211,18 @@ household_size_recent_immig <- pums %>%
     first_weight = first(WGTP, na.rm = TRUE),              # get the weight for the first person (householder) 
     year_entry = first(Year.Entry, na.rm = TRUE),          # get the year entry for the first person (householder)
     .groups = "drop") %>%
-  filter(householder_nativity == 2) %>%                     # filter for foreign-born householders only
+  filter(householder_nativity == 2) %>%                    # filter for foreign-born householders only
   mutate(household_size_category = case_when(              # create household size categories
     household_size >= 10 ~ "10 or more",
-    household_size < 10 ~ as.character(household_size),    # keep sizes less than 10 as strings to categorize them
+    household_size < 10 ~ as.character(household_size),    # sizes less than 10 as strings to categorize them
     TRUE ~ "Unknown")) %>%
-  group_by(household_size_category, year_entry) %>%  # group by size and year of entry group
+  group_by(household_size_category, year_entry) %>%        # group by size and year of entry group
   summarise(
-    total_weight = sum(first_weight, na.rm = TRUE),  # summarize total weights for each size and year of entry group
+    total_weight = sum(first_weight, na.rm = TRUE),        # sum total weights for each size and year of entry group
     .groups = "drop") %>%
-  group_by(year_entry) %>%                 # group by year of entry to calculate totals within each group
+  group_by(year_entry) %>%                            # group by year of entry to calculate totals within each group
   mutate(
-    total_weight_by_entry = sum(total_weight, na.rm = TRUE),  # calculate the total weight for each entry group
+    total_weight_by_entry = sum(total_weight, na.rm = TRUE),       # calculate the total weight for each entry group
     percentage_within_entry = (total_weight / total_weight_by_entry) * 100) %>%       # calculate percentage within each group
       mutate (household_size_category = factor(household_size_category, levels = c(   # order groups in correct order
      "1",
@@ -1252,15 +1248,15 @@ write.xlsx(list('Hhld size of recent immig' = household_size_recent_immig),
 ```{r}
 #Edu attainment for recent immigrants - all members in household
 household_member_edu_recent_immig <- pums %>%
- filter(RT != "H") %>%      # exclude household data points
- filter(AGEP >= 25) %>%     # only population 25 and over
- filter(NATIVITY == 2) %>%  # filter for only foreign born
- mutate(Year.Entry = case_when(      # create year of entry groups
+ filter(RT != "H") %>%             # exclude household data points
+ filter(AGEP >= 25) %>%            # only population 25 and over
+ filter(NATIVITY == 2) %>%         # filter for only foreign born
+ mutate(Year.Entry = case_when(    # create year of entry groups
       YOEP < 1934 ~ "Before 1934",
       YOEP >= 1934 & YOEP <= 2013 ~ "1934 to 2013",
       YOEP >= 2014 & YOEP <= 2024 ~ "2014 and later",
       TRUE ~ "0")) %>%
- mutate(EDU = case_when(            # create edu groups
+ mutate(EDU = case_when(           # create edu groups
       as.numeric(SCHL) >= 1 & as.numeric(SCHL) <= 15 ~ "Less than high school diploma",
       as.numeric(SCHL) >= 16 & as.numeric(SCHL) <= 17 ~ "High school diploma or equivalent",
       as.numeric(SCHL) >= 18 & as.numeric(SCHL) <= 19 ~ "Some college",
@@ -1271,15 +1267,15 @@ household_member_edu_recent_immig <- pums %>%
  select(uniq_obs, SERIALNO, WGTP, NATIVITY, EDU, Year.Entry) %>%
  group_by(SERIALNO, EDU, Year.Entry) %>%     # group by household ID, education, and year of entry
  summarise(
-    total_weight = sum(WGTP, na.rm = TRUE),  # sum weights for each edu level within households
+    total_weight = sum(WGTP, na.rm = TRUE),  # sum weights for each edu level within households - not just 1st person
     .groups = "drop") %>%
- group_by(Year.Entry, EDU) %>%  # group by year of entry and education
+ group_by(Year.Entry, EDU) %>%               # group by year of entry and education
  summarise(
     total_weight_by_edu_entry = sum(total_weight, na.rm = TRUE),  # total weight by edu and nativity group
     .groups = "drop") %>%
  group_by(Year.Entry) %>%
  mutate(
-    total_weight_by_entry = sum(total_weight_by_edu_entry, na.rm = TRUE),  # calculate nativity group totals
+    total_weight_by_entry = sum(total_weight_by_edu_entry, na.rm = TRUE),                    # calculate group totals
     percentage_within_entry = (total_weight_by_edu_entry/ total_weight_by_entry) * 100) %>%  # calculate percentage
     mutate (EDU = factor(EDU, levels = c(   # order groups in correct order
      "Less than high school diploma",
@@ -1301,8 +1297,8 @@ write.xlsx(list('Edu of recent immig' = household_member_edu_recent_immig),
 ```{r}
 #Age of recent immigrant householders 
 householder_age_recent_immig <- pums %>%
- filter(RT != "H") %>%   # exclude hhlds
- mutate(Year.Entry = case_when(      # create year of entry groups
+ filter(RT != "H") %>%             # exclude hhlds
+ mutate(Year.Entry = case_when(    # create year of entry groups
       YOEP < 1934 ~ "Before 1934",
       YOEP >= 1934 & YOEP <= 2013 ~ "1934 to 2013",
       YOEP >= 2014 & YOEP <= 2024 ~ "2014 and later",
@@ -1330,10 +1326,10 @@ householder_age_recent_immig <- pums %>%
     .groups = "drop") %>%
   group_by(householder_entry) %>%                          # group to calculate totals within each group
   mutate(
-    total_weight_by_entry = sum(total_weight, na.rm = TRUE),  # calculate the total weight for each nativity group
+    total_weight_by_entry = sum(total_weight, na.rm = TRUE),             # calculate the total weight for each group
     percentage_within_entry = (total_weight / total_weight_by_entry) * 100  # calculate percentage within each group
   ) %>%
-  mutate (age_range = factor(age_range, levels = c(   # order groups in correct order
+  mutate (age_range = factor(age_range, levels = c(        # order groups in correct order
       "5-17",
       "18-34",
       "35-64",
@@ -1346,8 +1342,8 @@ householder_age_recent_immig <- pums %>%
 #Age part 2
 #Share of each foreign born age group that is recent immigrants
 householder_age_group_recent_immig <- pums %>%
-  filter(RT != "H") %>%   # exclude hhlds
-  mutate(Year.Entry = case_when(      # create year of entry groups
+  filter(RT != "H") %>%            # exclude hhlds
+  mutate(Year.Entry = case_when(   # create year of entry groups
       YOEP < 1934 ~ "Before 1934",
       YOEP >= 1934 & YOEP <= 2013 ~ "1934 to 2013",
       YOEP >= 2014 & YOEP <= 2024 ~ "2014 and later",
@@ -1360,7 +1356,7 @@ householder_age_group_recent_immig <- pums %>%
     HHLDRAGEP >= 35 & HHLDRAGEP < 65 ~ "35-64",
     HHLDRAGEP >= 65 & HHLDRAGEP < 75 ~ "65-74",
     HHLDRAGEP >= 75 ~ "75 and over")) %>% 
-  group_by(SERIALNO) %>%  # group by household
+  group_by(SERIALNO) %>%   # group by household
   summarise(
     householder_age_range = first(age_range, na.rm = TRUE),  # get age range of the householder
     householder_nativity = first(NATIVITY, na.rm = TRUE),    # get nativity of the householder
@@ -1370,11 +1366,11 @@ householder_age_group_recent_immig <- pums %>%
   filter(householder_nativity == 2) %>%                      # filter for foreign-born householders only
   group_by(householder_age_range, householder_entry) %>%     # group by age range and year of entry
   summarise(
-    total_weight = sum(first_weight, na.rm = TRUE),  # calculate total weight for each age and nativity group
+    total_weight = sum(first_weight, na.rm = TRUE),          # calculate total weight for each age and entry group
     .groups = "drop") %>%
-  group_by(householder_age_range) %>%  # group by age range to calculate percentages within each age group
+  group_by(householder_age_range) %>%          # group by age range to calculate percentages within each age group
   mutate(
-    total_weight_by_age_range = sum(total_weight, na.rm = TRUE),  # total weight by age group
+    total_weight_by_age_range = sum(total_weight, na.rm = TRUE),                         # total weight by age group
     percentage_within_age_range = (total_weight / total_weight_by_age_range) * 100) %>%  # calculate percentage within each age group
     mutate (householder_age_range = factor(householder_age_range, levels = c(   # order groups in correct order
       "5-17",
@@ -1382,14 +1378,14 @@ householder_age_group_recent_immig <- pums %>%
       "35-64",
       "65-74",
       "75 and over"))) %>%
-  arrange(householder_age_range, householder_entry)  # sort by age range and nativity
+  arrange(householder_age_range, householder_entry)  # sort by age range and entry
 ```
 
 ```{r}
 #Export age tables for recent immigrants
  write.xlsx(list('Recent immigrant hhld age' = householder_age_recent_immig,
                  'Share of recent immig by age' = householder_age_group_recent_immig), 
-           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/immig__recent_age_of_hhlder.xlsx") 
+           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/immig_recent_age_of_hhlder.xlsx") 
 ```
 
 ```{r}
@@ -1406,22 +1402,21 @@ household_recent_immig_summary_table_RPA <- pums_RPA %>%
       YOEP >= 1934 & YOEP <= 2013 ~ "1934 to 2013",
       YOEP >= 2014 & YOEP <= 2024 ~ "2014 and later",
       TRUE ~ "0")) %>%
-  filter(NATIVITY == 2) %>%                           # filter for foreign born only
-  group_by(NATIVITY, rpa_acr, Year.Entry) %>%         # group by rpa and year of entry
-  summarise(total_by_entry = sum(first_weight, na.rm = TRUE), # sum the weights by nativity and year of entry
+  filter(NATIVITY == 2) %>%                                   # filter for foreign born only
+  group_by(NATIVITY, rpa_acr, Year.Entry) %>%                 # group by rpa and year of entry
+  summarise(total_by_entry = sum(first_weight, na.rm = TRUE), # sum the weights by nativity and year of entry and rpa
             .groups = "drop") %>%
 group_by(rpa_acr) %>%
-  mutate(total_foreign_born_weight = sum(total_by_entry)) %>% # Calculate total foreign-born weight per RPA
+  mutate(total_foreign_born_weight = sum(total_by_entry)) %>%  # calculate total foreign-born weight per RPA
   ungroup() %>%
   mutate(percentage = (total_by_entry / total_foreign_born_weight) * 100)
   #select(-total_foreign_born_weight)  # drop total column 
-
 ```
 
 ```{r}
 #Export rpa tables for recent immigrants
  write.xlsx(list('Recent immigrants by RPA' = household_recent_immig_summary_table_RPA), 
-           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/immig__recent_RPA.xlsx") 
+           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/immig_recent_RPA.xlsx") 
 ```
 
 ```{r}

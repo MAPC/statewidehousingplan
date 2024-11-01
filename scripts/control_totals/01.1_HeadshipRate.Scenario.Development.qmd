@@ -12,9 +12,9 @@ editor: visual
 #Use when Rproject is open
 #root <- '../../../../Data/Working/Regional_Control_Totals/'
 
-# Base root. Toggle between S: and K: drive depedning on mapped paths on your computer
-base <- "K:/DataServices/Projects/Current_Projects/"
-#base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
+# Base root. Toggle between S: and K: drive depending on mapped paths on your computer
+# base <- "K:/DataServices/Projects/Current_Projects/"
+base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
 
 #General K drive filepath
 root <- paste0(base, "/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/")
@@ -41,6 +41,7 @@ library(data.table)
 library(mapcdatakeys)
 library(janitor)
 library(readxl)
+library(here)
 
 # Remove scientific notation
 options(scipen = 999)
@@ -49,7 +50,7 @@ set.seed(351)
 
 # Load Libraries for PUMS Analysis and PUMS API query functions
 # Sets seed and removes scientific notation
-source("C:/Project_Work/statewidehousingplan/PUMS_Analysis/PUMS_Helper_Functions.R")
+source(here("PUMS_Analysis/PUMS_Helper_Functions.R"))
 
 # Load PUMA x RPA Crosswalk
 xw <- read.csv(paste0(rwt_path, "PUMS_data/PUMA10_RPA_crosswalk.csv")) |> 

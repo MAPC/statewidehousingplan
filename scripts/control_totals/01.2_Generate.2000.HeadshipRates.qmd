@@ -31,6 +31,9 @@ puma.xwalk_path <- "K:/DataServices/Datasets/Data Keys/PUMAs/PUMA_to_RPA_xwalks/
 #Set output filepath
 output_path <- paste0(base, "/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS/outputs/")
 
+# Output path for headship rates
+hdsp.r_path <- paste0(base,"/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Reweighter/Headship_rates/")
+
 #Set knitr path
 knitr::opts_knit$set(root.dir = pums_path)
 ```
@@ -206,4 +209,11 @@ if (sum(hr_check$flag) > 0){
 } else{
   print("Proceed!")
 }
+
+# Write this dataframe to .csv
+write.csv(
+  headship_rates.2000,
+  paste0(hdsp.r_path,"hdsp.r_2000_RPA.AgeCat.HHtype.csv"),
+  row.names = FALSE
+)
 ```

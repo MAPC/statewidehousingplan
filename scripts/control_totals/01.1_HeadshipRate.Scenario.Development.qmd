@@ -13,8 +13,8 @@ editor: visual
 #root <- '../../../../Data/Working/Regional_Control_Totals/'
 
 # Base root. Toggle between S: and K: drive depending on mapped paths on your computer
-# base <- "K:/DataServices/Projects/Current_Projects/"
-base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
+ base <- "K:/DataServices/Projects/Current_Projects/"
+# base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
 
 #General K drive filepath
 root <- paste0(base, "/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/")
@@ -50,7 +50,8 @@ set.seed(351)
 
 # Load Libraries for PUMS Analysis and PUMS API query functions
 # Sets seed and removes scientific notation
-source(here("PUMS_Analysis/PUMS_Helper_Functions.R"))
+# source(here("PUMS_Analysis/PUMS_Helper_Functions.R"))
+source("C:/Project_Work/statewidehousingplan/PUMS_Analysis/PUMS_Helper_Functions.R")
 
 # Load PUMA x RPA Crosswalk
 xw <- read.csv(paste0(rwt_path, "PUMS_data/PUMA10_RPA_crosswalk.csv")) |> 
@@ -850,5 +851,44 @@ write.csv(
   paste0(root,"Scenario_2/headship.rates.comparison_2000.hsr_to_1721.household.split.hsr.csv"),
   row.names = FALSE
 )
+
+```
+
+# 6.1 Compare 2000 Headship Rates and 1721 Split Headship Rates by RPA, Age Category, and Household Type
+```{r}
+hdsp.r_2000 <- read.csv(paste0(rwt_path,"Headship_rates/hdsp.r_2000_RPA.AgeCat.HHtype.csv")) |> 
+  filter(
+    # Filter for the three household types.
+    var %in% c("hhderchild", "hhdernochild", "single")
+  ) |> 
+  mutate(
+    ageCAT6 = as.factor(ageCAT6)
+  )
+
+hdsp.r_1721.split <- headship_rates.split  |> 
+  filter(
+    # Filter for the three household types.
+    var %in% c("hhderchild", "hhdernochild", "single")
+  )
+  
+# Compare Headship Rates from 2000 5% PUMS and Headship Rates from 17-21 ACS 5-year with Split Households by RPA, Age Category, and Household Type
+hdshp.r_2000.compare.1721split <- full_join(
+  hdsp.r_2000,
+  hdsp.r_1721.split,
+  by = c("rpa_acr","ageCAT6","var")
+) |> 
+  mutate(
+    # Fill in Zeros where NAs exist from new headship rate groups being created in the split household tabulation.
+    across(starts_with("freq"), ~replace_na(.,0)),
+    # When freq.diff is positive, headship rates in 2000 are higher than in the 1721 est.
+    # When freq.diff is negative, headship rates in the 1721 est are higher than in 2000.
+    freq.diff = freq.2000 - freq.split,
+    # Create a flag which tells us which headship rates to use given our strategy for Scenario 2 headship rates:
+    # Use 2000 headships rates unless 1721 Split Household headship rates exceed 2000 headship rates.
+    use.flag = case_when(
+      freq.diff < 0 ~ "Use freq.split",
+      freq.diff >= 0 ~ "Use freq.2000" 
+    )
+  )
 
 ```

@@ -803,6 +803,29 @@ hdshp.r_2000.compare.1721split <- full_join(
     )
   )
 
+# QC Check - Determine if the Scenario 2 headship rate mix remains less than 1.
+hr_check <- hdshp.r_2000.compare.1721split |> 
+  group_by(
+    rpa_acr,
+    ageCAT6
+  ) |> 
+  summarise(
+    freq_check = sum(freq.scenario2)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    flag = ifelse(freq_check > 1, 1, 0)
+  )
+
+if (sum(hr_check$flag) > 1){
+  print("STOP! Check headship rate calculations!")
+} else{
+  print("Proceed!")
+}
+
+#Remove QC check dataframe
+rm(hr_check)
+
 # Write to .csv
 write.csv(
   hdshp.r_2000.compare.1721split,

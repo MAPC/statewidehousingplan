@@ -188,7 +188,10 @@ headship_rates.2000 <- pums_data |>
   ) |> 
   dplyr::rename(
     freq.2000 = freq
-   )
+   ) |> 
+  mutate(
+    ageCAT6 = as.factor(ageCAT6)
+  )
 
 # QC Check - determine if the frequencies in each RP, Age Group crosstab add to 1
 hr_check <- headship_rates.2000 |> 

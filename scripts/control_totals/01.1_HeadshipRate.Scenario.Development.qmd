@@ -752,109 +752,7 @@ write.csv(
 )
 ```
 
-# 6.0 Compare 2000 Headship Rates to
-
-```{r}
-# Load in spreadsheet with all previously calculated headship rates.
-hdsp.r_2000 <- read.csv(paste0(rwt_path,"Headship_rates/headship_rate_comparison.csv")) |> 
-  select(
-    ageCAT6,
-    head_child2000,
-    head_nochild2000,
-    head_single2000
-  ) |> 
-  dplyr::rename(
-    hhderchild = head_child2000,
-    hhdernochild = head_nochild2000,
-    single = head_single2000
-  ) |> 
-  pivot_longer(
-    !ageCAT6,
-    names_to = "var",
-    values_to = "freq.2000"
-  ) |> 
-  mutate(
-    ageCAT6 = as.character(ageCAT6)
-  )
-
-# Generating headship rates by RPA and 5-year age group for the ACS 2017-2022 PUMS
-headship_rates.1721.split <- pums_data.adj |> 
-  # Includes only observations for people in households (omits GQ)                       
-  filter(TYPEHUGQ == "1") |> 
-  # Groups by variables in the dataframe necessary to getting the granularity of
-  # data we're interested in.
-  group_by(ageCAT6) |> 
-  # Computes the weighted sum of individuals in each HH type category by the groups
-  # assigned above.
-  count(var = HHtype, wt = WGTP) |>
-  # Recodes factor variables as the categories they represent.
-  # Converts numbers into frequencies.                       
-  mutate(
-    var = case_when(
-      var == 1 ~ "hhderchild",
-      var == 2 ~ "nothhderchild",
-      var == 3 ~ "hhdernochild",
-      var == 4 ~ "nothhdernochild",
-      var == 5 ~ "single"),
-    freq = (n/sum(n))) |> 
-  # Removes the level of aggregation set earlier by group_by()
-  ungroup() |> 
-  select(
-    -c(n)
-  ) |> 
-  dplyr::rename(
-    freq.1721.split = freq
-  )
-
-# QC Check - determine if the frequencies in each RP, Age Group crosstab add to 1
-hr_check <- headship_rates.1721.split |> 
-  group_by(
-    ageCAT6
-  ) |> 
-  summarise(
-    freq_check = sum(freq.1721.split)
-  ) |> 
-  ungroup() |> 
-  mutate(
-    flag = ifelse(freq_check != 1, 1, 0)
-  )
-
-if (sum(hr_check$flag) > 0){
-  print("STOP! Check headship rate calculations!")
-} else{
-  print("Proceed!")
-}
-
-#Remove QC check dataframe
-rm(hr_check)
-
-# Set up for comparison to 2000 headship rates.
-headship_rates.1721.split <- headship_rates.1721.split  |> 
-  filter(
-    # Filter for the three household types.
-    var %in% c("hhderchild", "hhdernochild", "single")
-  )
-
-# Join to 2000 headship rate dataframe
-hdsp.r_2000_1721.split_comparison <- full_join(
-  hdsp.r_2000,
-  headship_rates.1721.split,
-  by = c("ageCAT6", "var")
-) |> 
-  mutate(
-    diff = freq.1721.split-freq.2000
-  )
-
-# Write to .csv
-write.csv(
-  hdsp.r_2000_1721.split_comparison,
-  paste0(root,"Scenario_2/headship.rates.comparison_2000.hsr_to_1721.household.split.hsr.csv"),
-  row.names = FALSE
-)
-
-```
-
-# 6.1 Compare 2000 Headship Rates and 1721 Split Headship Rates by RPA, Age Category, and Household Type
+# 6.0 Compare 2000 Headship Rates and 1721 Split Headship Rates by RPA, Age Category, and Household Type
 ```{r}
 hdsp.r_2000 <- read.csv(paste0(rwt_path,"Headship_rates/hdsp.r_2000_RPA.AgeCat.HHtype.csv")) |> 
   filter(
@@ -890,5 +788,12 @@ hdshp.r_2000.compare.1721split <- full_join(
       freq.diff >= 0 ~ "Use freq.2000" 
     )
   )
+
+# Write to .csv
+write.csv(
+  hdshp.r_2000.compare.1721split,
+  paste0(root,"Scenario_2/headship.rates.comparison_2000.hsr_to_1721.household.split.hsr.csv"),
+  row.names = FALSE
+)
 
 ```

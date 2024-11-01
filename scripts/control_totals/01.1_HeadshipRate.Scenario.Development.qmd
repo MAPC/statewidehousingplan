@@ -729,7 +729,7 @@ rm(hr_check)
 
 ```{r}
 # Join 2017-2021 5-year ACS PUMS data Headship Rates to the Split Households Headship Rates
-hdsp.r_compare <- full_join(
+hdsp.r_1721.compare.1721.split <- full_join(
   headship_rates,
   headship_rates.split,
   by = c("rpa_acr","ageCAT6","var")
@@ -746,7 +746,7 @@ hdsp.r_compare <- full_join(
   )
 
 write.csv(
-  hdsp.r_compare,
+  hdsp.r_1721.compare.1721.split,
   paste0(root,"Scenario_2/headship.rates.comparison_1721.hsr_to_1721.household.split.hsr.csv"),
   row.names = FALSE
 )

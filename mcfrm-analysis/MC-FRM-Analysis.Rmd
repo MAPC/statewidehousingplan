@@ -1,0 +1,29 @@
+---
+title: "MCR-FRM Housing Analysis"
+author: "Zoe Iacovino"
+date: "2024-10-25"
+output: html_document
+---
+
+## Libraries and Functions
+
+```{r}
+
+source("libraries.R")
+source("functions.R")
+source("make-data.R")
+
+```
+
+## Defining Variables
+
+```{r}
+
+# output paths
+output_path<- paste0("C:/Users/",Sys.info()["username"],"/OneDrive - Metropolitan Area Planning Council")
+
+arc_pro_gdb<- "K:/DataServices/Projects/Current_Projects/"
+
+
+
+```

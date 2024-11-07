@@ -20,8 +20,8 @@ hdshp <- 'acs1721'
 #root <- '../../../../Data/Working/Regional_Control_Totals/'
 
 # Base root. Toggle between S: and K: drive depedning on mapped paths on your computer
-# base <- "K:/DataServices/Projects/Current_Projects/"
-base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
+base <- "K:/DataServices/Projects/Current_Projects/"
+# base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
 
 #General K drive filepath
 root <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/")
@@ -236,7 +236,7 @@ gq.clean <- function(df){
 
 ```{r}
 # Set Years of Interest
-yrs <- c(2020,2030,2035,2040,2045,2050)
+yrs <- c(2020,2025,2030,2035,2040,2045,2050)
 
 # Load in Household Population Projections
 umdi_pop <- fread(paste0(root, "UMDI/",scen,"/UMDI_",scen,".csv")) |>
@@ -1309,13 +1309,12 @@ gc()
 # 6.1 - Create PUMA to RPA/MPO Crosswalk for 2010 PUMAs
 
 ```{r}
-
-#Set up datakeys for future joins.
+# Set up datakeys for future joins.
 mkeys <- mapcdatakeys::all_muni_data_keys %>%
   select(muni_id, rpa_acr, mpo)
 
 # PUMA crosswalk
-#Load in the municipality to PUMA crosswalk.
+# Load in the municipality to PUMA crosswalk.
 psf <- fread(paste0(root, 'pums_muni_inter.csv')) %>%
   select(TOWN_ID, PUMACE10, Shape_Area) %>%
   dplyr::rename(muni_id = TOWN_ID, PUMA = PUMACE10) %>%
@@ -1891,7 +1890,7 @@ write.csv(
 ```{r}
 #Generating headship rates by RPA and 5-year age group for the ACS 2017-2022 PUMS
 headship_rates <- pums_data |> 
-  #Inclues only observations for people in households (omits GQ)                       
+  #Inclues only observations for people in households (omits GQ)                   
   filter(TYPEHUGQ == "1") |> 
   #Groups by variables in the dataframe necessary to getting the granularity of
   #data we're interested in.
@@ -1938,7 +1937,7 @@ if (sum(hr_check$flag) > 0){
 #Write an intermediate file for the headship rates from this PUMS vintage
 write.csv(
   headship_rates,
-  paste0(output_path, "headship_rates.pums",yr,".csv"),
+  paste0(output_path, "headship_rates.pums",hdshp,".csv"),
   row.names = FALSE
 )
 
@@ -2125,15 +2124,59 @@ size20_mapc97 <- size20 %>%
 
 ```
 
-# 7.4.1 For MAPC101
+# 7.4.1 Load in Headship Rate Scenarios
+```{r}
+# Create a standard function for reading in headship rates
+hdsp.r_read <- function(scenario, file){
+  # Read in the .csv with headship rates
+  hdsp.r <- read.csv(
+  paste0(root, scen, file)
+)
+  # Return the headship rate object
+  return(hdsp.r)
+}
 
-# 7.4.2 For MAPC97
+# Logic for which headship rates to use by Scenario
+if (scen == "Scenario_1"){ # Scenario 1
+  
+  hdsp.r <- headship_rates
+  # hdsp.r_read(scenario = scen, file = "/headship_rates.1721.csv")
+
+
+} else if (scen == "Scenario_2"){ #Scenario 2
+  
+  hdsp.r_read(scenario = scen, file = "headship.rates.comparison_2000.hsr_to_1721.household.split.hsr.csv") |> 
+    select(
+      rpa_acr,
+      ageCAT6,
+      var,
+      freq.scenario2
+    ) |> 
+    dplyr::rename(
+      freq = freq.scenario2
+    )
+  
+} else if (scen == "Scenario_3"){ #Scenario 3
+  
+  hdsp.r_read(scenario = scen, file = "")
+  
+} else { #Scenario 4
+  
+  hdsp.r_read(scenario = scen, file = "")
+  
+}
+
+```
+
+# 7.4.2 Join Headship Rates to Projected Population in Households by Age Group and RPA
 
 ```{r}
-# 7.4.1 - Household Projections by RPA (MAPC101) and Household Type
-proj.hh.MAPC101_by.rpa.hhtype <- left_join(umdi.pop.MAPC101,
-                                           headship_rates,
-                                           by = c("rpa_acr", "ageCAT6")) |>
+# 7.4.2.1 - Household Projections by RPA (MAPC101) and Household Type
+proj.hh.MAPC101_by.rpa.hhtype <- left_join(
+  umdi.pop.MAPC101,
+  hdsp.r,
+  by = c("rpa_acr", "ageCAT6")
+  ) |>
   rowwise() |>
   #Calculating the number of households in each RPA and age catergory
   mutate(hh = round(hhpop * freq, 0),) |>
@@ -2141,8 +2184,7 @@ proj.hh.MAPC101_by.rpa.hhtype <- left_join(umdi.pop.MAPC101,
   # 1. hhderchild = households with a child under 18
   # 3. hhdernochild = Multiple adult, no children households
   # 5. single = Single householder
-  filter(var == "hhderchild" |
-           var == "hhdernochild" | var == "single") |>
+  filter(var == "hhderchild" | var == "hhdernochild" | var == "single") |>
   mutate(
     HHtype = case_when(
       var == "hhderchild" ~ "x == 1",
@@ -2174,10 +2216,10 @@ proj.hh.MAPC101_by.rpa.hhtype <- left_join(umdi.pop.MAPC101,
   relocate(rpa_acr, AgeCat, HHtype, hh, year)
 
 #===============================================================================
-# 7.4.2 Household Projections by MPO (MAPC97) and Household Type
+# 7.4.2.2 Household Projections by MPO (MAPC97) and Household Type
 proj.hh.MAPC97_by.mpo.hhtype <- left_join(
   umdi.pop.MAPC97,
-  headship_rates,
+  hdsp.r,
   by = c("mpo" = "rpa_acr", "ageCAT6")
 ) |> 
   rowwise() |> 

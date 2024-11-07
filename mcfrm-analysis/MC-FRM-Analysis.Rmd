@@ -13,6 +13,7 @@ source("libraries.R")
 source("functions.R")
 source("make-data.R")
 
+
 ```
 
 ## Defining Variables
@@ -27,3 +28,38 @@ arc_pro_gdb<- "K:/DataServices/Projects/Current_Projects/"
 
 
 ```
+
+## Analysis
+
+
+```{r}
+
+all_parcels_int <- all_parcels%>%
+  mutate(psep2030 = st_intersect(psep_2030),
+         psep2050 = st_intersect(psep_2050),
+         psep2070 = st_intersect(psep_2070))
+
+
+units_in_mcfrm30<- all_parcels_int%>%
+  filter(psep2030 = TRUE)%>%
+  group_by(CITY, USE_CODE_SYMB)%>%
+  summarize(units_2030 = sum(imputed_units),
+            value_risk = )
+
+units_in_mcfrm50<- st_intersect(all_parcels, psep_2050)%>%
+  group_by(CITY)%>%
+  summarize(units_2050 = sum(imputed_units))
+
+
+units_in_mcfrm70 <-st_intersect(all_parcels, psep_2070)%>%
+  group_by(CITY)%>%
+  summarize(units_2050 = sum(imputed_units))
+
+
+output_table<- full_join(units_in_mcfrm30, units_in_mcfrm50, by = "CITY")
+
+
+
+
+```
+

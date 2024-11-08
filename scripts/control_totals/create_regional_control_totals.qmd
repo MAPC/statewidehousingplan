@@ -20,8 +20,8 @@ hdshp <- 'acs1721'
 #root <- '../../../../Data/Working/Regional_Control_Totals/'
 
 # Base root. Toggle between S: and K: drive depedning on mapped paths on your computer
-base <- "K:/DataServices/Projects/Current_Projects/"
-# base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
+# base <- "K:/DataServices/Projects/Current_Projects/"
+base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
 
 #General K drive filepath
 root <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/")
@@ -1526,7 +1526,11 @@ pums_data <- get_pums(
         HINCP,
         breaks = c(-Inf, 35000, 75000, 125000, 225000, Inf),
         labels = c("1", "2", "3", "4", "5")
-      )
+      ),
+    tenure = case_when(
+      TEN %in% c('1','2') ~ 1,
+      TEN %in% c('3','4') ~ 2
+    )
   ) %>%
   setDT()
 
@@ -1726,28 +1730,11 @@ lf_baseline <- pums_data |>
     INTER = BASELINE
   )
 
-# 7.1.4 For 2020 - baseline file of households by age of householder
+# 7.1.4 For 2020 - baseline file of households by age of householder by tenure
 
 age_baseline <- pums_data |> 
   # Filter for households and the head of household for each SERIALNO
   filter(TYPEHUGQ == "1" & SPORDER == "1") |>   
-  mutate(
-    ageCAT4 = as.factor(ageCAT4),
-    RPA = as.factor(rpa_acr),
-  ) |>  
-  group_by(
-    RPA,
-  ) |> 
-  # Sum the household weights in the PUMS data.
-  dplyr::count(
-    var = ageCAT4,
-    wt = WGTP
-  ) |> 
-  ungroup() |>  
-  dplyr::rename(
-    ageCAT4 = var,
-    BASELINE = n
-  ) |> 
   #Rename variables to match the reweigher input requirements.
   mutate(
     ageCAT4 = case_when(
@@ -1761,8 +1748,27 @@ age_baseline <- pums_data |>
       ageCAT4 == 8 ~ "x == 8",
       ageCAT4 == 9 ~ "x == 9"
     ),
-    INTER = BASELINE
-  )
+    tenure = case_when(
+      TEN %in% c('1','2') ~ 'x == 1',
+      TEN %in% c('3','4') ~ 'x == 2'
+    )
+  ) |>  
+  group_by(
+    rpa_acr,
+    tenure
+  ) |> 
+  # Sum the household weights in the PUMS data.
+  dplyr::count(
+    var = ageCAT4,
+    wt = WGTP
+  ) |> 
+  ungroup() |>  
+  dplyr::rename(
+    ageCAT4 = var,
+    BASELINE = n
+  ) %>% 
+  mutate(
+    INTER = BASELINE)
 
 # 7.1.5 For 2020 - baseline file of household size
 
@@ -1863,7 +1869,7 @@ write.csv(
   row.names = FALSE
 )
 
-#Output the baseline file for 2020 Age of Householder aggregations
+#Output the baseline file for 2020 Age of Householder by tenure aggregations
 write.csv(
   age_baseline,
   paste0(output_path,"age_baseline.",hdshp,".csv"), 
@@ -2010,31 +2016,36 @@ lfpr <- pums_data |>
 munis <- mapcdatakeys::all_muni_data_keys %>% select(muni_id,cosub_cn20,rpa_acr,mpo) %>% rename(GEOID=cosub_cn20) %>% mutate(GEOID=as.character(GEOID))
 
 vars2020 <- load_variables(2020, 'dhc') %>% setDT()
-age.vars <- vars2020[concept=="HOUSEHOLD TYPE BY AGE OF HOUSEHOLDER" & !label %in% c(" !!Total:!!Nonfamily households:", " !!Total:!!Family households:", " !!Total:"),sun(name)]
-age.labels <- vars2020[concept=='HOUSEHOLD TYPE BY AGE OF HOUSEHOLDER',.(name,label)]
-age.labels[,label:=gsub(' ','_',label)][,label:=gsub('_!!Total:!!Family_households:!!','',label)][,label:=gsub('_!!Total:!!Nonfamily_households:!!','',label)]
-setnames(age.labels,'name','variable')
+age.tenure.vars <- vars2020[concept=="TENURE BY AGE OF HOUSEHOLDER" & !label %in% c(" !!Total:!!Owner occupied:", " !!Total:!!Renter occupied:", " !!Total:"),sun(name)]
+age.tenure.labels <- vars2020[concept=='TENURE BY AGE OF HOUSEHOLDER',.(name,label)]
+age.tenure.labels[,label:=gsub(' ','_',label)][,label:=gsub('_!!Total:!!Owner_occupied:!!','Owner_',label)][,label:=gsub('_!!Total:!!Renter_occupied:!!','Renter_',label)]
+setnames(age.tenure.labels,'name','variable')
 
 age20 <-
-  decennial_call(age.vars, 'county subdivision', 2020) %>% 
-  right_join(age.labels, by='variable') %>% 
+  decennial_call(age.tenure.vars, 'county subdivision', 2020) %>% 
+  right_join(age.tenure.labels, by='variable') %>% 
   group_by(GEOID,label) %>% 
   summarise(hh = sum(value)) %>% 
   ungroup %>% 
-  mutate(ageCAT4 = case_when(
-    label == 'Householder_15_to_24_years' ~ 'x == 1',
-    label == "Householder_25_to_34_years" ~ 'x == 2',
-    label == "Householder_35_to_44_years" ~ 'x == 3',
-    label == "Householder_45_to_54_years" ~ 'x == 4',
-    label == "Householder_55_to_59_years" ~ 'x == 5',
-    label == "Householder_60_to_64_years" ~ 'x == 6',
-    label == "Householder_65_to_74_years" ~ 'x == 7',
-    label == "Householder_75_to_84_years" ~ 'x == 8',
-    label == "Householder_85_years_and_over" ~ 'x == 9'
-    )
+  mutate(
+    tenure = case_when(
+      grepl('Owner_',label) ~ 'x == 1',
+      grepl('Renter_',label) ~ 'x == 2'
+    ),
+    ageCAT4 = case_when(
+    grepl("Householder_15_to_24_years", label) ~ 'x == 1',
+    grepl("Householder_25_to_34_years", label) ~ 'x == 2',
+    grepl("Householder_35_to_44_years", label) ~ 'x == 3',
+    grepl("Householder_45_to_54_years", label) ~ 'x == 4',
+    grepl("Householder_55_to_59_years", label) ~ 'x == 5',
+    grepl("Householder_60_to_64_years", label) ~ 'x == 6',
+    grepl("Householder_65_to_74_years", label) ~ 'x == 7',
+    grepl("Householder_75_to_84_years", label) ~ 'x == 8',
+    grepl("Householder_85_years_and_over", label) ~ 'x == 9')
   ) %>% 
   filter(!is.na(ageCAT4)) %>% 
   right_join(munis,by = 'GEOID')
+
 
 # Summarize to RPA using MAPC 101 towns
 age20_mapc101 <- age20 %>% 
@@ -2125,6 +2136,7 @@ size20_mapc97 <- size20 %>%
 ```
 
 # 7.4.1 Load in Headship Rate Scenarios
+
 ```{r}
 # Create a standard function for reading in headship rates
 hdsp.r_read <- function(scenario, file){

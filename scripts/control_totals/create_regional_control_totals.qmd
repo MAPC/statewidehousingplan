@@ -189,6 +189,13 @@ rm(umdi_pop)
 
 ```{r}
 #===============================================================================
+#Decennial Census API Query Function
+#Load 2010 Decennial variables for easier filtering
+vars.dec10 <- load_variables(2010, dataset = c("sf1"))
+
+#Load 2020 Decennial variables for easier filtering
+vars.dec20 <- load_variables(2020, dataset = c("dhc"))
+
 #Decennial 2010 Population
 #Creates a list of sex by age population variables to use in the API query
 pop.vars <- dec.vars(vars.dec10, "SEX BY AGE")
@@ -806,10 +813,10 @@ gc()
 # 3.4 QC Check - Compare the calculated GQ Population to the GQ Population at the county level (by age by sex)
 
 ```{r}
-#Create a municipality to county crosswalk with {mapcdatakeys}
+# Create a municipality to county crosswalk with {mapcdatakeys}
 muni_county.xw <- mapcdatakeys::all_muni_data_keys |> 
   select(muni_id,muni_name,county_id,county) |> 
-  #Make all variables characters
+  # Make all variables characters
   mutate(across(everything(), ~as.character(.)))
 
 #Join the municipal level population data to the county to muni crosswalk
@@ -1195,7 +1202,12 @@ gc()
 
 ```{r}
 # Load PUMA to RPA Crosswalk
-xw <- read.csv(paste0(output_path, 'PUMA10_RPA_crosswalk.csv'))
+xw <- read.csv(paste0(output_path, 'PUMA10_RPA_crosswalk.csv')) |> 
+  mutate(
+    # Change the data type and pad the string with a leading zero.
+    PUMA = as.character(PUMA),
+    PUMA = str_pad(PUMA, 5, side = "left", pad = "0")
+  )
 
 ```
 
@@ -1216,10 +1228,8 @@ variable_list <- c("PUMA", "TYPEHUGQ", "SEX", "AGEP", "RAC1P", "HISP", "ESR",
 #SEMP bottom coding has changed from $1 to $4 like WAGP
 
 # Load CPI time series for deflating income variable
-
 cpi <- fread(paste0(root,'cpi_deflators_by_year.csv'))
 cpi.deflator <- cpi[year==2013, index] / cpi[year==vintage, index]
-
 
 #Query {tidycensus} for 2017-2021 5-Year PUMS data
 pums_data <- get_pums(
@@ -1252,7 +1262,24 @@ pums_data <- get_pums(
       AGEP %in% 75:84 ~ 8,
       AGEP >= 85 ~ 9
     ), 
+    # Renaming the 5-year age group variable.
     AgeCat = ageCAT6,
+    # Adjust income first to the highest year in the 5-year vintage using included adjustment field (ADJINC)
+    # For Statewide Housing Plan we stick with the 2021 dollars from the 2017-2021 ACS PUMS files.
+    # Optionally, for UrbanSim we then deflate back to 2013, using the cpi deflator calculated in the previous code chunk
+    ADJINC = as.numeric(ADJINC),
+    HINCP = round((as.numeric(HINCP) * ADJINC), 0),
+    #HINCP = round((as.numeric(HINCP) * ADJINC) * cpi.deflator, 0),
+    WAGPALLC_US =
+      cut(
+        HINCP,
+        breaks = c(-Inf, 35000, 75000, 125000, 225000, Inf),
+        labels = c("1", "2", "3", "4", "5")
+      ),
+    tenure = case_when(
+      TEN %in% c('1','2') ~ 1,
+      TEN %in% c('3','4') ~ 2
+    ),
     # Categorizing employment status
     empstat = case_when(
       ESR == "b" ~ "Under 16 not eligible for work",
@@ -1263,7 +1290,6 @@ pums_data <- get_pums(
       ESR == 5 ~ "Armed forces but not at work",
       ESR == 6 ~ "Not in labor force"
     ),
-    
     # Categorizing Civilian Labor Force or not
     # NOTE: Categories are (0) under 16 or non-civilian, (1) in labor force, (2) not in labor force
     lf = case_when(
@@ -1279,14 +1305,12 @@ pums_data <- get_pums(
       (ESR == 1 | ESR == 2 | ESR == 3 | ESR == 4 | ESR == 5) ~ 1,
       is.na(ESR) ~ 0
     ),
-    
     # Categorizing full or part-time work
     wrkfull = case_when(
       WKHP < 35 ~ "Part time (less than 35 hrs)",
       WKHP >= 35 ~ "Full time (35 hrs or more)",
       is.na(WKHP) ~ "Under 16, unemployed, or not in labor force"
     ),
-    
     # Categorizing educational attainment
     # NOTE: Categories are (1) High school degree or less, (2) Associate's degree or some college, (3) Bachelor's, and (4) MA or higher
     SCHL = as.numeric(SCHL),
@@ -1361,24 +1385,6 @@ pums_data <- get_pums(
       Child_Total == 0 & Person_Total > 1 & HHder != 99 ~ 3,
       Child_Total == 0 & Person_Total > 1 & HHder == 99 ~ 4,
       Person_Total == 1 & HHder != 99 ~ 5
-    ),
-      
-    # Adjust income first to the highest year in the 5-year vintage using included adjustment field (ADJINC)
-    # For Statewide Housing Plan we stick with the 2021 dollars from the 2017-2021 ACS PUMS files.
-    # Optionally, for UrbanSim we then deflate back to 2013, using the cpi deflator calculated in the previous code chunk
-
-    ADJINC = as.numeric(ADJINC),
-    HINCP = round((as.numeric(HINCP) * ADJINC), 0),
-    #HINCP = round((as.numeric(HINCP) * ADJINC) * cpi.deflator, 0),
-    WAGPALLC_US =
-      cut(
-        HINCP,
-        breaks = c(-Inf, 35000, 75000, 125000, 225000, Inf),
-        labels = c("1", "2", "3", "4", "5")
-      ),
-    tenure = case_when(
-      TEN %in% c('1','2') ~ 1,
-      TEN %in% c('3','4') ~ 2
     )
   ) |> 
   setDT()
@@ -1405,7 +1411,7 @@ fwrite(pums_data, paste0(rwt_path, '/PUMS_data/PUMS', vintage, '_formatted.csv')
 
 ```{r}
 #===============================================================================
-# 7.1 - Generate BASELINE data for the reweighter targeting files
+# 7.1.1-3 - Generate BASELINE data for the reweighter targeting files for non 2020 years
 # 7.1.1 -Baseline of people in Households
 hhpop_baseline <- pums_data |>  
   # Filter for households.
@@ -1579,12 +1585,34 @@ lf_baseline <- pums_data |>
     INTER = BASELINE
   )
 
-# 7.1.4 For 2020 - baseline file of households by age of householder by tenure
+# Output the baseline file for Household Population aggregations
+write.csv(
+  hhpop_baseline,
+  paste0(output_path,"hhpop_baseline.",hdshp,".csv"), 
+  row.names = FALSE
+)
 
+# Output the baseline file for Household Type aggregations
+write.csv(
+  hhtype_baseline,
+  paste0(output_path,"hhtype_baseline.",hdshp,".csv"),
+  row.names = FALSE
+)
+
+# Output the baseline file for Laborforce aggregations
+write.csv(
+  lf_baseline,
+  paste0(output_path,"lf_baseline.",hdshp,".csv"),
+  row.names = FALSE
+)
+#===============================================================================
+# 7.1.4-6 Baseline targetting files for 2020
+
+# 7.1.4 For 2020 - baseline file of households by age of householder by tenure
 age_baseline <- pums_data |> 
   # Filter for households and the head of household for each SERIALNO
   filter(TYPEHUGQ == "1" & SPORDER == "1") |>   
-  # Rename variables to match the reweigher input requirements.
+  # Rename variables to match the reweighter input requirements.
   mutate(
     ageCAT4 = case_when(
       ageCAT4 == 1 ~ "x == 1",
@@ -1620,7 +1648,6 @@ age_baseline <- pums_data |>
     INTER = BASELINE)
 
 # 7.1.5 For 2020 - baseline file of household size
-
 size_baseline <- pums_data |> 
   # Filter for households and the head of household for each SERIALNO
   filter(TYPEHUGQ == "1" & SPORDER == "1") |>   
@@ -1696,27 +1723,6 @@ type_baseline <- pums_data |>
       HHtype == "single" ~ "x == 5"
     )
   )
-
-# Output the baseline file for Household Population aggregations
-write.csv(
-  hhpop_baseline,
-  paste0(output_path,"hhpop_baseline.",hdshp,".csv"), 
-  row.names = FALSE
-)
-
-# Output the baseline file for Household Type aggregations
-write.csv(
-  hhtype_baseline,
-  paste0(output_path,"hhtype_baseline.",hdshp,".csv"),
-  row.names = FALSE
-)
-
-# Output the baseline file for Laborforce aggregations
-write.csv(
-  lf_baseline,
-  paste0(output_path,"lf_baseline.",hdshp,".csv"),
-  row.names = FALSE
-)
 
 # Output the baseline file for 2020 Age of Householder by tenure aggregations
 write.csv(

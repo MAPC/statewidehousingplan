@@ -38,23 +38,6 @@ pums <- read.csv(paste0(pums_path,"pums_overcrowding_2021_V_2024-09-16.csv")) |>
     PUMA = as.character(str_pad(PUMA, width = 5, side = "left", pad = 0))
   )
 
-test <- pums |> 
-  filter(SPORDER %in% c(0,1)) |> 
-  group_by(SERIALNO) |> 
-  mutate(
-    weight.test = sum(WGTP)/n()
-  ) |> 
-  ungroup() |> 
-  mutate(
-    weight.check = WGTP - weight.test,
-    weight.check.flag = case_when(
-      weight.check > 0 ~ 1,
-      weight.check < 0 ~ 1,
-      weight.check == 0 ~ 0,
-      .default = 0
-    )
-  )
-
 ```
 
 # 0.3 PUMA to RPA Crosswalk

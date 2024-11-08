@@ -1910,6 +1910,7 @@ headship_rates <- pums_data |>
   #Computes the weighted sum of individuals in each HH type category by the groups
   #assigned above.
   count(var = HHtype, wt = WGTP) |>
+  ungroup() |> 
   #Recodes factor variables as the categories they represent.
   #Converts numbers into frequencies.                 
   group_by(rpa_acr, ageCAT6) |> 

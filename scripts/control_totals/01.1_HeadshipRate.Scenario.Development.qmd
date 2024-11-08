@@ -81,6 +81,11 @@ pums_data <- pums_query(var.list = variable_list, yr = vintage, srvy = "acs5") |
   mutate(
     # Generate five-year age groupings to match UMDI population projections data.
     ageCAT6 = cut(AGEP, breaks = c(-Inf, seq(4, 84, 5), Inf), labels = 1:18),
+    # Creates a tenure grouping for owners (1) and renters (2)
+    tenure = case_when(
+      TEN %in% c('1','2') ~ 1,
+      TEN %in% c('3','4') ~ 2
+    ),
     # Counts as Worker
     # NOTE: Categories are (0) under 16 or not in labor force, or (1) in labor force or non-civilian worker
     worker = case_when(
@@ -611,10 +616,12 @@ headship_rates.split <- pums_data.adj |>
   filter(TYPEHUGQ == "1") |> 
   # Groups by variables in the dataframe necessary to getting the granularity of
   # data we're interested in.
-  group_by(rpa_acr, ageCAT6) |> 
+  group_by(rpa_acr, ageCAT6, tenure) |> 
   # Computes the weighted sum of individuals in each HH type category by the groups
   # assigned above.
-  count(var = HHtype, wt = WGTP) |>
+  count(var = HHtype, wt = WGTP)  |>
+  ungroup() |> 
+  group_by(rpa_acr, ageCAT6) |>
   # Recodes factor variables as the categories they represent.
   # Converts numbers into frequencies.                       
   mutate(
@@ -680,10 +687,12 @@ headship_rates <- pums_data |>
   filter(TYPEHUGQ == "1") |> 
   # Groups by variables in the dataframe necessary to getting the granularity of
   # data we're interested in.
-  group_by(rpa_acr, ageCAT6) |> 
+  group_by(rpa_acr, ageCAT6, tenure) |> 
   # Computes the weighted sum of individuals in each HH type category by the groups
   # assigned above.
   count(var = HHtype, wt = WGTP) |>
+  ungroup() |> 
+  group_by(rpa_acr, ageCAT6) |> 
   # Recodes factor variables as the categories they represent.
   # Converts numbers into frequencies.                       
   mutate(
@@ -696,9 +705,9 @@ headship_rates <- pums_data |>
     freq = (n/sum(n))) |> 
   # Removes the level of aggregation set earlier by group_by()
   ungroup() |> 
-  select(
-    -c(n)
-  )
+   select(
+     -c(n)
+   )
 
 # QC Check - determine if the frequencies in each RP, Age Group crosstab add to 1
 hr_check <- headship_rates |> 

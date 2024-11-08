@@ -88,7 +88,7 @@ keys.rpa <- mapcdatakeys::all_muni_data_keys |>
 
 ```{r}
 # Set a column of years corresponding to the projection years considered
-years <- c(2020,2030,2035,2040,2045,2050)
+years <- c(2020,2025,2030,2035,2040,2045,2050)
 
 # Create null objects for each scenario's full reweighted PUMS dataset. 
 # One will be used per script run depending on the value given to "scen" at the outset of the script.

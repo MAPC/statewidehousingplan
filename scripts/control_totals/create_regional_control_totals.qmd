@@ -1617,8 +1617,8 @@ hhtype_baseline <- pums_data |>
   ) |>  
   group_by(
     RPA,
-    tenure,
-    ageCAT6
+    ageCAT6,
+    tenure
   ) |> 
   # Sum the household weights in the PUMS data.
   dplyr::count(
@@ -2056,12 +2056,12 @@ age20 <-
 
 # Summarize to RPA using MAPC 101 towns
 age20_mapc101 <- age20 %>% 
-  group_by(rpa_acr,ageCAT4) %>% 
+  group_by(rpa_acr,ageCAT4,tenure) %>% 
   summarise(TARGET = sum(hh))
 
 # Summarize to MPO using MAPC 97 towns
 age20_mapc97 <- age20 %>% 
-  group_by(mpo,ageCAT4) %>% 
+  group_by(mpo,ageCAT4,tenure) %>% 
   summarise(TARGET = sum(hh))
 
 type.vars <- vars2020[concept=="HOUSEHOLD SIZE BY HOUSEHOLD TYPE BY PRESENCE OF OWN CHILDREN",sun(name)]
@@ -2242,9 +2242,9 @@ proj.hh.MAPC101_by.rpa.hhtype <- left_join(
 #===============================================================================
 # 7.4.2.2 Household Projections by MPO (MAPC97) and Household Type
 proj.hh.MAPC97_by.mpo.hhtype <- left_join(
-  hdsp.r,
   umdi.pop.MAPC97,
-  by = c("rpa_acr" = "mpo", "ageCAT6"),
+  hdsp.r,
+  by = c("mpo" = "rpa_acr", "ageCAT6"),
   relationship = "many-to-many"
 ) |> 
   rowwise() |> 
@@ -2319,7 +2319,7 @@ for (i in yrs) {
   target.file <- left_join(
     hhtype_baseline,
     tmp,
-    by = c("RPA" = "rpa_acr", "AgeCat", "HHtype")
+    by = c("RPA" = "rpa_acr", "AgeCat", "tenure", "HHtype")
   ) |> 
     dplyr::rename(
       TARGET = hh
@@ -2343,7 +2343,7 @@ for (i in yrs) {
   target.age <- left_join(
     age_baseline,
     age20_mapc101,
-    by = c("RPA" = "rpa_acr", "ageCAT4"))
+    by = c("RPA" = "rpa_acr", "ageCAT4", "tenure"))
   
   target.type <- left_join(
     type_baseline,
@@ -2387,7 +2387,7 @@ for (i in yrs) {
   target.file <- left_join(
     hhtype_baseline,
     tmp,
-    by = c("RPA" = "mpo", "AgeCat", "HHtype")
+    by = c("RPA" = "mpo", "AgeCat", "tenure", "HHtype")
   ) |> 
     dplyr::rename(
       TARGET = hh
@@ -2411,7 +2411,7 @@ for (i in yrs) {
   target.age <- left_join(
     age_baseline,
     age20_mapc97,
-    by = c("RPA" = "mpo", "ageCAT4"))
+    by = c("RPA" = "mpo", "ageCAT4", "tenure"))
   
   target.type <- left_join(
     type_baseline,

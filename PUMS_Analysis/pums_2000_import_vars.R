@@ -18,7 +18,7 @@ options(scipen = 999)
 
 # set output path
 exp_path = "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS/ipums_2000/"
-exp_path ="C:/Users/lberman/Downloads/"
+#exp_path ="C:/Users/lberman/Downloads/"
 
 # Households are uniquely identified by the SERIALNO variable
 # Persons are uniquely identified by SERIALNO and PERNUM(SPORDER).
@@ -30,12 +30,12 @@ exp_path ="C:/Users/lberman/Downloads/"
 
 # get_2000_pers <- read_csv(paste0(exp_path,"2000_ipums_PERSON_overc_OWNERSHIP.csv")) #ownership != tenure ?
 
-get_2000_pers <- read_csv(paste0(exp_path,"all_2000_ipums/US2000A_TENURE.csv")) #ownership != tenure ?  add US2000A_TENURE
+get_2000_pers <- read_csv(paste0(exp_path,"US2000A_TENURE.csv")) #ownership != tenure ?  add US2000A_TENURE
 
 
 # 2.  import HH records directly downloaded from IPUMS
 
-get_2000_hh <- read_csv(paste0(exp_path,"all_2000_ipums/2000_ipums_HH_overc.csv")) 
+get_2000_hh <- read_csv(paste0(exp_path,"2000_ipums_HH_overc.csv")) 
 
 # 3. get list of vars for hh to compare
 

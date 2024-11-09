@@ -6,6 +6,7 @@ library(dplyr)
 
 # lberman 2024-08-20  
 # revised 2024-9-18 to use IPUMS downloads (not mdb database found on K drive)
+# revised 2024-10-09 to add TENURE variables in US2000A_TENURE.csv
 
 #  note: PUMS access.mdb SERIALNO does NOT match IPUMS SERIAL, and cannot be joined
 #  cf -> K:\DataServices\Datasets\U.S. Census and Demographics\PUMS\Archive\PUMS_5%_2000\2000_PUMS_MA.mdb 
@@ -27,7 +28,10 @@ exp_path ="C:/Users/lberman/Downloads/"
 
 # 1.  import PERSON records directly downloaded from IPUMS
 
-get_2000_pers <- read_csv(paste0(exp_path,"2000_ipums_PERSON_overc_OWNERSHIP.csv")) 
+# get_2000_pers <- read_csv(paste0(exp_path,"2000_ipums_PERSON_overc_OWNERSHIP.csv")) #ownership != tenure ?
+
+get_2000_pers <- read_csv(paste0(exp_path,"all_2000_ipums/US2000A_TENURE.csv")) #ownership != tenure ?  add US2000A_TENURE
+
 
 # 2.  import HH records directly downloaded from IPUMS
 

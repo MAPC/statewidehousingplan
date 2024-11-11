@@ -27,8 +27,8 @@ reb <- 'MAPC101'
 # reb <- 'MAPC97'
 
 # Root Directory
-  root <- 'S:/Network Shares/K Drive/DataServices/Projects/'
- # root <- 'K:/DataServices/Projects/'
+ # root <- 'S:/Network Shares/K Drive/DataServices/Projects/'
+ root <- 'K:/DataServices/Projects/'
 
 ctrltotal.path <- paste0(root, 'Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/', scen, '/')
 
@@ -139,15 +139,6 @@ source('algo_hh.R')
 
 # Set Targets and run reweighter loop
 
-# Select headship rate scenario
-
-hdshp <- 'acs1721'
-
-# Choose whether to run using the MAPC 101 or the MAPC 97 towns
-
-reb <- 'MAPC101'
-#reb <- 'MAPC97'
-
 # Different configuration for 2020 base year
 
 for (yr in c(2020)) {
@@ -228,6 +219,7 @@ for (yr in c(2020)) {
     fwrite(mess, paste0(outpath, mid, '_', yr, '_complete.txt'))
   }
 }
+
 for (yr in c(2025, 2030, 2035, 2040, 2045, 2050)) {
   for (mid in mpos) {
     

@@ -20,8 +20,8 @@ hdshp <- 'acs1721'
 #root <- '../../../../Data/Working/Regional_Control_Totals/'
 
 # Base root. Toggle between S: and K: drive depedning on mapped paths on your computer
-base <- "K:/DataServices/Projects/Current_Projects/"
-# base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
+# base <- "K:/DataServices/Projects/Current_Projects/"
+base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
 
 #General K drive filepath
 root <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/")
@@ -46,6 +46,7 @@ library(reticulate)
 library(mapcdatakeys)
 library(janitor)
 library(readxl)
+library(here)
 
 ##get rid of scientific notation
 options(scipen = 999)
@@ -117,7 +118,7 @@ GEOID.cn.20 <- mapcdatakeys::all_muni_data_keys |>
 
 ```{r}
 # Bring in helper functions
-source("C:/Project_Work/statewidehousingplan/scripts/control_totals/Projections.Functions.R")
+source(here('scripts/control_totals/Projections.Functions.R'))
 
 ```
 

@@ -4,23 +4,106 @@ format: html
 editor: visual
 ---
 
-## Quarto
+# 0.1 - Set knitr path + root for inputs
 
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+```{r, setup, include=FALSE}
+library(tidyverse)
+#Use when Rproject is open
+#root <- '../../../../Data/Working/Regional_Control_Totals/'
 
-## Running Code
+#General K drive filepath
+root <-"K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/"
 
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+#PUMS K drive filepath
+pums_path <- "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS/ipums_2021/"
 
-```{r}
-1 + 1
+rpa_path <- "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/Scenario_1/"
+
+#Set output filepath
+output_path <- "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS/outputs/"
+
+#Set knitr path
+knitr::opts_knit$set(root.dir = pums_path)
 ```
 
-You can add options to executable code like this
+# 0.2 - Set package dependencies, set environment, set up data keys
 
 ```{r}
-#| echo: false
-2 * 2
+#Load Libraries for PUMS Analysis and PUMS API query functions
+#sets seed and removes scientific notation
+#source("C:/Project_Work/statewidehousingplan/PUMS_Analysis/PUMS_Helper_Functions.R")
+
+#Load PUMS variables
+pums <- read_csv(paste0(pums_path,"pums_unitsbuilt_2021_V_2024-10-09.csv")) |> 
+  mutate(
+    PUMA = as.character(str_pad(PUMA, width = 5, side = "left", pad = 0))
+  )
+
+# Load PUMA to RPA Crosswalk
+rpa_xw <- read_csv(paste0(rpa_path, 'PUMA10_RPA_crosswalk.csv')) |> 
+  mutate(
+    # Change the data type and pad the string with a leading zero.
+    PUMA = as.character(PUMA),
+    PUMA = str_pad(PUMA, 5, side = "left", pad = "0")
+  )
+
+# Load PUMA to Community Type Crosswalk
+ct_xw <- read_csv()
 ```
 
-The `echo: false` option disables the printing of code (only output is displayed).
+# Crosstab: Estimated Households by RPA and Year Built
+```{r}
+# Join RPA xw to pums data
+pums_rpa <- left_join(
+  pums,
+  rpa_xw,
+  by = c("PUMA")
+)
+
+rpa_yrbuilt <- pums_rpa |> 
+  #creating field to identify order of people in household
+  mutate(SPORDER = str_sub(uniq_obs, -1)) |> 
+  #filtering to exclude group quarters and only include the first person in each hh 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
+  #grouping by RPA and year built
+  group_by(rpa_acr, YRBLT) |> 
+  #summing hh weights to get estimate of households per RPA and year built
+  summarise(hh_est = sum(WGTP)) |> 
+  ungroup()
+
+write.csv(
+  rpa_yrbuilt,
+  paste0(output_path, "07_YearBuilt/rpa_yrblt.csv"),
+  row.names = FALSE
+)
+
+```
+
+# Crosstab: Estimated Households by Community Type and Year Built
+```{r}
+# Join RPA xw to pums data
+pums_ct <- left_join(
+  pums,
+  ct_xw,
+  by = c("PUMA")
+)
+
+ct_yrbuilt <- pums_ct |> 
+  #creating field to identify order of people in household
+  mutate(SPORDER = str_sub(uniq_obs, -1)) |> 
+  #filtering to exclude group quarters and only include the first person in each hh 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
+  #grouping by community type and year built
+  group_by(rpa_acr, YRBLT) |> 
+  #summing hh weights to get estimate of households per RPA and year built
+  summarise(hh_est = sum(WGTP)) |> 
+  ungroup()
+
+write.csv(
+  ct_yrbuilt,
+  paste0(output_path, "07_YearBuilt/ct_yrblt.csv"),
+  row.names = FALSE
+)
+
+```
+

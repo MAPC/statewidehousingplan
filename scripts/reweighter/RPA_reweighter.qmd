@@ -65,7 +65,7 @@ set.seed(351)
 sun <- function(x){sort(unique(x))}
 
 # List of RPA names
-mpos <- unlist(c(mapcdatakeys::all_muni_data_keys %>% select(mpo) %>% unique()))
+mpos <- unlist(c(mapcdatakeys::all_muni_data_keys |> select(mpo) |> unique()))
 
 
 ```
@@ -76,7 +76,7 @@ Formatted PUMS data is created by the *create_regional_control_totals.qmd* in se
 
 ```{r}
 
-pums_data <- fread(paste0(workpath, '/PUMS_data/PUMS', vintage, '_formatted.csv')) %>% filter(TYPEHUGQ == "1") %>% 
+pums_data <- fread(paste0(workpath, '/PUMS_data/PUMS', vintage, '_formatted.csv')) |> filter(TYPEHUGQ == "1") |> 
   mutate(AgeCat = ageCAT6)
 
 # Make Input folders for reweighter by RPA
@@ -89,7 +89,7 @@ for (m in mpos) {
 }
 
 mapc.pumas <- pums_data[rpa_acr == 'MAPC', unique(PUMA)]
-swm.pumas <- pums_data[rpa_acr != 'MAPC', .(rpa_acr, PUMA)] %>% 
+swm.pumas <- pums_data[rpa_acr != 'MAPC', .(rpa_acr, PUMA)] |> 
   unique()
 
 # MAPC 101 subset
@@ -99,8 +99,8 @@ message(paste0('MAPC 101 PUMS export complete'))
 
 # SWM join PUMA and export subsets
 for (m in unique(swm.pumas$rpa_acr)) {
-  pums_data %>%
-    filter(rpa_acr==m) %>%
+  pums_data |>
+    filter(rpa_acr==m) |>
     fwrite(paste0(workpath, scen, '/Input_Files/', m, '/PUMS', vintage, '_', m, '.csv'))
   message(paste0(m, ' PUMS export complete'))
 }
@@ -164,9 +164,9 @@ for (yr in c(2020)) {
         yr,
         '.csv'
       )
-    ) %>%
-      filter(RPA == mid) %>%
-      select(-RPA) %>% setDT()
+    ) |>
+      filter(RPA == mid) |>
+      select(-RPA) |> setDT()
     setorder(age.target, ageCAT4)
     fwrite(age.target, paste0(inpath, '/age.csv'))
     
@@ -183,9 +183,9 @@ for (yr in c(2020)) {
         yr,
         '.csv'
       )
-    ) %>%
-      filter(RPA == mid) %>%
-      select(-RPA) %>% setDT()
+    ) |>
+      filter(RPA == mid) |>
+      select(-RPA) |> setDT()
     setorder(size.target, size)
     fwrite(size.target, paste0(inpath, '/size.csv'))
     
@@ -202,9 +202,9 @@ for (yr in c(2020)) {
         yr,
         '.csv'
       )
-    ) %>%
-      filter(RPA == mid) %>%
-      select(-RPA) %>% setDT()
+    ) |>
+      filter(RPA == mid) |>
+      select(-RPA) |> setDT()
     setorder(type.target, HHtype)
     fwrite(type.target, paste0(inpath, '/type.csv'))
     
@@ -231,11 +231,11 @@ for (yr in c(2025, 2030, 2035, 2040, 2045, 2050)) {
     # Set targets
     outpath <- paste0(workpath, scen, '/Output_Files/', mid, '/')
     dir.create(outpath, showWarnings = F)
-    template <- fread(paste0(workpath, 'Templates/AgeHHder_HHtype_template.csv')) %>%
+    template <- fread(paste0(workpath, 'Templates/AgeHHder_HHtype_template.csv')) |>
       select(-BASELINE, -TARGET)
-    target <- fread(paste0(ctrltotal.path, 'hhtype.targetfile.', reb, '.', scen,'.hdshp.',hdshp,'.y',yr, '.csv')) %>%
-      filter(RPA == mid) %>%
-      select(-RPA) %>% right_join(template, by = c('AgeCat', 'HHtype')) %>% setDT()
+    target <- fread(paste0(ctrltotal.path, 'hhtype.targetfile.', reb, '.', scen,'.hdshp.',hdshp,'.y',yr, '.csv')) |>
+      filter(RPA == mid) |>
+      select(-RPA) |> right_join(template, by = c('AgeCat', 'HHtype')) |> setDT()
     target[AgeCat %in% c('x == 1', 'x == 2', 'x == 3'), `:=`(BASELINE =
                                                                0,
                                                              INTER = 0,
@@ -244,8 +244,11 @@ for (yr in c(2025, 2030, 2035, 2040, 2045, 2050)) {
     setorder(target, AgeCat, HHtype)
     fwrite(target, paste0(inpath, '/AgeHHder_HHtype.csv'))
     
-    target2 <- fread(paste0(ctrltotal.path, "tenure.targetfile.",reb,".",scen,'.hdshp.',hdshp,".y",yr,".csv")) %>%
-      filter(RPA == mid) %>% 
+    template2 <- fread(paste0(workpath, 'Templates/age_tenure_template.csv'))
+    target2 <- fread(paste0(ctrltotal.path, "tenure.targetfile.",reb,".",scen,'.hdshp.',hdshp,".y",yr,".csv")) |>
+      filter(RPA == mid) |> 
+      select(-RPA) |> 
+      right_join(template2, by=c('AgeCat','tenure')) |> 
       setDT()
     
     target2[is.na(BASELINE),`:=`(BASELINE =0,INTER = 0,TARGET = 0)]
@@ -277,8 +280,8 @@ for (yr in 2020){
     inpath <- paste0(workpath, scen, '/Input_Files/', mid, '/')
     outpath <- paste0(workpath, scen, '/Output_Files/', mid, '/')
     # Summarize total households by mpo from target inputs to reweighter
-    target <- fread(paste0(ctrltotal.path, 'type.targetfile.', reb, '.', scen, '.hdshp.', hdshp, '.y', yr, '.csv')) %>%
-      filter(RPA == mid) %>% setDT()
+    target <- fread(paste0(ctrltotal.path, 'type.targetfile.', reb, '.', scen, '.hdshp.', hdshp, '.y', yr, '.csv')) |>
+      filter(RPA == mid) |> setDT()
     
     tsum <- target[, lapply(.SD, sum), RPA, .SDcols = 'TARGET']
     tsum[, TARGET := round(TARGET)][,year:=yr]
@@ -291,7 +294,7 @@ for (yr in 2020){
     
     rw <- data.table()
     
-    x <- fread(paste0(outpath, '/weights_final_', scen, '_', mid, '_', yr, '.csv')) %>% select(SERIALNO, SPORDER, new_WGTP) %>% mutate(mpo = mid) %>% setDT()
+    x <- fread(paste0(outpath, '/weights_final_', scen, '_', mid, '_', yr, '.csv')) |> select(SERIALNO, SPORDER, new_WGTP) |> mutate(mpo = mid) |> setDT()
     setkey(x, SERIALNO, SPORDER)
     xp <- pums[x]
     fwrite(xp, paste0(outpath, '/reweighted_PUMS_', scen, '_', reb, '_', mid, '_', hdshp, '_', yr, '.csv'))
@@ -311,8 +314,8 @@ for (yr in c(2030,2035,2040,2045,2050)){
     inpath <- paste0(workpath, scen, '/Input_Files/', mid, '/')
     outpath <- paste0(workpath, scen, '/Output_Files/', mid, '/')
     # Summarize total households by mpo from target inputs to reweighter
-    target <- fread(paste0(ctrltotal.path, 'hhtype.targetfile.', reb, '.', scen, '.hdshp.', hdshp, '.y', yr, '.csv')) %>%
-      filter(RPA == mid) %>% setDT()
+    target <- fread(paste0(ctrltotal.path, 'hhtype.targetfile.', reb, '.', scen, '.hdshp.', hdshp, '.y', yr, '.csv')) |>
+      filter(RPA == mid) |> setDT()
     
     tsum <- target[, lapply(.SD, sum), RPA, .SDcols = 'TARGET']
     tsum[, TARGET := round(TARGET)][,year:=yr]
@@ -325,7 +328,7 @@ for (yr in c(2030,2035,2040,2045,2050)){
     
     rw <- data.table()
     
-    x <- fread(paste0(outpath, '/weights_final_', scen, '_', mid, '_', yr, '.csv')) %>% select(SERIALNO, SPORDER, new_WGTP) %>% mutate(mpo = mid) %>% setDT()
+    x <- fread(paste0(outpath, '/weights_final_', scen, '_', mid, '_', yr, '.csv')) |> select(SERIALNO, SPORDER, new_WGTP) |> mutate(mpo = mid) |> setDT()
     setkey(x, SERIALNO, SPORDER)
     xp <- pums[x]
     fwrite(xp, paste0(outpath, '/reweighted_PUMS_', scen, '_', reb, '_', mid, '_', hdshp, '_', yr, '.csv'))
@@ -406,11 +409,11 @@ Hous_short_2030 = Hous_short_2020 – Shortage_units_20_30
 # Set residential vacancy rate targets
 # Load in the actual 2020 unit counts and vacancy rates from Census 2020 DHC
 
-munis <- mapcdatakeys::all_muni_data_keys %>%
-  select(muni_id, muni_name, cosub_cn20, cmtyp08, mapc, mpo, rpa_acr) %>%
+munis <- mapcdatakeys::all_muni_data_keys |>
+  select(muni_id, muni_name, cosub_cn20, cmtyp08, mapc, mpo, rpa_acr) |>
   mutate(GEOID = as.character(cosub_cn20)) 
 
-vars <- load_variables(2020, 'dhc') %>% setDT()
+vars <- load_variables(2020, 'dhc') |> setDT()
 vs <- vars[grepl('VACANCY', concept), name]
 ns <- vars[grepl('VACANCY', concept), gsub(':', '', gsub(' ', '_', (gsub(
   ',', '', gsub(':!!', '_', (gsub(' !!', '', (
@@ -429,16 +432,16 @@ d1 <-
     state = 'MA',
     geography = 'county subdivision',
     variables = vs
-  ) %>%
-  pivot_wider(names_from = 'variable') %>%
-  select(-NAME) %>%
+  ) |>
+  pivot_wider(names_from = 'variable') |>
+  select(-NAME) |>
   setDT()
 setnames(d1, c('GEOID', 'total_units', 'total_households', gsub('Total','Vacant',ns), 'own_occ_units', 'rent_occ_units'))
 
-m2 <- munis %>% select(GEOID, muni_id, muni_name, mpo, rpa_acr, cmtyp08)
-dhc <- d1 %>%
-  left_join(m2, by = 'GEOID') %>%
-  filter(!is.na(muni_id)) %>% 
+m2 <- munis |> select(GEOID, muni_id, muni_name, mpo, rpa_acr, cmtyp08)
+dhc <- d1 |>
+  left_join(m2, by = 'GEOID') |>
+  filter(!is.na(muni_id)) |> 
   mutate(
     total_available_units = total_households + Vacant_For_rent + Vacant_For_sale_only,
     total_unavailable_units = total_units - total_available_units,
@@ -457,7 +460,7 @@ dhc <- d1 %>%
     vac_rate_total = round(total_available_vacant_units / total_units, 3),
     rent_vac_rate_total = round(Vacant_For_rent / total_rental_units,3),
     own_vac_rate_total = round(Vacant_For_sale_only / total_owner_units,3)
-    ) %>% 
+    ) |> 
   rename(total_vacant_units=Vacant,
          vacant_available_to_rent=Vacant_For_rent,
          vacant_rented_not_occ=Vacant_Rented_not_occupied,
@@ -486,7 +489,7 @@ cs <- c(
 )
 
 
-dsum101 <- dhc[,lapply(.SD,sum),rpa_acr,.SDcols=(cs)] %>% 
+dsum101 <- dhc[,lapply(.SD,sum),rpa_acr,.SDcols=(cs)] |> 
   mutate(
     vac_rate_avail = round(total_available_vacant_units / total_available_units, 3),
     rent_vac_rate_avail = round(vacant_available_to_rent / total_available_rental_units,3),
@@ -510,20 +513,20 @@ for (yr in c(2020,2030,2035,2040,2045,2050)){
 }
   setorder(dt,rpa_acr,year)
 
-  hh <- dt %>% 
-    filter(SPORDER==1) %>% 
+  hh <- dt |> 
+    filter(SPORDER==1) |> 
     mutate(tenure = case_when(
       TEN %in% 1:2 ~ 'own',
-      TEN %in% 3:4 ~ 'rent')) %>% 
-    group_by(year,mpo,tenure) %>% 
-    count(wt=new_WGTP, name='hh') %>% 
-    ungroup() %>% 
-    mutate(hh = round(hh)) %>% 
+      TEN %in% 3:4 ~ 'rent')) |> 
+    group_by(year,mpo,tenure) |> 
+    count(wt=new_WGTP, name='hh') |> 
+    ungroup() |> 
+    mutate(hh = round(hh)) |> 
     setDT()
   
-  uw <- hh %>% 
-    pivot_wider(id_cols = 'mpo', names_from = c('tenure','year'), values_from = 'hh') %>%
-    left_join(vax, by=c('mpo'='rpa_acr')) %>% 
+  uw <- hh |> 
+    pivot_wider(id_cols = 'mpo', names_from = c('tenure','year'), values_from = 'hh') |>
+    left_join(vax, by=c('mpo'='rpa_acr')) |> 
     setDT()
 nm <- names(uw)[2:13]
 setnames(uw,nm,paste0('households_',nm))

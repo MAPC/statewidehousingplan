@@ -34,32 +34,53 @@ arc_pro_gdb<- "K:/DataServices/Projects/Current_Projects/"
 
 ```{r}
 
-all_parcels_int <- all_parcels%>%
-  mutate(psep2030 = st_intersect(psep_2030),
-         psep2050 = st_intersect(psep_2050),
-         psep2070 = st_intersect(psep_2070))
+output_table<-NULL
+
+#fixing Boston
+
+full_parcels[[21]]<-full_parcels[[21]]%>%
+  st_transform(st_crs(full_parcels[[1]]))
+
+for (z in 1:length(full_parcels)){
+  
+all_parcels_int <-st_make_valid(full_parcels[[z]])%>%
+  mutate(psep2030 = st_intersects(psep_2030),
+         psep2050 = st_intersects(psep_2050),
+         psep2070 = st_intersects(psep_2070))%>%
+  st_drop_geometry()
 
 
 units_in_mcfrm30<- all_parcels_int%>%
   filter(psep2030 = TRUE)%>%
   group_by(CITY, USE_CODE_SYMB)%>%
   summarize(units_2030 = sum(imputed_units),
-            value_risk = )
+            value_2030 = sum(TOTAL_VAL))
 
-units_in_mcfrm50<- st_intersect(all_parcels, psep_2050)%>%
-  group_by(CITY)%>%
-  summarize(units_2050 = sum(imputed_units))
-
-
-units_in_mcfrm70 <-st_intersect(all_parcels, psep_2070)%>%
-  group_by(CITY)%>%
-  summarize(units_2050 = sum(imputed_units))
+units_in_mcfrm50<- all_parcels_int%>%
+  group_by(CITY, USE_CODE_SYMB)%>%
+  summarize(units_2050 = sum(imputed_units),
+            value_2050 = sum(TOTAL_VAL))
 
 
-output_table<- full_join(units_in_mcfrm30, units_in_mcfrm50, by = "CITY")
+units_in_mcfrm70 <-all_parcels_int%>%
+  group_by(CITY, USE_CODE_SYMB)%>%
+  summarize(units_2070 = sum(imputed_units),
+            value_2070 = sum(TOTAL_VAL))
 
 
+output_table[[z]]<- full_join(units_in_mcfrm30, units_in_mcfrm50, by = c("CITY", "USE_CODE_SYMB"))%>%
+  full_join(., units_in_mcfrm70, by = c("CITY", "USE_CODE_SYMB"))
 
+}
+
+obt<-rbindlist(output_table)
+
+
+```
+
+```{r}
+
+ggplot(st_union(st_make_valid(psep_2030)))+geom_sf()
 
 ```
 

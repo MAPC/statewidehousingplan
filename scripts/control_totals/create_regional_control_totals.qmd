@@ -1531,7 +1531,7 @@ hhtype_baseline <- pums_data |>
 
 tenure_baseline <- pums_data |> 
   # Filter for households and the head of household for each SERIALNO
-  filter(TYPEHUGQ == "1" & SPORDER == "1") |>   
+  filter(TYPEHUGQ == "1" & SPORDER == "1" & ageCAT6>3) |>   
   mutate(
     RPA = as.factor(rpa_acr),
     tenure = case_when(
@@ -1541,7 +1541,7 @@ tenure_baseline <- pums_data |>
   ) |>  
   group_by(
     RPA,
-    ageCAT4
+    ageCAT6
   ) |> 
   # Sum the household weights in the PUMS data.
   dplyr::count(
@@ -1555,9 +1555,11 @@ tenure_baseline <- pums_data |>
   ) |> 
   # Rename variables to match the reweigher input requirements.
   mutate(
-    ageCAT4 = paste0("x == ", ageCAT4),
+    AgeCat = paste0("x == ", ageCAT6),
     INTER = BASELINE
-  )
+  ) |> 
+  select(-ageCAT6) |> 
+  relocate(AgeCat,.after=RPA)
 
 # 7.1.3 - Baseline of People in the laborforce
 lf_baseline <- pums_data |>  
@@ -1688,7 +1690,7 @@ age_baseline <- pums_data |>
   dplyr::rename(
     ageCAT4 = var,
     BASELINE = n
-  ) %>% 
+  ) |> 
   mutate(
     INTER = BASELINE)
 
@@ -1823,25 +1825,21 @@ headship_rates <- pums_data |>
   )
 
 tenure_rates <- pums_data |> 
-  # Inclues only observations for people in households (omits GQ)                   
-  filter(TYPEHUGQ == "1") |>                     
+  # Inclues only observations for people in households (omits GQ)                
+  filter(TYPEHUGQ == "1" & SPORDER == 1 & ageCAT6 > 3) |>                     
   #Groups by variables in the dataframe necessary to getting the granularity of
   #data we're interested in.
-  group_by(rpa_acr, ageCAT4) |> 
+  group_by(rpa_acr, ageCAT6) |> 
   #Computes the weighted sum of individuals in each HH type category by the groups
   #assigned above.
   count(var = tenure, wt = WGTP) |>
-  ungroup() |> 
-  #Recodes factor variables as the categories they represent.
-  #Converts numbers into frequencies.                 
-  group_by(rpa_acr, ageCAT4) |> 
   mutate(
     freq = (n/sum(n))) |> 
   # Removes the level of aggregation set earlier by group_by()
   ungroup() |> 
   select(
     -c(n)
-  ) %>% 
+  ) |> 
   rename(tenure=var)
 
 # QC Check - determine if the frequencies in each RP, Age Group crosstab add to 1
@@ -1959,7 +1957,7 @@ munis <- mapcdatakeys::all_muni_data_keys |>
   dplyr::rename(GEOID=cosub_cn20) |> 
   mutate(GEOID=as.character(GEOID))
 
-vars2020 <- load_variables(2020, 'dhc') %>% setDT()
+vars2020 <- load_variables(2020, 'dhc') |> setDT()
 
 age.tenure.vars <- vars2020[concept=="TENURE BY AGE OF HOUSEHOLDER" & !label %in% c(" !!Total:!!Owner occupied:", " !!Total:!!Renter occupied:", " !!Total:"),sun(name)]
 
@@ -1994,13 +1992,13 @@ age20 <-
   filter(!is.na(ageCAT4)) |>
   right_join(munis,by = 'GEOID')
 
-age20_mapc101 <- age20 %>% 
-  group_by(rpa_acr,ageCAT4,tenure) %>% 
+age20_mapc101 <- age20 |> 
+  group_by(rpa_acr,ageCAT4,tenure) |> 
   summarise(TARGET = sum(hh))
 
 # Summarize to MPO using MAPC 97 towns
-age20_mapc97 <- age20 %>% 
-  group_by(mpo,ageCAT4,tenure) %>% 
+age20_mapc97 <- age20 |> 
+  group_by(mpo,ageCAT4,tenure) |> 
   summarise(TARGET = sum(hh))
 
 type.vars <- vars2020[concept=="HOUSEHOLD SIZE BY HOUSEHOLD TYPE BY PRESENCE OF OWN CHILDREN",sun(name)]
@@ -2058,7 +2056,7 @@ size20 <-
   right_join(size.labels, by='variable') |>  
   group_by(GEOID,label) |>  
   summarise(hh = sum(value)) |>  
-  ungroup() %>% 
+  ungroup() |> 
   mutate(size = case_when(
     label == '1-person_household' ~ 'x == 1',
     label == '2-person_household' ~ 'x == 2',
@@ -2132,9 +2130,13 @@ if (scen == "Scenario_1"){ # Scenario 1
 # 7.4.2 Join Headship Rates to Projected Population in Households by Age Group and RPA
 
 ```{r}
+
+umdi.pop.MAPC101 <- fread(paste0(output_path,'pop.in.hhds.MAPC101_by.RPA.ageCAT6.csv'))
+
+umdi.pop.MAPC97 <- fread(paste0(output_path,'pop.in.hhds.MAPC97_by.RPA.ageCAT6.csv'))
+
 # 7.4.2.1 - Household Projections by RPA (MAPC101) and Household Type
-proj.hh.MAPC101_by.rpa.hhtype <- hdsp.r %>%
-  mutate(ageCAT6 = as.character(ageCAT6)) %>%
+proj.hh.MAPC101_by.rpa.hhtype <- hdsp.r |>
   left_join(umdi.pop.MAPC101, 
             by = c("rpa_acr", "ageCAT6"), 
             relationship = "many-to-many") |>
@@ -2176,32 +2178,30 @@ proj.hh.MAPC101_by.rpa.hhtype <- hdsp.r %>%
   select(-c(pop, hhpop, freq, var, ageCAT6)) |>
   relocate(rpa_acr, AgeCat, HHtype, hh, year)
 
-# Add ageCAT4 to UMDI pop in HH data
-umdi.pop.ageCAT4.MAPC101 <- umdi.pop.MAPC101 %>% 
-  mutate(ageCAT4 = as.numeric(ageCAT6) - 3) %>% 
-  select(-ageCAT6) %>% 
-  filter(ageCAT4>0)
+hhds.MAPC101 <- proj.hh.MAPC101_by.rpa.hhtype |> 
+  select(-HHtype) |> 
+    group_by(rpa_acr,year,AgeCat) |> 
+    summarize(hh = sum(hh))
   
-proj.hh.MAPC101_by.rpa.tenure <- tenure_rates %>%
-  left_join(umdi.pop.ageCAT4.MAPC101, 
-            by = c("rpa_acr", "ageCAT4"), 
+proj.hh.MAPC101_by.rpa.tenure <- tenure_rates |>
+  mutate(AgeCat = paste0("x == ",ageCAT6),
+         tenure = paste0("x == ", tenure)
+         ) |> 
+  left_join(hhds.MAPC101, 
+            by = c("rpa_acr", "AgeCat"), 
             relationship = "many-to-many") |>
   rowwise() |>
   # Calculating the number of households in each RPA and age category
-  mutate(hh = round(hhpop * freq, 0),
-         ageCAT4 = paste0("x == ", ageCAT4),
-         tenure = paste0("x == ", tenure)
-         ) |>
-  select(-c(pop, hhpop, freq)) |>
-  relocate(rpa_acr, ageCAT4, tenure, hh, year)
+  mutate(hh = round(hh * freq, 0)) |>
+  select(-c(freq, ageCAT6)) |>
+  relocate(rpa_acr, AgeCat, tenure, hh, year)
 
 #===============================================================================
 # 7.4.2.2 Household Projections by MPO (MAPC97) and Household Type
-proj.hh.MAPC97_by.mpo.hhtype <- hdsp.r %>%
-  mutate(ageCAT6 = as.character(ageCAT6)) %>%
+proj.hh.MAPC97_by.mpo.hhtype <- hdsp.r |>
   left_join(umdi.pop.MAPC97, 
             by = c("rpa_acr"="mpo", "ageCAT6"), 
-            relationship = "many-to-many") %>% 
+            relationship = "many-to-many") |> 
   rename(mpo=rpa_acr) |> 
   rowwise() |> 
   #Calculating the number of households in each RPA and age catergory
@@ -2245,24 +2245,25 @@ proj.hh.MAPC97_by.mpo.hhtype <- hdsp.r %>%
   select(-c(pop, hhpop, freq, var, ageCAT6)) |> 
   relocate(mpo, AgeCat, HHtype, hh, year)
 
-# Add ageCAT4 to UMDI pop in HH data
-umdi.pop.ageCAT4.MAPC97 <- umdi.pop.MAPC97 %>% 
-  mutate(ageCAT4 = as.numeric(ageCAT6) - 3) %>% 
-  select(-ageCAT6) %>% 
-  filter(ageCAT4>0)
-
-proj.hh.MAPC97_by.rpa.tenure <- tenure_rates %>%
-  left_join(umdi.pop.ageCAT4.MAPC97, 
-            by = c("rpa_acr"="mpo", "ageCAT4"), 
+hhds.MAPC97 <- proj.hh.MAPC97_by.mpo.hhtype |> 
+  select(-HHtype) |> 
+    group_by(mpo,year,AgeCat) |> 
+    summarize(hh = sum(hh))
+  
+proj.hh.MAPC97_by.mpo.tenure <- tenure_rates |>
+  mutate(AgeCat = paste0("x == ",ageCAT6),
+         tenure = paste0("x == ", tenure)
+         ) |> 
+  left_join(hhds.MAPC97, 
+            by = c("rpa_acr"="mpo", "AgeCat"), 
             relationship = "many-to-many") |>
   rowwise() |>
   # Calculating the number of households in each RPA and age category
-  mutate(hh = round(hhpop * freq, 0),
-         ageCAT4 = paste0("x == ", ageCAT4),
-         tenure = paste0("x == ", tenure)
-         ) |>
-  select(-c(pop, hhpop, freq)) |>
-  relocate(rpa_acr, ageCAT4, tenure, hh, year)
+  mutate(hh = round(hh * freq, 0)) |>
+  select(-c(freq, ageCAT6)) |>
+  rename(mpo=rpa_acr) |> 
+  relocate(mpo, AgeCat, tenure, hh, year)
+
 
 ```
 
@@ -2275,12 +2276,13 @@ proj.hh.MAPC97_by.rpa.tenure <- tenure_rates %>%
 #===============================================================================
 # Iterate through household projections to create reweighter targeting files for households
 # MAPC101/RPA Versions
+
 for (i in yrs) {
   
   #Filter the projected households dataframe by year i
   
   if (i != 2020){
-  tmp <- proj.hh.MAPC101_by.rpa.hhtype |> 
+  tmp1 <- proj.hh.MAPC101_by.rpa.hhtype |> 
     filter(
       year == i
     ) |> 
@@ -2289,7 +2291,7 @@ for (i in yrs) {
   #Join the projected households by year to the baseline file.
   target.file1 <- left_join(
     hhtype_baseline,
-    tmp,
+    tmp1,
     by = c("RPA" = "rpa_acr", "AgeCat", "HHtype")
   ) |> 
     dplyr::rename(
@@ -2314,7 +2316,7 @@ for (i in yrs) {
   target.file2 <- left_join(
     tenure_baseline,
     tmp2,
-    by = c("RPA" = "rpa_acr", "ageCAT4", "tenure")
+    by = c("RPA" = "rpa_acr", "AgeCat", "tenure")
   ) |> 
     dplyr::rename(
       TARGET = hh
@@ -2328,7 +2330,7 @@ for (i in yrs) {
   )
   
   #Remove files that will be re-written in each loop.
-  rm(tmp, tmp2, target.file1, target.file2)
+  rm(tmp1, tmp2, target.file1, target.file2)
   
   #Record when the process has finished for each year in the year list.
   print(paste0("MAPC101 Reweighter Target File for ",i," has been generated."))
@@ -2362,7 +2364,7 @@ for (i in yrs) {
     paste0(output_path, "size.targetfile.MAPC101.",scen,'.hdshp.',hdshp,'.y',i,".csv"))
 
   #Record when the process has finished for each year in the year list.
-  print(paste0("MAPC101 Reweighter Target Files for ",i," has been generated."))
+  print(paste0("MAPC101 Reweighter Target File for ",i," has been generated."))
 }
   }
 
@@ -2372,7 +2374,7 @@ for (i in yrs) {
   
   if(i!=2020){
   #Filter the projected households dataframe by year i
-  tmp <- proj.hh.MAPC97_by.mpo.hhtype |> 
+  tmp1 <- proj.hh.MAPC97_by.mpo.hhtype |> 
     filter(
       year == i
     ) |> 
@@ -2381,7 +2383,7 @@ for (i in yrs) {
   #Join the projected households by year to the baseline file.
   target.file1 <- left_join(
     hhtype_baseline,
-    tmp,
+    tmp1,
     by = c("RPA" = "mpo", "AgeCat", "HHtype")
   ) |> 
     dplyr::rename(
@@ -2397,7 +2399,7 @@ for (i in yrs) {
   
   #Join the projected households by year to the baseline file.
   
-  tmp2 <- proj.hh.MAPC97_by.rpa.tenure |> 
+  tmp2 <- proj.hh.MAPC97_by.mpo.tenure |> 
     filter(
       year == i
     ) |> 
@@ -2406,7 +2408,7 @@ for (i in yrs) {
   target.file2 <- left_join(
     tenure_baseline,
     tmp2,
-    by = c("RPA" = "rpa_acr", "ageCAT4", "tenure")
+    by = c("RPA" = "mpo", "AgeCat", "tenure")
   ) |> 
     dplyr::rename(
       TARGET = hh
@@ -2420,7 +2422,7 @@ for (i in yrs) {
   )
   
   #Remove files that will be re-written in each loop.
-  rm(tmp, tmp2, target.file1, target.file2)
+  rm(tmp1, tmp2, target.file1, target.file2)
   #Record when the process has finished for each year in the year list.
   print(paste0("MAPC97 Reweighter Target File for ",i," has been generated."))
 }
@@ -2453,7 +2455,7 @@ for (i in yrs) {
     paste0(output_path, "size.targetfile.MAPC97.",scen,'.hdshp.',hdshp,'.y',i,".csv"))
 
   #Record when the process has finished for each year in the year list.
-  print(paste0("MAPC97 Reweighter Target Files for ",i," has been generated."))
+  print(paste0("MAPC97 Reweighter Target File for ",i," has been generated."))
   }
 }
 

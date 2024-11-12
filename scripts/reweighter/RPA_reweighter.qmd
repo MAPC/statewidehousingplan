@@ -27,8 +27,8 @@ reb <- 'MAPC101'
 # reb <- 'MAPC97'
 
 # Root Directory
- # root <- 'S:/Network Shares/K Drive/DataServices/Projects/'
- root <- 'K:/DataServices/Projects/'
+ root <- 'S:/Network Shares/K Drive/DataServices/Projects/'
+ #root <- 'K:/DataServices/Projects/'
 
 ctrltotal.path <- paste0(root, 'Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/', scen, '/')
 
@@ -230,6 +230,7 @@ for (yr in c(2025, 2030, 2035, 2040, 2045, 2050)) {
     
     # Set targets
     outpath <- paste0(workpath, scen, '/Output_Files/', mid, '/')
+    dir.create(outpath, showWarnings = F)
     template <- fread(paste0(workpath, 'Templates/AgeHHder_HHtype_template.csv')) %>%
       select(-BASELINE, -TARGET)
     target <- fread(paste0(ctrltotal.path, 'hhtype.targetfile.', reb, '.', scen,'.hdshp.',hdshp,'.y',yr, '.csv')) %>%
@@ -239,9 +240,18 @@ for (yr in c(2025, 2030, 2035, 2040, 2045, 2050)) {
                                                                0,
                                                              INTER = 0,
                                                              TARGET = 0)]
-    target[is.na(BASELINE),`:=`(BASELINE =0,INTER = 0,TARGET = 0)]
+    target[is.na(BASELINE),`:=`(BASELINE =0, INTER = 0, TARGET = 0)]
     setorder(target, AgeCat, HHtype)
     fwrite(target, paste0(inpath, '/AgeHHder_HHtype.csv'))
+    
+    target2 <- fread(paste0(ctrltotal.path, "tenure.targetfile.",reb,".",scen,'.hdshp.',hdshp,".y",yr,".csv")) %>%
+      filter(RPA == mid) %>% 
+      setDT()
+    
+    target2[is.na(BASELINE),`:=`(BASELINE =0,INTER = 0,TARGET = 0)]
+    setorder(target2, AgeCat, tenure)
+    fwrite(target2, paste0(inpath, '/age_tenure.csv'))
+    
     message(paste0(mid, ' targets set'))
     
     pums <- fread(paste0(inpath, 'PUMS', vintage, '_', mid, '.csv'))

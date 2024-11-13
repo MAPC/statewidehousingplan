@@ -12,9 +12,8 @@ editor: visual
 #===============================================================================
 #TODO: 
 # 1. Create a way to loop through:
-# - Scenarios
-# - Headship rates
 # - MAPC vintages (101 or 97)
+# 2. Create way to loop through Scenarios for Output tables
 # 2. QA/QC of Tables based on reweighter inputs
 # 3. Writing to workbook
 # 4. Data Visualizations
@@ -96,6 +95,8 @@ scen <- c("Scenario_1")
 # Create null objects for each scenario's full reweighted PUMS dataset. 
 # One will be used per script run depending on the value given to "scen" at the outset of the script.
 rwt.pums.df <- NULL
+
+df.list <- NULL
 
 # Standardized function for reading reweighted PUMS data for each scenario and projection year.
 # - scenario: data that is generated to reflect population and headship rate scenarios. See xx for further detail
@@ -188,10 +189,8 @@ for (i in scen) {
       ),
       # Creates a group designation based on the tenure of the household.
       TEN_Group = case_when(
-        TEN == 1 ~ "Owned with mortgage or loan (include home equity loans)",
-        TEN == 2 ~ "Owned free and clear",
-        TEN == 3 ~ "Rented",
-        TEN == 4 ~ "Occupied without payment of rent",
+        tenure == 1 ~ "Own",
+        tenure == 2 ~ "Rent",
         .default = "Unknown"
       ),
       # Creates a group designation based on the number of workers in a household.
@@ -206,6 +205,9 @@ for (i in scen) {
     
   # Assigns a unique scenario id to the dataframe.
   assign(paste0("rwt.pums.df_",i), rwt.pums.df)
+  
+  # Creates a list of the unique dataframe names.
+  df.list <- bind_rows(df.list, paste0("rwt.pums.df_", i))
   
   # Removes intermediate dataframe.
   rm(rwt.pums.df)

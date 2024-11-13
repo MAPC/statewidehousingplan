@@ -281,46 +281,17 @@ write.csv(
 
 #===============================================================================
 # .2 5-year Age Groupings (ageCAT6)
-tbl.2 <- s1.df |> 
+tbl.2 <- rwt.pums.df_Scenario_1 |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   group_by(
     rpa_acr,
     year,
-    ageCAT6
+    Age_Group
   ) |> 
   summarise(
     hhds = round(sum(new_WGTP),0)
   ) |> 
-  ungroup() |> 
-  mutate(
-    Age_Group = case_when(
-      ageCAT6 == 1 ~ "00-04",
-      ageCAT6 == 2 ~ "05-09",
-      ageCAT6 == 3 ~ "10-14",
-      ageCAT6 == 4 ~ "15-19",
-      ageCAT6 == 5 ~ "20-24",
-      ageCAT6 == 6 ~ "25-29",
-      ageCAT6 == 7 ~ "30-34",
-      ageCAT6 == 8 ~ "35-39",
-      ageCAT6 == 9 ~ "40-44",
-      ageCAT6 == 10 ~ "45-49",
-      ageCAT6 == 11 ~ "50-54",
-      ageCAT6 == 12 ~ "55-59",
-      ageCAT6 == 13 ~ "60-64",
-      ageCAT6 == 14 ~ "65-69",
-      ageCAT6 == 15 ~ "70-74",
-      ageCAT6 == 16 ~ "75-79",
-      ageCAT6 == 17 ~ "80-84",
-      ageCAT6 == 18 ~ "85 plus",
-      .default = "Unknown"
-    )
-  ) |> 
-  select(
-    -c(ageCAT6)
-  ) |> relocate(
-    Age_Group,
-    .before = hhds
-  )
+  ungroup()
 
 #Write Output Tables ot K Drive
 write.csv(
@@ -331,31 +302,17 @@ write.csv(
 
 #===============================================================================
 # .3 Household Type
-tbl.3 <- s1.df |> 
+tbl.3 <- rwt.pums.df_Scenario_1  |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   group_by(
     rpa_acr,
     year,
-    HHtype
+    HHtype_Group
   ) |> 
   summarise(
     hhds = round(sum(new_WGTP), 0)
   ) |> 
-  ungroup() |> 
-  mutate(
-    HHtype_Group = case_when(
-      HHtype == 1 ~ "Household w Children",
-      HHtype == 3 ~ "Household w 2 plus Adults wo Children",
-      HHtype == 5 ~ "Single Person Household",
-      .default = "Unknown"
-    )
-  ) |> 
-  select(
-    -c(HHtype)
-  ) |> relocate(
-    HHtype_Group,
-    .before = hhds
-  )
+  ungroup()
 
 # Write output tables to K drive
 write.csv(
@@ -375,18 +332,8 @@ write.csv(
 ```{r}
 #===============================================================================
 # .4 Number of Children in a Household
-tbl.4 <- s1.df |>
-  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
-  mutate(
-    CHILDHH_Group = case_when(
-      Child_Total == 0 ~ "No Children",
-      Child_Total == 1 ~ "One Child",
-      Child_Total == 2 ~ "Two Children",
-      Child_Total == 3 ~ "Three Children",
-      Child_Total >= 4 ~ "Four or More Children",
-      .default = "Unknown"
-    )
-  ) |> 
+tbl.4 <- rwt.pums.df_Scenario_1  |>
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
     rpa_acr,
     year,
@@ -406,35 +353,17 @@ write.csv(
 
 #===============================================================================
 # .5 Size of Household
-tbl.5 <- s1.df |> 
+tbl.5 <- rwt.pums.df_Scenario_1  |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   group_by(
     rpa_acr,
     year,
-    size
+    Size_Group
   ) |> 
   summarise(
     hhds = round(sum(new_WGTP), 0)
   ) |> 
-  ungroup() |> 
-  mutate(
-    Size_Group = case_when(
-      size == 1 ~ "One Person",
-      size == 2 ~ "Two person",
-      size == 3 ~ "Three Person",
-      size == 4 ~ "Four Person",
-      size == 5 ~ "Five Person",
-      size == 6 ~ "Six Person",
-      size >= 7 ~ "Seven or More Persons",
-      .default = "Unknown"
-    )
-  ) |> 
-  select(
-    -c(size)
-  ) |> relocate(
-    Size_Group,
-    .before = hhds
-  )
+  ungroup()
 
 # Write output tables to K drive
 write.csv(
@@ -445,32 +374,17 @@ write.csv(
 
 #===============================================================================
 # .6 Tenure
-tbl.6 <- s1.df |> 
+tbl.6 <- rwt.pums.df_Scenario_1  |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   group_by(
     rpa_acr,
     year,
-    TEN
+    TEN_Group
   ) |> 
   summarise(
     hhds = round(sum(new_WGTP), 0)
   ) |> 
-  ungroup() |> 
-  mutate(
-    TEN_Group = case_when(
-      TEN == 1 ~ "Owned with mortgage or loan (include home equity loans)",
-      TEN == 2 ~ "Owned free and clear",
-      TEN == 3 ~ "Rented",
-      TEN == 4 ~ "Occupied without payment of rent",
-      .default = "Unknown"
-    )
-  ) |> 
-  select(
-    -c(TEN)
-  ) |> relocate(
-    TEN_Group,
-    .before = hhds
-  )
+  ungroup()
 
 # Write output tables to K drive
 write.csv(
@@ -481,32 +395,17 @@ write.csv(
 
 #===============================================================================
 # .7 Number of Workers in a Household
-tbl.7 <- s1.df |> 
+tbl.7 <- rwt.pums.df_Scenario_1  |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   group_by(
     rpa_acr,
     year,
-    WRKHH
+    WRKHH_Group
   ) |> 
   summarise(
     hhds = round(sum(new_WGTP), 0)
   ) |> 
-  ungroup() |> 
-  mutate(
-    WRKHH_Group = case_when(
-      WRKHH == 0 ~ "No Workers",
-      WRKHH == 1 ~ "One Worker",
-      WRKHH == 2 ~ "Two Workers",
-      WRKHH >= 3 ~ "Three or More Workers",
-      .default = "Unknown"
-    )
-  ) |> 
-  select(
-    -c(WRKHH)
-  ) |> relocate(
-    WRKHH_Group,
-    .before = hhds
-  )
+  ungroup()
 
 # Write output tables to K drive
 write.csv(
@@ -530,105 +429,28 @@ write.csv(
 
 # 7.0 Full Crosstab
 ```{r}
-full.crosstab <- s1.df |> 
-  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
-  mutate(
-    CHILDHH_Group = case_when(
-      Child_Total == 0 ~ "No Children",
-      Child_Total == 1 ~ "One Child",
-      Child_Total == 2 ~ "Two Children",
-      Child_Total == 3 ~ "Three Children",
-      Child_Total >= 4 ~ "Four or More Children",
-      .default = "Unknown"
-    )
-  ) |>
+full.crosstab <- rwt.pums.df_Scenario_1  |> 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |>
   group_by(
     rpa_acr,
     year,
-    WAGPALLC_US,
-    ageCAT6,
-    HHtype,
+    Income_Group,
+    Age_Group,
+    HHtype_Group,
     CHILDHH_Group,
-    size,
-    TEN,
-    WRKHH
+    Size_Group,
+    TEN_Group,
+    WRKHH_Group
   ) |> 
   summarise(
     hhds = sum(new_WGTP)
   ) |> 
-  ungroup() |> 
-  mutate(
-    Income_Group = case_when(
-      WAGPALLC_US == 1 ~ "<=$35,000",
-      WAGPALLC_US == 2 ~ "$35,001 - $75,000",
-      WAGPALLC_US == 3 ~ "$75,001 - $125,000",
-      WAGPALLC_US == 4 ~ "$125,001 - $225,000",
-      WAGPALLC_US == 5 ~ ">$225,000",
-      .default = "Unknown"
-    ),
-    Age_Group = case_when(
-      ageCAT6 == 1 ~ "00-04",
-      ageCAT6 == 2 ~ "05-09",
-      ageCAT6 == 3 ~ "10-14",
-      ageCAT6 == 4 ~ "15-19",
-      ageCAT6 == 5 ~ "20-24",
-      ageCAT6 == 6 ~ "25-29",
-      ageCAT6 == 7 ~ "30-34",
-      ageCAT6 == 8 ~ "35-39",
-      ageCAT6 == 9 ~ "40-44",
-      ageCAT6 == 10 ~ "45-49",
-      ageCAT6 == 11 ~ "50-54",
-      ageCAT6 == 12 ~ "55-59",
-      ageCAT6 == 13 ~ "60-64",
-      ageCAT6 == 14 ~ "65-69",
-      ageCAT6 == 15 ~ "70-74",
-      ageCAT6 == 16 ~ "75-79",
-      ageCAT6 == 17 ~ "80-84",
-      ageCAT6 == 18 ~ "85 plus",
-      .default = "Unknown"
-    ),
-    HHtype_Group = case_when(
-      HHtype == 1 ~ "Household w Children",
-      HHtype == 3 ~ "Household w 2 plus Adults wo Children",
-      HHtype == 5 ~ "Single Person Household",
-      .default = "Unknown"
-    ),
-     Size_Group = case_when(
-      size == 1 ~ "One Person",
-      size == 2 ~ "Two person",
-      size == 3 ~ "Three Person",
-      size == 4 ~ "Four Person",
-      size == 5 ~ "Five Person",
-      size == 6 ~ "Six Person",
-      size >= 7 ~ "Seven or More Persons",
-      .default = "Unknown"
-    ),
-    TEN_Group = case_when(
-      TEN == 1 ~ "Owned with mortgage or loan (include home equity loans)",
-      TEN == 2 ~ "Owned free and clear",
-      TEN == 3 ~ "Rented",
-      TEN == 4 ~ "Occupied without payment of rent",
-      .default = "Unknown"
-    ),
-    WRKHH_Group = case_when(
-      WRKHH == 0 ~ "No Workers",
-      WRKHH == 1 ~ "One Worker",
-      WRKHH == 2 ~ "Two Workers",
-      WRKHH >= 3 ~ "Three or More Workers",
-      .default = "Unknown"
-    )
-  ) |> 
-  select(
-    -c(WAGPALLC_US,HHtype,ageCAT6,size,TEN,WRKHH)
-  ) |> relocate(
-    Income_Group,
-    .before = hhds
-  )
+  ungroup()
 
 #Write Output tables to K Drive
 write.csv(
-  tbl.1,
-  paste0(output_path,"/output.tbl_",scen,"_Households.by.IncomeGroups.csv"),
+  full.crosstab,
+  paste0(output_path,"/output.tbl_",scen,"_full.crosstab.csv"),
   row.names = FALSE
 )
 ```

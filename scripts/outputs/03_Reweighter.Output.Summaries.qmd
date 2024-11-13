@@ -13,8 +13,9 @@ editor: visual
 #TODO: 
 # 1. Create a way to loop through:
 # - MAPC vintages (101 or 97)
-# 2. Create way to loop through Scenarios for Output tables
-# 2. QA/QC of Tables based on reweighter inputs
+# 2. Create output table function 
+# 3. Create way to loop through Scenarios for Output tables
+# 4. QA/QC of Tables based on reweighter inputs
 # 3. Writing to workbook
 # 4. Data Visualizations
 #===============================================================================
@@ -45,7 +46,7 @@ rwt_path <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/
 knitr::opts_knit$set(root.dir = root)
 ```
 
-# 0.2 Set Package Dependencies + Set Environment Variables, Set up data keys
+# 0.2 Set Package Dependencies + Set Environment Variables
 
 ```{r}
 library(tidycensus)
@@ -61,26 +62,6 @@ options(scipen = 999)
 #Set random seed
 set.seed(351)
 
-#Set up muni data keys
-#MPO Data Keys
-keys.mpo <- mapcdatakeys::all_muni_data_keys |> 
-  select(
-    muni_id, muni_name, mpo
-  ) |> 
-  mutate(
-    muni_id = as.character(muni_id),
-    muni_name = ifelse(muni_name == "Manchester-by-the-Sea", "Manchester", muni_name)
-  )
-
-#RPA Data Keys
-keys.rpa <- mapcdatakeys::all_muni_data_keys |> 
-  select(
-    muni_id, muni_name, rpa_acr
-  ) |> 
-  mutate(
-    muni_id = as.character(muni_id),
-    muni_name = ifelse(muni_name == "Manchester-by-the-Sea", "Manchester", muni_name)
-  )
 ```
 
 # 1.0 Load Reweighter Output Data
@@ -95,8 +76,6 @@ scen <- c("Scenario_1")
 # Create null objects for each scenario's full reweighted PUMS dataset. 
 # One will be used per script run depending on the value given to "scen" at the outset of the script.
 rwt.pums.df <- NULL
-
-df.list <- NULL
 
 # Standardized function for reading reweighted PUMS data for each scenario and projection year.
 # - scenario: data that is generated to reflect population and headship rate scenarios. See xx for further detail
@@ -205,9 +184,6 @@ for (i in scen) {
     
   # Assigns a unique scenario id to the dataframe.
   assign(paste0("rwt.pums.df_",i), rwt.pums.df)
-  
-  # Creates a list of the unique dataframe names.
-  df.list <- bind_rows(df.list, paste0("rwt.pums.df_", i))
   
   # Removes intermediate dataframe.
   rm(rwt.pums.df)

@@ -27,8 +27,8 @@ reb <- 'MAPC101'
 # reb <- 'MAPC97'
 
 # Root Directory
- root <- 'S:/Network Shares/K Drive/DataServices/Projects/'
- #root <- 'K:/DataServices/Projects/'
+ #root <- 'S:/Network Shares/K Drive/DataServices/Projects/'
+ root <- 'K:/DataServices/Projects/'
 
 ctrltotal.path <- paste0(root, 'Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/', scen, '/')
 
@@ -294,7 +294,7 @@ for (yr in 2020){
     
     rw <- data.table()
     
-    x <- fread(paste0(outpath, '/weights_final_', scen, '_', mid, '_', yr, '.csv')) |> select(SERIALNO, SPORDER, new_WGTP) |> mutate(mpo = mid) |> setDT()
+    x <- fread(paste0(outpath, 'weights_final_', scen, '_', mid, '_', yr, '.csv')) |> select(SERIALNO, SPORDER, new_WGTP) |> mutate(mpo = mid) |> setDT()
     setkey(x, SERIALNO, SPORDER)
     xp <- pums[x]
     fwrite(xp, paste0(outpath, '/reweighted_PUMS_', scen, '_', reb, '_', mid, '_', hdshp, '_', yr, '.csv'))
@@ -309,7 +309,7 @@ for (yr in 2020){
     comp.dt <- rbind(comp.dt,comp.out)
   }
 }
-for (yr in c(2030,2035,2040,2045,2050)){
+for (yr in c(2025,2030,2035,2040,2045,2050)){
   for (mid in mpos) {
     inpath <- paste0(workpath, scen, '/Input_Files/', mid, '/')
     outpath <- paste0(workpath, scen, '/Output_Files/', mid, '/')
@@ -328,7 +328,7 @@ for (yr in c(2030,2035,2040,2045,2050)){
     
     rw <- data.table()
     
-    x <- fread(paste0(outpath, '/weights_final_', scen, '_', mid, '_', yr, '.csv')) |> select(SERIALNO, SPORDER, new_WGTP) |> mutate(mpo = mid) |> setDT()
+    x <- fread(paste0(outpath, 'weights_final_', scen, '_', mid, '_', yr, '.csv')) |> select(SERIALNO, SPORDER, new_WGTP) |> mutate(mpo = mid) |> setDT()
     setkey(x, SERIALNO, SPORDER)
     xp <- pums[x]
     fwrite(xp, paste0(outpath, '/reweighted_PUMS_', scen, '_', reb, '_', mid, '_', hdshp, '_', yr, '.csv'))
@@ -354,7 +354,7 @@ comp.dt[abs(diff)>1]
 
 ```{r}
 
-for (yr in c(2020,2030,2035,2040,2045,2050)){
+for (yr in c(2020,2025,2030,2035,2040,2045,2050)){
   sw <- data.table()
   for (mid in mpos){
     inp <- paste0(workpath, scen, '/Output_Files/', mid, '/')
@@ -367,42 +367,6 @@ for (yr in c(2020,2030,2035,2040,2045,2050)){
 ```
 
 # 8 - Vacancy and Unit Demand post-model calculations
-
-Let RVRY = Regional Target Vacancy Rate for region R in year Y
-
-Avail_units_2020 = hu_occ 2020 + (total_vacant_2020 \* (1-unavail_rate))
-
-Vacrate_avail_2020 = 1 - ( hu_occ 2020/ Avail_units_2020)
-
-Calculate Housing Shortage/Surplus for 2020:
-
-Hous_short_2020 = (RVR2020 - \[vacrate_avail_2020\]) \* Avail_units_2020
-
-This may be positive (shortage) or negative (surplus)
-
-Calculate vacated units – number of units freed up due to HH decline
-
-VacatedHU_20_30 = Max(0, (-1 \* HHchg_20_30))
-
-Calculate vacant units associated with HH growth
-
-HHgrowth_vac_20_30 =MAX(HHchg_20_30\* RVR2030, 0)
-
-Discount production needed to close existing shortage
-
-Shortage_units_20_30 = IF (Hous_short_2020 \> HHchg_20_30, MAX(HHchg_20_30, (Hous_short_2020 \*0.5)), Hous_short_2020)
-
-Calculate total vacant units needed
-
-TotVac_20_30 = Shortage_units_20_30 + HHgrowth_vac_20_30
-
-Calculate total Housing Unit Demand
-
-Tot_HU_20_30 = max(max(HHchg_20_30, 0) + TotVac_20_30, 0)
-
-Calculate remaining shortfall for subsequent decade
-
-Hous_short_2030 = Hous_short_2020 – Shortage_units_20_30
 
 ```{r}
 
@@ -507,7 +471,7 @@ vax <- dsum101[,.(rpa_acr,total_units, total_households, own_occ_units,rent_occ_
 # Load reweighted future households data
 dt <- data.table()
 
-for (yr in c(2020,2030,2035,2040,2045,2050)){
+for (yr in c(2020,2025,2030,2035,2040,2045,2050)){
   tmp <- fread(paste0(workpath,scen,'/Output_Files/reweighted_PUMS_', scen, '_', reb, '_',hdshp,'_', yr, '.csv'))
   dt <- rbind(dt,tmp)
 }
@@ -528,7 +492,7 @@ for (yr in c(2020,2030,2035,2040,2045,2050)){
     pivot_wider(id_cols = 'mpo', names_from = c('tenure','year'), values_from = 'hh') |>
     left_join(vax, by=c('mpo'='rpa_acr')) |> 
     setDT()
-nm <- names(uw)[2:13]
+nm <- names(uw)[grepl('_20',names(uw))]
 setnames(uw,nm,paste0('households_',nm))
 
 
@@ -537,16 +501,16 @@ uw[, own_units_needed_in_2050 := round(households_own_2050 / (1 - own_vac_rate_t
 uw[, rent_units_needed_in_2035 := round(households_rent_2035 / (1 - rent_vac_rate_total))]
 uw[, rent_units_needed_in_2050 := round(households_rent_2050 / (1 - rent_vac_rate_total))]
 
-uw[,new_owner_units_needed_2020_to_2035 := max(0, own_units_needed_in_2035 - total_available_owner_units),mpo]
-uw[,new_rental_units_needed_2020_to_2035 := max(0, rent_units_needed_in_2035 - total_available_rental_units),mpo]
-uw[,new_owner_units_needed_2020_to_2050 := max(0, own_units_needed_in_2050 - total_available_owner_units),mpo]
-uw[,new_rental_units_needed_2020_to_2050 := max(0, rent_units_needed_in_2050 - total_available_rental_units),mpo]
-uw[,total_new_units_needed_2020_to_2035:=new_owner_units_needed_2020_to_2035+new_rental_units_needed_2020_to_2035]
-uw[,total_new_units_needed_2020_to_2050:=new_owner_units_needed_2020_to_2050+new_rental_units_needed_2020_to_2050]
+uw[,new_owner_units_needed_2020_to_2035 := own_units_needed_in_2035 - total_available_owner_units,mpo]
+uw[,new_rental_units_needed_2020_to_2035 := rent_units_needed_in_2035 - total_available_rental_units,mpo]
+uw[,new_owner_units_needed_2020_to_2050 := own_units_needed_in_2050 - total_available_owner_units,mpo]
+uw[,new_rental_units_needed_2020_to_2050 := rent_units_needed_in_2050 - total_available_rental_units,mpo]
+uw[,total_new_units_needed_2020_to_2035 := new_owner_units_needed_2020_to_2035+new_rental_units_needed_2020_to_2035]
+uw[,total_new_units_needed_2020_to_2050 := new_owner_units_needed_2020_to_2050+new_rental_units_needed_2020_to_2050]
 uw[,scenario:=scen]
 setnames(uw,'vac_rate_total','combined_vacancy_rate_2020')
 
-outfile <- uw[,.(scenario,mpo,total_units,total_owner_units,total_rental_units,total_available_owner_units,total_available_rental_units,vacant_available_to_own,vacant_available_to_rent,own_vac_rate_total,rent_vac_rate_total,combined_vacancy_rate_2020,own_occ_units,rent_occ_units,households_own_2020,households_rent_2020,households_own_2030,households_rent_2030,households_own_2035,households_rent_2035,households_own_2040,households_rent_2040,households_own_2045,households_rent_2045,households_own_2050,households_rent_2050,own_units_needed_in_2035,own_units_needed_in_2050,rent_units_needed_in_2035,rent_units_needed_in_2050,new_owner_units_needed_2020_to_2035,new_rental_units_needed_2020_to_2035,new_owner_units_needed_2020_to_2050,new_rental_units_needed_2020_to_2050,total_new_units_needed_2020_to_2035,total_new_units_needed_2020_to_2050)]
+outfile <- uw[,.(scenario,mpo,total_units,total_owner_units,total_rental_units,total_available_owner_units,total_available_rental_units,vacant_available_to_own,vacant_available_to_rent,own_vac_rate_total,rent_vac_rate_total,combined_vacancy_rate_2020,own_occ_units,rent_occ_units,households_own_2020,households_rent_2020,households_own_2025,households_rent_2025,households_own_2030,households_rent_2030,households_own_2035,households_rent_2035,households_own_2040,households_rent_2040,households_own_2045,households_rent_2045,households_own_2050,households_rent_2050,own_units_needed_in_2035,own_units_needed_in_2050,rent_units_needed_in_2035,rent_units_needed_in_2050,new_owner_units_needed_2020_to_2035,new_rental_units_needed_2020_to_2035,new_owner_units_needed_2020_to_2050,new_rental_units_needed_2020_to_2050,total_new_units_needed_2020_to_2035,total_new_units_needed_2020_to_2050)]
 
 setnames(outfile,c('total_units','total_owner_units','total_rental_units','total_available_owner_units','total_available_rental_units','vacant_available_to_own','vacant_available_to_rent','own_vac_rate_total','rent_vac_rate_total'),c('total_units_2020','total_owner_units_2020','total_rental_units_2020','total_available_owner_units_2020','total_available_rental_units_2020','vacant_available_to_own_2020','vacant_available_to_rent_2020','owner_unit_vacancy_rate_2020','rental_unit_vacancy_rate_2020'))
 

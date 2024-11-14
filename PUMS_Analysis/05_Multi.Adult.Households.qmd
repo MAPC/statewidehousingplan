@@ -4,23 +4,246 @@ format: html
 editor: visual
 ---
 
-## Quarto
+# 0.0 Set-up, Define helper functions, set knitr path, load necessary packages, set muni data keys
 
 Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
 
-## Running Code
-
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
-
 ```{r}
-1 + 1
+library(tidycensus)
+library(tidyverse)
+library(survey)
+library(srvyr)
+library(data.table)
+library(janitor)
+library(dplyr)
+library(knitr)
+library(readxl)
+library(writexl)
+library(openxlsx)
+library(devtools)
 ```
 
 You can add options to executable code like this
 
+```{r, setup, include=FALSE}
+#Use when Rproject is open
+#root <- '../../../../Data/Working/Regional_Control_Totals/'
+
+#General K drive filepath
+root <-"K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/"
+
+#PUMS K drive filepath
+pums_path <- "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS/ipums_2021/"
+
+#Set output filepath
+output_path <- "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS/outputs/"
+
+#Set knitr path
+knitr::opts_knit$set(root.dir = pums_path)
+```
+
+# 0.2 - Set package dependencies, set environment, set up data keys\*\*
+
 ```{r}
-#| echo: false
-2 * 2
+# temporilary hidden - due to having no access to the K drive
+#pums <-read_csv("K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS/ipums_2021/pums_multiadult_2021_V_2024-10-09.csv")
+
+pums <-read_csv("C:/Users/alessandrasmith/Downloads/pums_multiadult_2021_V_2024-10-09.csv")
+
+test <- pums |> 
+  filter(SPORDER %in% c(0,1)) |> 
+  group_by(SERIALNO) |> 
+  mutate(
+    weight.test = sum(WGTP)/n()
+  ) |> 
+  ungroup() |> 
+  mutate(
+    weight.check = WGTP - weight.test,
+    weight.check.flag = case_when(
+      weight.check > 0 ~ 1,
+      weight.check < 0 ~ 1,
+      weight.check == 0 ~ 0,
+      .default = 0
+    )
+  )
 ```
 
 The `echo: false` option disables the printing of code (only output is displayed).
+
+# 0.3 - PUMA to RPA Crosswalk
+
+```{r}
+## Need to clarify the purpose of this but all the respective reference codes have this chunk
+## do need to set the source in every chunk
+
+source("C:/Project_Work/statewidehousingplan/PUMS_Analysis/PUMS_Helper_Functions.R")
+
+ma_muni_puma10_join <- read_csv("K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/ma_muni_puma10_join.csv")
+
+#Set up datakeys for future joins.
+
+mkeys <- mapcdatakeys::all_muni_data_keys |>  select(muni_id,rpa_acr,mpo)
+
+#Load in the municipality to PUMA crosswalk - using MAPC code to create same regions
+psf <- ma_muni_puma10_join|>
+  dplyr::rename(
+    muni_id = TOWN_ID,
+    PUMA = PUMACE10
+  ) |>
+  left_join(
+    mkeys,
+    by = c('muni_id')
+  ) |> 
+  select(-c(muni_id)) |> 
+  distinct(
+    PUMA,
+    .keep_all = TRUE
+  ) |> 
+  mutate(
+    PUMA = str_pad(PUMA, 5, side = "left", pad = "0")
+  )
+
+#Manufacturing MVC and NPEDC RPAs manually
+#Create an empty matrix with 2x1 dimenstions
+matrix <- matrix(nrow = 1, ncol = 3)
+#Set the column names to match the PUMA to RPA/MPO crosswalk
+col_names <- c("rpa_acr", "mpo", "PUMA")
+
+#Create dataframes with matrix dimensions for both RPAs
+mvc <- data.frame(matrix = matrix)
+ccc <- data.frame(matrix = matrix)
+
+#Assign column names to the dataframes
+colnames(mvc) <- col_names
+colnames(ccc) <- col_names
+
+#Populate data into the MVC and MPEDC dataframes
+mvc[[1]] <- "MVC"
+mvc[[2]] <- "MVC"
+mvc[[3]] <- "04800"
+ccc[[1]] <- "CCC"
+ccc[[2]] <- "CCC"
+ccc[[3]] <- "04800"
+
+#Append MVC and NPEDC data to PUMA to RPA/MPO crosswalk
+xw <- bind_rows(psf, mvc, ccc)
+
+#Remove intermediate dataframes.
+rm(matrix, col_names, mvc, ccc, psf)
+gc()
+
+```
+
+# 0.4 - PUMS Data Cleaning
+
+```{r}
+#Data cleaning method - 
+
+##lookign for NP > 2 [DO THIS IN THE ANAYLSIS PORTION]
+##Do I only need to look at one specific housing type (e.g just housing unit or include non/instituional group quarters) [JUST HOUSING TYPE 1]
+
+#Joing the PUMA to RPA crosswalk to the PUMS data.
+pums <- left_join(
+  pums,
+  xw,
+  by = c("PUMA")
+)
+
+# General Data Cleaning
+pums <- pums |> 
+  # Create a household flag for whether there is a child in a household.
+  mutate( 
+    Adult = case_when(
+      AGEP > 18 ~ 1,
+      AGEP <= 18 ~ 0,
+      .default = 0
+    ),
+    # Create a grouping variable for types of relationships to the householder.
+    RELSHIPP_Child = case_when(
+      # 1 indicates a person in a household that is related to the householder by being a biological, adopted, step child,foster child, or son/daughter in law.
+      RELSHIPP %in% c(25,26,27,32,35) ~ 1,
+      # 2 indicates a person in a household is related to the householder outside of being a child.
+      RELSHIPP %in% c(21,22,23,24,28,29,30,31,33,34,36,37,38) ~ 0,
+      # Set a default flag for householders.
+      .default = 0
+    ),
+    # Right now having a parent indicator doesn't make sence because it depends on the reference person
+    #RELSHIPP_PAR = case_when(
+      # 1 indicates a person in a household that is a parent or parent in law.
+      #RELSHIPP %in% c(29,31) ~ 1,
+      # 2 indicates a person in a household is related to the householder outside of being a parent
+      #RELSHIPP %in% c(21,22,23,24,25,26,27,28,30,32,33,34,36,37,38) ~ 0,
+      # Set a default flag for householders.
+     # .default = 0
+     # ),
+     HINCP_adj = HINCP*ADJINC,
+    # Household Income Groupings consistent with UrbanSim groupings
+    HH.Income.Grp = case_when(
+      HINCP_adj <= 35000 ~ "<=$35,000",
+      HINCP_adj > 35000 & HINCP_adj <= 75000 ~ "$35,001-$75,000",
+      HINCP_adj > 75000 & HINCP_adj <= 125000 ~ "$75,001-$125,000",
+      HINCP_adj > 125000 & HINCP_adj <= 225000 ~ "$125,001-$225,000",
+      HINCP_adj > 225000 ~ ">$225,000",
+      .default = "0"
+    ),
+      # Householder Race Groupings. 
+    HHLDER.RACE.Grp = case_when(
+      HHLDRRAC1P == "1" ~ "White Alone",
+      HHLDRRAC1P == "2" ~ "Black or African American Alone",
+      HHLDRRAC1P %in% c("3", "4", "5") ~ "AIAN Alone",
+      HHLDRRAC1P == "6" ~ "Asian Alone",
+      HHLDRRAC1P == "7" ~ "NHPI Alone",
+      HHLDRRAC1P == "8" ~ "SOR Alone",
+      HHLDRRAC1P == "9" ~ "Two or More Races Alone",
+      .default = "Unknown"
+    ),
+    # Householder Latinx Groupings
+    HHDER.HISP.Grp = case_when(
+      HHLDRHISP == "01" ~ "Non-Hispanic",
+      HHLDRHISP != "01" ~ "Hispanic",
+      .default = "Unknown"
+    ),
+  )|>
+  # Creating household flags for person variables.
+  group_by(SERIALNO) |> 
+  mutate(
+    # Create a variable which is the sum of the number of children above 18
+    AboveEig_count = sum(Adult),
+    # Create a variable which is the sum of the number of son & daughter relatives in the household
+    Child_count = sum(RELSHIPP_Child),
+    #  Create a variable which is the sum of the number of parent relatives in the household
+    #Parent_count = sum(RELSHIPP_PAR),
+  )|> 
+  ungroup() |> 
+  mutate(
+  # Create a variable that is a household flag for whether or not a household has children over 18.
+    child_flag = case_when(
+      Adult == 1 & RELSHIPP_Child == 1 ~ 1,
+      .default = 0
+    ),
+  )|>
+  group_by(SERIALNO)|>
+    mutate(
+      Older_Child = sum(child_flag) 
+    ) 
+  
+    
+
+## How should the date be sorted in order, on the person level first then grouped by serial number? 
+
+```
+
+# 0.5 - PUMS Analysis
+
+The number of households with adult children
+
+```{r}
+
+householdata <- pums |>
+  filter(TYPEHUGQ == 1 & NP > 2)
+# State Level
+# filter when NP>2
+# filter when Housing type is 1
+
+#RPA Level
+```

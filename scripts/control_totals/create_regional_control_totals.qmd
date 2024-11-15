@@ -130,8 +130,11 @@ yrs <- c(2020,2025,2030,2035,2040,2045,2050)
 
 # Load in Household Population Projections
 umdi_pop <- fread(paste0(root, "UMDI/",scen,"/UMDI_",scen,".csv")) |>
+  # Filter for the years in the year list above
   filter(Year %in% yrs) |> 
+  # Select relevant variables
   select(MCD,`MCD Code`,`Age Group`,Sex, Year, Population) |> 
+  # Rename variables to make it easier to join to other datasets.
   dplyr::rename(
     muni_name = MCD,
     muni_id = `MCD Code`,
@@ -147,7 +150,7 @@ umdi_pop <- fread(paste0(root, "UMDI/",scen,"/UMDI_",scen,".csv")) |>
     ageCAT6 = as.character(ageCAT6)
   )
 
-#RPA Aggregations (MAPC101)
+# Create RPA Population Aggregations (MAPC101)
 umdi.pop.MAPC101 <- left_join(
   umdi_pop,
   keys.rpa,
@@ -163,7 +166,7 @@ umdi.pop.MAPC101 <- left_join(
   ) |> 
   ungroup()
 
-#MPO Aggregations (MAPC97)
+# Create MPO Population Aggregations Aggregations (MAPC97)
 umdi.pop.MAPC97 <- left_join(
   umdi_pop,
   keys.mpo,
@@ -778,13 +781,13 @@ gc()
 # 3.3 Calculate the percentage of the group quarters population living in University/College Housing
 
 ```{r}
-#Join the total GQ Population and University/College GQ Population
+# Join the total GQ Population and University/College GQ Population
 gqpop.df <- purrr::reduce(
   list(gqpop.10, gqpop.20, cu.gqpop.10, cu.gqpop.20),
   dplyr::left_join, by = c("county_id", "Sex", "ageCAT6")
   ) |> 
   mutate(across(everything(), ~ replace_na(., 0))) |> 
-  #Rename variables
+  # Rename variables
   dplyr::rename(
     GQPopulation.10 = GQPopulation.x,
     GQPopulation.20 = GQPopulation.y,
@@ -792,21 +795,21 @@ gqpop.df <- purrr::reduce(
     CU.GQPopulation.20 = CU.GQPopulation.y
   ) |> 
   rowwise() |> 
-  #Calculate the proportion of the gqpopulation living in university or college
-  #housing by age and sex for both 2010 and 2020
+  # Calculate the proportion of the gqpopulation living in university or college
+  # housing by age and sex for both 2010 and 2020
   mutate(
     pct_CU.GQPopulation.10 = CU.GQPopulation.10/GQPopulation.10,
     pct_CU.GQPopulation.20 = CU.GQPopulation.20/GQPopulation.20
   )
 
-#Write the comparison to .csv as an intermediate data product.
+# Write the comparison to .csv as an intermediate data product.
 write.csv(
   gqpop.df,
   paste0(output_path,"prop.College.Uni_to_Total.GQ.1020.csv"),
   row.names = FALSE
 )
 
-#Remove intermediate dataframes
+# Remove intermediate dataframes
 rm(cu.gqpop.10, cu.gqpop.20)
 gc()
 ```
@@ -820,7 +823,7 @@ muni_county.xw <- mapcdatakeys::all_muni_data_keys |>
   # Make all variables characters
   mutate(across(everything(), ~as.character(.)))
 
-#Join the municipal level population data to the county to muni crosswalk
+# Join the municipal level population data to the county to muni crosswalk
 qc.population.df <- left_join(
   population.df,
   muni_county.xw,
@@ -831,15 +834,15 @@ qc.population.df <- left_join(
     Sex,
     ageCAT6
   ) |> 
-  #Aggregate municipal level calculated group quarters to the county level
+  # Aggregate municipal level calculated group quarters to the county level
   summarise(
     calc.GQPopulation.10 = sum(GQPopulation.10),
     calc.GQPopulation.20 = sum(GQPopulation.20)
   ) |> 
   ungroup()
 
-#Join gq population calculated in from the population - household population data
-#aggregated to county level to the gq population data pulled directly from the Census
+# Join gq population calculated in from the population - household population data
+# aggregated to county level to the gq population data pulled directly from the Census
 qc.population.df <- purrr::reduce(
   list(qc.population.df, gqpop.10, gqpop.20),
   dplyr::left_join, by = c("county_id", "Sex", "ageCAT6")
@@ -848,13 +851,13 @@ qc.population.df <- purrr::reduce(
     GQPopulation.10 = GQPopulation.x,
     GQPopulation.20 = GQPopulation.y,
   ) |> 
-  #Calculate the difference between the calculated gq population and the available gq population
+  # Calculate the difference between the calculated gq population and the available gq population
   mutate(
     gq.check.10 = calc.GQPopulation.10 - GQPopulation.10,
     gq.check.20 = calc.GQPopulation.20 - GQPopulation.20
   )
 
-#Print terms to automatically tell the user if they have passed the QC check.
+# Print terms to automatically tell the user if they have passed the QC check.
 if (sum(qc.population.df$gq.check.10 > 0)){
   print("STOP! Please check 2010 Census data queries and Group Quarters population calculations.")
 } else{
@@ -866,7 +869,7 @@ if(sum(qc.population.df$gq.check.20 > 0)){
 } else{
   print("PROCEED!")
   
-  #Remove unneeded dataframes
+  # Remove unneeded dataframes
   rm(qc.population.df, muni_county.xw, gqpop.10, gqpop.20, gqpop.df, hhpop.10, hhpop.20,
      pop.10, pop.20)
 }
@@ -966,7 +969,7 @@ if(sum(qc.population.20$qc.check > 0)){
 
 ```{r}
 #===============================================================================
-#Calculating MAPC101 Population in Households Rate by RPA, Sex, Age Category
+# Calculating MAPC101 Population in Households Rate by RPA, Sex, Age Category
 population.MAPC101.df <- population.df |> 
   left_join(
     keys.rpa,
@@ -976,7 +979,7 @@ population.MAPC101.df <- population.df |>
     rpa_acr,
     ageCAT6
   ) |> 
-  #Sum Population, Household Population, and Group Quarters population to higher order groups.
+  # Sum Population, Household Population, and Group Quarters population to higher order groups.
   summarise(
     Population.10 = sum(Population.10),
     Population.20 = sum(Population.20),
@@ -987,7 +990,7 @@ population.MAPC101.df <- population.df |>
   ) |> 
   ungroup() |> 
   rowwise() |> 
-  #Calculate the percentage of people in households by RPA and 5-year Age Category
+  # Calculate the percentage of people in households by RPA and 5-year Age Category
   mutate(
     pct_pop.in.hhd.10 = HHPopulation.10/Population.10,
     pct_pop.in.hhd.20 = HHPopulation.20/Population.20
@@ -1001,7 +1004,7 @@ population.MAPC101.df <- population.df |>
     pct_pop.in.hhd.20
   )
 
-#Write the intermediate dataframe to .csv.
+# Write the intermediate dataframe to .csv.
 write.csv(
   population.MAPC101.df,
   paste0(output_path,"pct_pop.in.hhds.MAPC101_by.RPA.ageCAT6.csv"),
@@ -1009,7 +1012,7 @@ write.csv(
 )
 
 #===============================================================================
-#Calculating MAPC97 Population in Households Rate by MPO and Age Category
+# Calculating MAPC97 Population in Households Rate by MPO and Age Category
 population.MAPC97.df <- population.df |> 
   left_join(
     keys.mpo,
@@ -1019,7 +1022,7 @@ population.MAPC97.df <- population.df |>
     mpo,
     ageCAT6
   ) |> 
-  #Sum Population, Household Population, and Group Quarters population to higher order groups.
+  # Sum Population, Household Population, and Group Quarters population to higher order groups.
   summarise(
     Population.10 = sum(Population.10),
     Population.20 = sum(Population.20),
@@ -1030,7 +1033,7 @@ population.MAPC97.df <- population.df |>
   ) |> 
   ungroup() |> 
   rowwise() |>
-  #Calculate the percentage of people in households by MPO and 5-year Age Category
+  # Calculate the percentage of people in households by MPO and 5-year Age Category
   mutate(
     pct_pop.in.hhd.10 = HHPopulation.10/Population.10,
     pct_pop.in.hhd.20 = HHPopulation.20/Population.20
@@ -1044,7 +1047,7 @@ population.MAPC97.df <- population.df |>
     pct_pop.in.hhd.20
   )
 
-#Write the intermediate dataframe to .csv.
+# Write the intermediate dataframe to .csv.
 write.csv(
   population.MAPC97.df,
   paste0(output_path,"pct_pop.in.hhds.MAPC97_by.MPO.ageCAT6.csv"),
@@ -1066,7 +1069,7 @@ umdi.pop.MAPC101 <- left_join(
   # Create projected household population using % of people in household rates created in the preceding code bloc.
   
   # 2010 Household Population is calculated using rates generated from 2010 Decennial Census data.
-  # 2020-2050 Household Population is calulcated using rates generated from 2020 Decennial Census data.
+  # 2020-2050 Household Population is calculated using rates generated from 2020 Decennial Census data.
   
   # Household Population for age groups 15-19 (ageCAT6 == 4) and 20-24 (ageCAT6 == 5) is calculated using a constant number of GQ population (representing a consistent number of students in GQ).
   mutate(
@@ -1130,7 +1133,7 @@ umdi.pop.MAPC97 <- left_join(
   # Create projected household population using % of people in household rates created in the preceding code bloc.
   
   # 2010 Household Population is calculated using rates generated from 2010 Decennial Census data.
-  # 2020-2050 Household Population is calulcated using rates generated from 2020 Decennial Census data.
+  # 2020-2050 Household Population is calculated using rates generated from 2020 Decennial Census data.
   
   # Household Population for age groups 15-19 (ageCAT6 == 4) and 20-24 (ageCAT6 == 5) is calculated using a constant number of GQ population (representing a consistent number of students in GQ).
   mutate(
@@ -1217,22 +1220,22 @@ xw <- read.csv(paste0(output_path, 'PUMA10_RPA_crosswalk.csv')) |>
 NOTE: We use the CPI deflator time series to adjust PUMS income to 2013 dollars (for UrbanSim). ACS uses the Consumer Price Index for All Urban Consumers Retroactive Series (R-CPI-U-RS, details here: <https://www.bls.gov/cpi/research-series/r-cpi-u-rs-home.htm>) as opposed to the ASEC/Census which uses C-CPI-U (details here: [*https://www.census.gov/topics/income-poverty/income/guidance/current-vs-constant-dollars.html*](https://www.census.gov/topics/income-poverty/income/guidance/current-vs-constant-dollars.html){.uri}*)*
 
 ```{r}
-#Set PUMS vintage final year for {tidycensus} API query.
+# Set PUMS vintage final year for {tidycensus} API query.
 vintage <- 2021
 
-#List of all ACS PUMS Variables
+# List of all ACS PUMS Variables
 allvars <- pums_variables |>  filter(year==vintage) |>  select(var_code) |>  unique()
 
-#List of PUMS variables
+# List of PUMS variables
 variable_list <- c("PUMA", "TYPEHUGQ", "SEX", "AGEP", "RAC1P", "HISP", "ESR",
                    "WKHP", "SCHL", "WAGP", "SEMP", "ADJINC", "SPORDER", "HINCP", "TEN")
-#SEMP bottom coding has changed from $1 to $4 like WAGP
+# SEMP bottom coding has changed from $1 to $4 like WAGP
 
 # Load CPI time series for deflating income variable
 cpi <- fread(paste0(root,'cpi_deflators_by_year.csv'))
 cpi.deflator <- cpi[year==2013, index] / cpi[year==vintage, index]
 
-#Query {tidycensus} for 2017-2021 5-Year PUMS data
+# Query {tidycensus} for 2017-2021 5-Year PUMS data
 pums_data <- get_pums(
     state = "MA",
     survey = "acs5",
@@ -1437,27 +1440,8 @@ hhpop_baseline <- pums_data |>
   ) |>  
   # Rename variables to match the reweigher input requirements.
   mutate(
-    AgeCat = case_when(
-      AgeCat == 1 ~ "x == 1",
-      AgeCat == 2 ~ "x == 2",
-      AgeCat == 3 ~ "x == 3",
-      AgeCat == 4 ~ "x == 4",
-      AgeCat == 5 ~ "x == 5",
-      AgeCat == 6 ~ "x == 6",
-      AgeCat == 7 ~ "x == 7",
-      AgeCat == 8 ~ "x == 8",
-      AgeCat == 9 ~ "x == 9",
-      AgeCat == 10 ~ "x == 10",
-      AgeCat == 11 ~ "x == 11",
-      AgeCat == 12 ~ "x == 12",
-      AgeCat == 13 ~ "x == 13",
-      AgeCat == 14 ~ "x == 14",
-      AgeCat == 15 ~ "x == 15",
-      AgeCat == 16 ~ "x == 16",
-      AgeCat == 17 ~ "x == 17",
-      AgeCat == 18 ~ "x == 18"
-   ),
-   INTER = BASELINE
+    AgeCat = paste0("x == ", ageCAT6),
+    INTER = BASELINE
   )
 
 # 7.1.2 - Baseline of Households by Household Type by Tenure
@@ -1467,11 +1451,7 @@ hhtype_baseline <- pums_data |>
   mutate(
     ageCAT6 = as.factor(ageCAT6),
     RPA = as.factor(rpa_acr),
-    HHtype = as.factor(HHtype),
-    tenure = case_when(
-      TEN %in% c('1','2') ~ 'x == 1',
-      TEN %in% c('3','4') ~ 'x == 2'
-    )
+    HHtype = as.factor(HHtype)
   ) |>  
   group_by(
     RPA,
@@ -1488,56 +1468,24 @@ hhtype_baseline <- pums_data |>
     BASELINE = n,
     AgeCat = ageCAT6
   ) |> 
-  # Rename variables to match the reweigher input requirements.
+  # Rename variables to match the reweighter input requirements.
   mutate(
-    HHtype = case_when(
-      HHtype == 1 ~ "hhderchild",
-      HHtype == 2 ~ "nothhderchild",
-      HHtype == 3 ~ "hhdernochild",
-      HHtype == 4 ~ "nothhdernochild",
-      HHtype == 5 ~ "single"
-    ),
-    AgeCat = case_when(
-      AgeCat == 1 ~ "x == 1",
-      AgeCat == 2 ~ "x == 2",
-      AgeCat == 3 ~ "x == 3",
-      AgeCat == 4 ~ "x == 4",
-      AgeCat == 5 ~ "x == 5",
-      AgeCat == 6 ~ "x == 6",
-      AgeCat == 7 ~ "x == 7",
-      AgeCat == 8 ~ "x == 8",
-      AgeCat == 9 ~ "x == 9",
-      AgeCat == 10 ~ "x == 10",
-      AgeCat == 11 ~ "x == 11",
-      AgeCat == 12 ~ "x == 12",
-      AgeCat == 13 ~ "x == 13",
-      AgeCat == 14 ~ "x == 14",
-      AgeCat == 15 ~ "x == 15",
-      AgeCat == 16 ~ "x == 16",
-      AgeCat == 17 ~ "x == 17",
-      AgeCat == 18 ~ "x == 18"
-    ),
+    HHtype = paste0("x == ", HHtype),
+    AgeCat = paste0("x == ", ageCAT6),
+    tenure = paste0("x == ", tenure),
     INTER = BASELINE
   ) |> 
   # Filter for household types with householders (what we need for the reweighter!)
-  dplyr::filter(HHtype == "hhderchild" | HHtype == "hhdernochild" | HHtype == "single") |>  
-  mutate(
-    HHtype = case_when(
-      HHtype == "hhderchild" ~ "x == 1",
-      HHtype == "hhdernochild" ~ "x == 3",
-      HHtype == "single" ~ "x == 5"
-    )
-  )
+  # HHtype x == 1: Multiple Adult Householders with Children
+  # HHtype x == 3: Multiple Adult Householders with No Children
+  # HHtype x == 5: Single Householders
+  dplyr::filter(HHtype == "x == 1" | HHtype == "x == 3" | HHtype == "x == 5")
 
 tenure_baseline <- pums_data |> 
   # Filter for households and the head of household for each SERIALNO
-  filter(TYPEHUGQ == "1" & SPORDER == "1" & ageCAT6>3) |>   
+  filter(TYPEHUGQ == "1" & SPORDER == "1" & ageCAT6 > 3) |>   
   mutate(
-    RPA = as.factor(rpa_acr),
-    tenure = case_when(
-      TEN %in% c('1','2') ~ 'x == 1',
-      TEN %in% c('3','4') ~ 'x == 2'
-    )
+    RPA = as.factor(rpa_acr)
   ) |>  
   group_by(
     RPA,
@@ -1556,6 +1504,7 @@ tenure_baseline <- pums_data |>
   # Rename variables to match the reweigher input requirements.
   mutate(
     AgeCat = paste0("x == ", ageCAT6),
+    tenure = paste0("x == ", tenure),
     INTER = BASELINE
   ) |> 
   select(-ageCAT6) |> 
@@ -1585,42 +1534,10 @@ lf_baseline <- pums_data |>
     BASELINE = n,
     AgeCat = ageCAT6
   ) |> 
-  # Rename variables to match the reweigher input requirements.
+  # Rename variables to match the reweighter input requirements.
   mutate(
-    eduattn = case_when(
-      eduattn == 1 ~ "High School or less",
-      eduattn == 2 ~ "Some college or Associate's degree",
-      eduattn == 3 ~ "Bachelor's",
-      eduattn == 4 ~ "Master's or higher"
-    ),
-    AgeCat = case_when(
-      AgeCat == 1 ~ "x == 1",
-      AgeCat == 2 ~ "x == 2",
-      AgeCat == 3 ~ "x == 3",
-      AgeCat == 4 ~ "x == 4",
-      AgeCat == 5 ~ "x == 5",
-      AgeCat == 6 ~ "x == 6",
-      AgeCat == 7 ~ "x == 7",
-      AgeCat == 8 ~ "x == 8",
-      AgeCat == 9 ~ "x == 9",
-      AgeCat == 10 ~ "x == 10",
-      AgeCat == 11 ~ "x == 11",
-      AgeCat == 12 ~ "x == 12",
-      AgeCat == 13 ~ "x == 13",
-      AgeCat == 14 ~ "x == 14",
-      AgeCat == 15 ~ "x == 15",
-      AgeCat == 16 ~ "x == 16",
-      AgeCat == 17 ~ "x == 17",
-      AgeCat == 18 ~ "x == 18"
-    )
-  ) |>  
-  mutate(
-    eduattn = case_when(
-      eduattn == "High School or less" ~ "x == 1",
-      eduattn == "Some college or Associate's degree" ~ "x == 2",
-      eduattn == "Bachelor's" ~ "x == 3",
-      eduattn == "Master's or higher" ~ "x == 4"
-    ),
+    eduattn = paste0("x == ", eduattn),
+    AgeCat = paste0("x == ", ageCAT6),
     INTER = BASELINE
   )
 
@@ -1661,21 +1578,8 @@ age_baseline <- pums_data |>
   # Rename variables to match the reweighter input requirements.
   mutate(
     RPA = as.factor(rpa_acr),
-    ageCAT4 = case_when(
-      ageCAT4 == 1 ~ "x == 1",
-      ageCAT4 == 2 ~ "x == 2",
-      ageCAT4 == 3 ~ "x == 3",
-      ageCAT4 == 4 ~ "x == 4",
-      ageCAT4 == 5 ~ "x == 5",
-      ageCAT4 == 6 ~ "x == 6",
-      ageCAT4 == 7 ~ "x == 7",
-      ageCAT4 == 8 ~ "x == 8",
-      ageCAT4 == 9 ~ "x == 9"
-    ),
-    tenure = case_when(
-      TEN %in% c('1','2') ~ 'x == 1',
-      TEN %in% c('3','4') ~ 'x == 2'
-    )
+    ageCAT4 = paste0("x == ", ageCAT4),
+    tenure = paste0("x == ", tenure)
   ) |>  
   group_by(
     RPA,
@@ -1692,7 +1596,8 @@ age_baseline <- pums_data |>
     BASELINE = n
   ) |> 
   mutate(
-    INTER = BASELINE)
+    INTER = BASELINE
+  )
 
 # 7.1.5 For 2020 - baseline file of household size
 size_baseline <- pums_data |> 
@@ -1717,15 +1622,7 @@ size_baseline <- pums_data |>
   ) |> 
   # Rename variables to match the reweigher input requirements.
   mutate(
-    size = case_when(
-      size == 1 ~ "x == 1",
-      size == 2 ~ "x == 2",
-      size == 3 ~ "x == 3",
-      size == 4 ~ "x == 4",
-      size == 5 ~ "x == 5",
-      size == 6 ~ "x == 6",
-      size == 7 ~ "x == 7"
-    ),
+    size = paste0("x == ", size),
     INTER = BASELINE
   )
 
@@ -1752,24 +1649,14 @@ type_baseline <- pums_data |>
   ) |> 
   # Rename variables to match the reweigher input requirements.
   mutate(
-    HHtype = case_when(
-      HHtype == 1 ~ "hhderchild",
-      HHtype == 2 ~ "nothhderchild",
-      HHtype == 3 ~ "hhdernochild",
-      HHtype == 4 ~ "nothhdernochild",
-      HHtype == 5 ~ "single"
-    ),
+    HHtype = paste0("x == ", HHtype),
     INTER = BASELINE
   ) |> 
   # Filter for household types with householders (what we need for the reweighter!)
-  dplyr::filter(HHtype == "hhderchild" | HHtype == "hhdernochild" | HHtype == "single") |>  
-  mutate(
-    HHtype = case_when(
-      HHtype == "hhderchild" ~ "x == 1",
-      HHtype == "hhdernochild" ~ "x == 3",
-      HHtype == "single" ~ "x == 5"
-    )
-  )
+  # HHtype x == 1: Multiple Adult Householders with Children
+  # HHtype x == 3: Multiple Adult Householders with No Children
+  # HHtype x == 5: Single Householders
+  dplyr::filter(HHtype == "x == 1" | HHtype == "x == 3" | HHtype == "x == 5")
 
 # Output the baseline file for 2020 Age of Householder by tenure aggregations
 write.csv(

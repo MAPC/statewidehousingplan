@@ -11,28 +11,28 @@ editor: visual
 ```{r}
 # Set Scenario Names
 
-#Population Scenario
+# Population Scenario
 scen <- 'Scenario_1'
-#Headship rate Scenario
+# Headship rate Scenario
 hdshp <- 'acs1721'
 
-#Use when Rproject is open
-#root <- '../../../../Data/Working/Regional_Control_Totals/'
+# Use when Rproject is open
+# root <- '../../../../Data/Working/Regional_Control_Totals/'
 
 # Base root. Toggle between S: and K: drive depedning on mapped paths on your computer
-# base <- "K:/DataServices/Projects/Current_Projects/"
-base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
+base <- "K:/DataServices/Projects/Current_Projects/"
+# base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
 
-#General K drive filepath
+# General K drive filepath
 root <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/")
 
-#Set output filepath
+# Set output filepath
 output_path <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/", scen, "/")
 
 # Reweighter files path
 rwt_path <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Reweighter/")
 
-#Set knitr path
+# Set knitr path
 knitr::opts_knit$set(root.dir = root)
 ```
 

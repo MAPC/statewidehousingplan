@@ -1423,7 +1423,7 @@ hhpop_baseline <- pums_data |>
   # Filter for households.
   filter(TYPEHUGQ == "1") |>  
   mutate(
-    ageCAT6 = as.factor(ageCAT6),
+    AgeCat = as.factor(ageCAT6),
     RPA = as.factor(rpa_acr)
   ) |> 
   group_by(
@@ -1431,7 +1431,7 @@ hhpop_baseline <- pums_data |>
   ) |>  
   # Sum the person weights in the PUMS data.
   dplyr::count(
-    var = ageCAT6,
+    var = AgeCat,
     wt = PWGTP
   ) |>  
   dplyr::rename(
@@ -1440,7 +1440,7 @@ hhpop_baseline <- pums_data |>
   ) |>  
   # Rename variables to match the reweigher input requirements.
   mutate(
-    AgeCat = paste0("x == ", ageCAT6),
+    AgeCat = paste0("x == ", AgeCat),
     INTER = BASELINE
   )
 
@@ -1449,13 +1449,13 @@ hhtype_baseline <- pums_data |>
   # Filter for households and the head of household for each SERIALNO
   filter(TYPEHUGQ == "1" & SPORDER == "1") |>   
   mutate(
-    ageCAT6 = as.factor(ageCAT6),
+    AgeCat = as.factor(ageCAT6),
     RPA = as.factor(rpa_acr),
     HHtype = as.factor(HHtype)
   ) |>  
   group_by(
     RPA,
-    ageCAT6
+    AgeCat
   ) |> 
   # Sum the household weights in the PUMS data.
   dplyr::count(
@@ -1466,13 +1466,12 @@ hhtype_baseline <- pums_data |>
   dplyr::rename(
     HHtype = var,
     BASELINE = n,
-    AgeCat = ageCAT6
+    AgeCat = AgeCat
   ) |> 
   # Rename variables to match the reweighter input requirements.
   mutate(
     HHtype = paste0("x == ", HHtype),
-    AgeCat = paste0("x == ", ageCAT6),
-    tenure = paste0("x == ", tenure),
+    AgeCat = paste0("x == ", AgeCat),
     INTER = BASELINE
   ) |> 
   # Filter for household types with householders (what we need for the reweighter!)
@@ -1485,11 +1484,12 @@ tenure_baseline <- pums_data |>
   # Filter for households and the head of household for each SERIALNO
   filter(TYPEHUGQ == "1" & SPORDER == "1" & ageCAT6 > 3) |>   
   mutate(
-    RPA = as.factor(rpa_acr)
+    RPA = as.factor(rpa_acr),
+    AgeCat = as.factor(ageCAT6),
   ) |>  
   group_by(
     RPA,
-    ageCAT6
+    AgeCat
   ) |> 
   # Sum the household weights in the PUMS data.
   dplyr::count(
@@ -1503,11 +1503,10 @@ tenure_baseline <- pums_data |>
   ) |> 
   # Rename variables to match the reweigher input requirements.
   mutate(
-    AgeCat = paste0("x == ", ageCAT6),
+    AgeCat = paste0("x == ", AgeCat),
     tenure = paste0("x == ", tenure),
     INTER = BASELINE
   ) |> 
-  select(-ageCAT6) |> 
   relocate(AgeCat,.after=RPA)
 
 # 7.1.3 - Baseline of People in the laborforce
@@ -1515,13 +1514,13 @@ lf_baseline <- pums_data |>
   # Filter for households and people in the labor force
   filter(TYPEHUGQ == "1" & lf == "1") |>   
   mutate(
-    ageCAT6 = as.factor(ageCAT6),
+    AgeCat = as.factor(ageCAT6),
     RPA = as.factor(rpa_acr),
     eduattn = as.factor(eduattn)
   ) |>  
   group_by(
     RPA,
-    ageCAT6
+    AgeCat
   ) |> 
   # Sum the person weights in the PUMS data.
   dplyr::count(
@@ -1532,12 +1531,12 @@ lf_baseline <- pums_data |>
   rename(
     eduattn = var,
     BASELINE = n,
-    AgeCat = ageCAT6
+    AgeCat = AgeCat
   ) |> 
   # Rename variables to match the reweighter input requirements.
   mutate(
     eduattn = paste0("x == ", eduattn),
-    AgeCat = paste0("x == ", ageCAT6),
+    AgeCat = paste0("x == ", AgeCat),
     INTER = BASELINE
   )
 
@@ -1683,12 +1682,11 @@ write.csv(
 # 7.2 Create Headship rates from this PUMS vintage
 
 ```{r}
-# Generating headship rates by RPA and 5-year age group for the ACS 2017-2022 PUMS
+# Generating headship rates by RPA, 5-year Age Group, and Household Type for the ACS 2017-2022 PUMS
 headship_rates <- pums_data |> 
   # Inclues only observations for people in households (omits GQ)                   
   filter(TYPEHUGQ == "1") |>                     
-  #Groups by variables in the dataframe necessary to getting the granularity of
-  #data we're interested in.
+  # Groups by variables in the dataframe necessary to getting the granularity of data we're interested in.
   group_by(rpa_acr, ageCAT6) |> 
   #Computes the weighted sum of individuals in each HH type category by the groups
   #assigned above.
@@ -1711,6 +1709,7 @@ headship_rates <- pums_data |>
     -c(n)
   )
 
+# Generating headship rates by RPA, 5-year age group, and Tenure for the ACS 2017-2022 PUMS
 tenure_rates <- pums_data |> 
   # Inclues only observations for people in households (omits GQ)                
   filter(TYPEHUGQ == "1" & SPORDER == 1 & ageCAT6 > 3) |>                     
@@ -1729,7 +1728,7 @@ tenure_rates <- pums_data |>
   ) |> 
   rename(tenure=var)
 
-# QC Check - determine if the frequencies in each RP, Age Group crosstab add to 1
+# QC Check - determine if the frequencies in each Household Type, Age Group crosstab add to 1
 hr_check <- headship_rates |> 
   group_by(
     rpa_acr,
@@ -1743,6 +1742,7 @@ hr_check <- headship_rates |>
     flag = ifelse(freq_check != 1, 1, 0)
   )
 
+# QC Check - determine if the frequencies in each Tenure, Age Group crosstab add to 1
 ten_check <- tenure_rates |> 
   group_by(
     rpa_acr,
@@ -1756,10 +1756,16 @@ ten_check <- tenure_rates |>
     flag = ifelse(freq_check != 1, 1, 0)
   )
 
+# Print statement to verify w/in headhship groups that the numbers all add up accordingly.
 if (sum(hr_check$flag) > 0 | sum(ten_check$flag) > 0){
+  # Print when numbers are incorrect.
   print("STOP! Check headship rate calculations!")
 } else{
+  #Print when numbers are correct.
   print("Proceed!")
+  
+  # Remove QC files.
+  rm(hr_check, ten_check)
 }
 
 # Write an intermediate file for the headship rates from this PUMS vintage
@@ -1836,7 +1842,8 @@ lfpr <- pums_data |>
 #===============================================================================
 # For 2020 we don't want to use PUMS headship rates to determine households and characteristics, as this would produce total households that does not match 2020 decennial census. 
 
-# However, we can't prdouce exactly the same headship rates by age of householder and household type from Census as we can from PUMS.
+# However, we can't produce exactly the same headship rates by age of householder and household type from Census as we can from PUMS.
+
 # We therefore create a slightly different control total structure for 2020 that will use different target tables for the reweighter.
 
 munis <- mapcdatakeys::all_muni_data_keys |> 
@@ -2030,7 +2037,7 @@ proj.hh.MAPC101_by.rpa.hhtype <- hdsp.r |>
   rowwise() |>
   # Calculating the number of households in each RPA and age category
   mutate(hh = round(hhpop * freq, 0),) |>
-  # Filter the headships rates foe the three household type categories
+  # Filter the headships rates for the three household type categories
   # 1. hhderchild = households with a child under 18
   # 3. hhdernochild = Multiple adult, no children households
   # 5. single = Single householder

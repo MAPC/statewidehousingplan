@@ -248,16 +248,43 @@ hr_check <- headship_rates.2000 |>
     flag = ifelse(freq_check != 1, 1, 0)
   )
 
-if (sum(hr_check$flag) > 0){
+# QC Check - determine if the frequencies in each Tenure, Age Group crosstab add to 1
+ten_check <- tenure_rates |> 
+  group_by(
+    rpa_acr,
+    ageCAT6
+  ) |> 
+  summarise(
+    freq_check = sum(freq)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    flag = ifelse(freq_check != 1, 1, 0)
+  )
+
+# Print statement to verify w/in headhship groups that the numbers all add up accordingly.
+if (sum(hr_check$flag) > 0 | sum(ten_check$flag) > 0){
+  # Print when numbers are incorrect.
   print("STOP! Check headship rate calculations!")
 } else{
+  #Print when numbers are correct.
   print("Proceed!")
+  
+  # Remove QC files.
+  rm(hr_check, ten_check)
 }
 
 # Write this dataframe to .csv
 write.csv(
   headship_rates.2000,
   paste0(hdsp.r_path,"hdsp.r_2000_RPA.AgeCat.HHtype.csv"),
+  row.names = FALSE
+)
+
+# Write this dataframe to .csv
+write.csv(
+  tenure_rates.2000,
+  paste0(hdsp.r_path,"hdsp.r_2000_RPA.AgeCat.Tenure.csv"),
   row.names = FALSE
 )
 ```

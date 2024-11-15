@@ -1775,6 +1775,7 @@ write.csv(
   row.names = FALSE
 )
 
+# Write an intermediate file for the tenure rates from this PUMS vintage
 write.csv(
   tenure_rates,
   paste0(output_path, "tenure_rates.pums",hdshp,".csv"),
@@ -2024,16 +2025,18 @@ if (scen == "Scenario_1"){ # Scenario 1
 # 7.4.2 Join Headship Rates to Projected Population in Households by Age Group and RPA
 
 ```{r}
-
+# Load in Population in Households for MAPC101
 umdi.pop.MAPC101 <- fread(paste0(output_path,'pop.in.hhds.MAPC101_by.RPA.ageCAT6.csv'))
 
+# Load in Population in Households for MAPC97
 umdi.pop.MAPC97 <- fread(paste0(output_path,'pop.in.hhds.MAPC97_by.RPA.ageCAT6.csv'))
 
-# 7.4.2.1 - Household Projections by RPA (MAPC101) and Household Type
+# 7.4.2.1 - Household Projections by RPA (MAPC101), 5-Year Age Groups, and Household Type
 proj.hh.MAPC101_by.rpa.hhtype <- hdsp.r |>
-  left_join(umdi.pop.MAPC101, 
-            by = c("rpa_acr", "ageCAT6"), 
-            relationship = "many-to-many") |>
+  left_join(
+    umdi.pop.MAPC101, 
+    by = c("rpa_acr", "ageCAT6"), 
+    relationship = "many-to-many") |>
   rowwise() |>
   # Calculating the number of households in each RPA and age category
   mutate(hh = round(hhpop * freq, 0),) |>
@@ -2048,42 +2051,27 @@ proj.hh.MAPC101_by.rpa.hhtype <- hdsp.r |>
       var == "hhdernochild" ~ "x == 3",
       var == "single" ~ "x == 5"
     ),
-    AgeCat = case_when(
-      ageCAT6 == 1 ~ "x == 1",
-      ageCAT6 == 2 ~ "x == 2",
-      ageCAT6 == 3 ~ "x == 3",
-      ageCAT6 == 4 ~ "x == 4",
-      ageCAT6 == 5 ~ "x == 5",
-      ageCAT6 == 6 ~ "x == 6",
-      ageCAT6 == 7 ~ "x == 7",
-      ageCAT6 == 8 ~ "x == 8",
-      ageCAT6 == 9 ~ "x == 9",
-      ageCAT6 == 10 ~ "x == 10",
-      ageCAT6 == 11 ~ "x == 11",
-      ageCAT6 == 12 ~ "x == 12",
-      ageCAT6 == 13 ~ "x == 13",
-      ageCAT6 == 14 ~ "x == 14",
-      ageCAT6 == 15 ~ "x == 15",
-      ageCAT6 == 16 ~ "x == 16",
-      ageCAT6 == 17 ~ "x == 17",
-      ageCAT6 == 18 ~ "x == 18"
-    )
+    AgeCat = paste0("x == ", ageCAT6)
   ) |>
   select(-c(pop, hhpop, freq, var, ageCAT6)) |>
   relocate(rpa_acr, AgeCat, HHtype, hh, year)
 
+# Sum up households to the RPA, 5-Year Age Category level by Year
 hhds.MAPC101 <- proj.hh.MAPC101_by.rpa.hhtype |> 
   select(-HHtype) |> 
-    group_by(rpa_acr,year,AgeCat) |> 
-    summarize(hh = sum(hh))
-  
+  group_by(rpa_acr,year,AgeCat) |> 
+  summarize(hh = sum(hh)) |> 
+  ungroup()
+
+# 7.4.2.2 - Household Projections by RPA (MAPC101), 5-Year Age Groups, and Tenure
 proj.hh.MAPC101_by.rpa.tenure <- tenure_rates |>
-  mutate(AgeCat = paste0("x == ",ageCAT6),
+  mutate(AgeCat = paste0("x == ", ageCAT6),
          tenure = paste0("x == ", tenure)
          ) |> 
-  left_join(hhds.MAPC101, 
-            by = c("rpa_acr", "AgeCat"), 
-            relationship = "many-to-many") |>
+  left_join(
+    hhds.MAPC101, 
+    by = c("rpa_acr", "AgeCat"), 
+    relationship = "many-to-many") |>
   rowwise() |>
   # Calculating the number of households in each RPA and age category
   mutate(hh = round(hh * freq, 0)) |>
@@ -2091,11 +2079,13 @@ proj.hh.MAPC101_by.rpa.tenure <- tenure_rates |>
   relocate(rpa_acr, AgeCat, tenure, hh, year)
 
 #===============================================================================
-# 7.4.2.2 Household Projections by MPO (MAPC97) and Household Type
+# 7.4.2.3 Household Projections by MPO (MAPC97) and Household Type
 proj.hh.MAPC97_by.mpo.hhtype <- hdsp.r |>
-  left_join(umdi.pop.MAPC97, 
-            by = c("rpa_acr"="mpo", "ageCAT6"), 
-            relationship = "many-to-many") |> 
+  left_join(
+    umdi.pop.MAPC97, 
+    by = c("rpa_acr"="mpo", "ageCAT6"), 
+    relationship = "many-to-many"
+  ) |> 
   rename(mpo=rpa_acr) |> 
   rowwise() |> 
   #Calculating the number of households in each RPA and age catergory
@@ -2115,49 +2105,34 @@ proj.hh.MAPC97_by.mpo.hhtype <- hdsp.r |>
       var == "hhdernochild" ~ "x == 3",
       var == "single" ~ "x == 5"
     ),
-    AgeCat = case_when(
-      ageCAT6 == 1 ~ "x == 1",
-      ageCAT6 == 2 ~ "x == 2",
-      ageCAT6 == 3 ~ "x == 3",
-      ageCAT6 == 4 ~ "x == 4",
-      ageCAT6 == 5 ~ "x == 5",
-      ageCAT6 == 6 ~ "x == 6",
-      ageCAT6 == 7 ~ "x == 7",
-      ageCAT6 == 8 ~ "x == 8",
-      ageCAT6 == 9 ~ "x == 9",
-      ageCAT6 == 10 ~ "x == 10",
-      ageCAT6 == 11 ~ "x == 11",
-      ageCAT6 == 12 ~ "x == 12",
-      ageCAT6 == 13 ~ "x == 13",
-      ageCAT6 == 14 ~ "x == 14",
-      ageCAT6 == 15 ~ "x == 15",
-      ageCAT6 == 16 ~ "x == 16",
-      ageCAT6 == 17 ~ "x == 17",
-      ageCAT6 == 18 ~ "x == 18"
-    )
+    AgeCat = paste0("x == 1", ageCAT6)
   ) |> 
   select(-c(pop, hhpop, freq, var, ageCAT6)) |> 
   relocate(mpo, AgeCat, HHtype, hh, year)
 
+# Sum up households to the MPO, 5-Year Age Category level by Year
 hhds.MAPC97 <- proj.hh.MAPC97_by.mpo.hhtype |> 
   select(-HHtype) |> 
-    group_by(mpo,year,AgeCat) |> 
-    summarize(hh = sum(hh))
-  
+  group_by(mpo,year,AgeCat) |> 
+  summarize(hh = sum(hh)) |> 
+  ungroup()
+ 
+# 7.4.2.2 - Household Projections by MPO (MAPC97), 5-Year Age Groups, and Tenure 
 proj.hh.MAPC97_by.mpo.tenure <- tenure_rates |>
-  mutate(AgeCat = paste0("x == ",ageCAT6),
-         tenure = paste0("x == ", tenure)
-         ) |> 
-  left_join(hhds.MAPC97, 
-            by = c("rpa_acr"="mpo", "AgeCat"), 
-            relationship = "many-to-many") |>
+  mutate(
+    AgeCat = paste0("x == ",ageCAT6),
+    tenure = paste0("x == ", tenure)
+  ) |> 
+  left_join(
+    hhds.MAPC97, 
+    by = c("rpa_acr"="mpo", "AgeCat"), 
+    relationship = "many-to-many") |>
   rowwise() |>
   # Calculating the number of households in each RPA and age category
   mutate(hh = round(hh * freq, 0)) |>
   select(-c(freq, ageCAT6)) |>
   rename(mpo=rpa_acr) |> 
   relocate(mpo, AgeCat, tenure, hh, year)
-
 
 ```
 

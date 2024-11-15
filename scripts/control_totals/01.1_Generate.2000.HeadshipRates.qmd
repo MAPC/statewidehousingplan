@@ -86,22 +86,16 @@ if (length(unique(xw$rpa_acr)) != 13){
 # TYPEHUGQ -> RECTYPE
 # NP -> PERSONS
 # PUMA -> PUMA
+# TENURE -> TENURE
 
 # Load in 2000 5% PUMS data
-pums_data <- read.csv(paste0(pums_path, "pums_overcrowding_2000_V_2024-09-18.csv")) |>
+pums_data <- read.csv(paste0(pums_path, "pums_overcrowding_2000_V_2024-11-09.csv")) |>
   # General Data Cleaning
   mutate(
     # Add leading zeros to PUMAs to match PUMA code from PUMA to RPA crosswalk.
     PUMA = str_pad(PUMA, 5, "left", pad = 0),
     # Generate five-year age groupings to match UMDI population projections data.
     ageCAT6 = cut(AGE, breaks = c(-Inf, seq(4, 84, 5), Inf), labels = 1:18),
-    # Counts as Worker
-    # NOTE: Categories are (0) under 16 or not in labor force, or (1) in labor force or non-civilian worker
-    # worker = case_when(
-    #   (ESR == "b" | ESR == 6) ~ 0,
-    #   (ESR == 1 | ESR == 2 | ESR == 3 | ESR == 4 | ESR == 5) ~ 1,
-    #   is.na(ESR) ~ 0
-    # ),
     # Counts as person
     person = case_when(
       PERNUM != 0 ~ 1,
@@ -112,13 +106,19 @@ pums_data <- read.csv(paste0(pums_path, "pums_overcrowding_2000_V_2024-09-18.csv
       AGE < 18 ~ 1,
       AGE >= 18 ~ 0,
       .default = 0
+    ),
+    # Creates a tenure grouping for:
+    TEN_Group = case_when(
+      # Owned with a mortgage or free and clear -> "Own"
+      US2000A_TENURE %in% c("1","2") ~ "Own",
+      # Rented or occupied without payment of rent -> "Rent"
+      US2000A_TENURE %in% c("3","4") ~ "Rent",
+      .default = "Unknown"
     )
   ) |>
   # Creating household flags for person variables.
   group_by(SERIAL) |> 
   mutate(
-    # # Sum the total number of workers in the household
-    # Worker_Total = sum(worker),
     # Sum the total number of children in the household
     Child_Total = sum(child),
     # Create a number of persons in the household
@@ -126,26 +126,23 @@ pums_data <- read.csv(paste0(pums_path, "pums_overcrowding_2000_V_2024-09-18.csv
   ) |> 
   ungroup() |> 
   mutate(
-  # Create a variable that is a household flag for whether or not a household has 
-  # Children. 
+  # Create a variable that is a household flag for whether or not a household has children. 
    child_flag = case_when(
       Child_Total > 0 ~ "1",
       Child_Total == 0 ~ "0",
       .default = "0"
     ),
-   # Categorizing worker categories (0) no workers, (1) one worker, (2) two workers, (3) three or more workers
-   # WRKHH = case_when(
-   #   Worker_Total == 0 ~ 0,
-   #   Worker_Total == 1 ~ 1,
-   #   Worker_Total == 2 ~ 2,
-   #   Worker_Total >= 3 ~ 3
-   #  ),
-    # Determine if person is not hhder vs hhder of 0- wrk, 1wrk, 2 wrk, 3+wrk
+    # Determine if person is either a hhder or not a hhder
    HHder = case_when(
      PERNUM == 1 ~ 1,
      PERNUM > 1 ~ 99
    ),
-   # Determine what type of household the person is heading or not heading (1) Householder of Household with Children, (2) Non-Householder in a Household with Children, (3) Householder of a Household with Multiple Adults and no children, (4) Non-Householder in a Household with no children, (5) Householder of a Single Person Household
+   # Determine what type of household the person is heading or not heading:
+   # (1) Householder of Household with Children
+   # (2) Non-Householder in a Household with Children
+   # (3) Householder of a Household with Multiple Adults and no children
+   # (4) Non-Householder in a Household with no children
+   # (5) Householder of a Single Person Household
    HHtype = case_when(
      Child_Total > 0 & NP > 1 & HHder != 99 ~ 1,
      Child_Total > 0 & NP > 1 & HHder == 99 ~ 2,

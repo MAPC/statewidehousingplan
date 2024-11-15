@@ -81,13 +81,18 @@ pums_data <- pums_query(var.list = variable_list, yr = vintage, srvy = "acs5") |
   mutate(
     # Generate five-year age groupings to match UMDI population projections data.
     ageCAT6 = cut(AGEP, breaks = c(-Inf, seq(4, 84, 5), Inf), labels = 1:18),
-    # Creates a tenure grouping for owners (1) and renters (2)
-    tenure = case_when(
-      TEN %in% c('1','2') ~ 1,
-      TEN %in% c('3','4') ~ 2
+    # Creates a tenure grouping for:
+    TEN_Group = case_when(
+      # Owned with a mortgage or free and clear -> "Own"
+      TEN %in% c('1','2') ~ "Own",
+      # Rented or occupied without payment of rent -> "Rent"
+      TEN %in% c('3','4') ~ "Rent",
+      .default = "Unknown"
     ),
     # Counts as Worker
-    # NOTE: Categories are (0) under 16 or not in labor force, or (1) in labor force or non-civilian worker
+    # NOTE - Categories are:
+    # (0) under 16 or not in labor force
+    # (1) in labor force or non-civilian worker
     worker = case_when(
       (ESR == "b" | ESR == 6) ~ 0,
       (ESR == 1 | ESR == 2 | ESR == 3 | ESR == 4 | ESR == 5) ~ 1,

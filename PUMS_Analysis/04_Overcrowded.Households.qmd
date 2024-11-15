@@ -28,8 +28,8 @@ knitr::opts_knit$set(root.dir = pums_path)
 # 0.2 - Set package dependencies, set environment, set up data keys
 
 ```{r}
-#Load Libraries for PUMS Analysis and PUMS API query functions
-#sets seed and removes scientific notation
+# Load Libraries for PUMS Analysis and PUMS API query functions
+# Sets seed and removes scientific notation
 source("C:/Project_Work/statewidehousingplan/PUMS_Analysis/PUMS_Helper_Functions.R")
 
 # Set PUMS vintage final year for {tidycensus} API query.

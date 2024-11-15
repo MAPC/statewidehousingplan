@@ -32,8 +32,18 @@ knitr::opts_knit$set(root.dir = pums_path)
 #sets seed and removes scientific notation
 source("C:/Project_Work/statewidehousingplan/PUMS_Analysis/PUMS_Helper_Functions.R")
 
+# Set PUMS vintage final year for {tidycensus} API query.
+vintage <- 2021
+
+# List of PUMS variables
+variable_list <- c('RT', 'PUMA', 'ADJHSG','ADJINC','NP','TYPEHUGQ','BDSP','RMSP','CPLT','HHLDRAGEP',
+                   'HHLDRRAC1P','HHLDRHISP', 'HHT', 'HHT2', 'HINCP', 'HUGCL', 'HUPAC', 'HUPAOC',
+                   'HUPARC', 'LNGI', 'MULTG', 'NPF', 'NPP', 'NR','NRC', 'PARTNER', 'PSF','R18',
+                   'AGEP','RELSHIPP','RAC1P','OC','SFN','SFR','TEN', "SEX", "PINCP", "ESR",
+                   "MV", "GRPIP", "OCPIP")
+
 #Load PUMS variables
-pums <- read.csv(paste0(pums_path,"pums_overcrowding_2021_V_2024-09-16.csv")) |> 
+pums <- pums_query(var.list = variable_list, yr = vintage, srvy = "acs5") |> 
   mutate(
     PUMA = as.character(str_pad(PUMA, width = 5, side = "left", pad = 0))
   )
@@ -91,7 +101,9 @@ pums <- pums |>
       .default ~ 0
     ),
     # Create a grouping variable for types of relationships to the householder.
-    # NOTE: (0) indicates a person in a household that is related in some way to the householder. (1) indicates a person in a household unrelated to the householder.
+    # NOTE: 
+    # (0) indicates a person in a household that is related in some way to the householder.
+    # (1) indicates a person in a household unrelated to the householder.
     RELSHIPP_Group = case_when(
       RELSHIPP %in% c(21,22,23,24,25,26,27,28,29,30,31,32,33) ~ 0,
       RELSHIPP %in% c(34,35,36) ~ 1,
@@ -149,7 +161,7 @@ pums <- pums |>
       HHLDRRAC1P == "9" ~ "Two or More Races Alone",
       .default = "Unknown"
     ),
-    # Householder Latinx Groupings
+    # Householder Latine Groupings
     HHDER.HISP_Group = case_when(
       HHLDRHISP == "01" ~ "Non-Hispanic",
       HHLDRHISP != "01" ~ "Hispanic",
@@ -167,6 +179,8 @@ pums <- pums |>
   mutate(
     # Create a variable which is the sum of the number of children in a household
     Child_Total = sum(child),
+    # Sum the total number of workers in the household
+    Worker_Total = sum(worker),
     # Create a variable which is the sum of the number of non-relatives in the household
     Non.Relative_Total = sum(RELSHIPP_TYPE),
     # Create a variable that is the sum of roommates in a household
@@ -176,17 +190,46 @@ pums <- pums |>
   ) |> 
   ungroup() |> 
   mutate(
-  # Create a variable that is a household flag for whether or not a household has 
-  # Children. 
+  # Create a variable that indicates whether or not a household has children. 
    child_flag = case_when(
-      child_count > 0 ~ "1",
-      child_count == 0 ~ "0",
+      Child_Total > 0 ~ "1",
+      Child_Total == 0 ~ "0",
       .default = "0"
     ),
+   # Create a variable that indicates whether or not a household has roommates.
+   roommate_flag = case_when(
+     Roommate_Total > 0 ~ "1",
+     Roommate_Total == 0 ~ "0",
+     .default = "0"
+   ),
    # Create a household flag for whether or not the household contains a subfamily.
    SFN.flag = if_else(SFN.num > 0, 1, 0),
    # Create a household flag for presence of a non-relative in the household.
-   NONRELATIVE.flag = if_else(NONRELATIVE_count > 0, 1, 0)
+   NONRELATIVE.flag = if_else(NONRELATIVE_count > 0, 1, 0),
+   # Categorizing worker categories:
+   # (0) no workers
+   # (1) one worker
+   # (2) two workers
+   # (3) three or more workers
+   WRKHH = case_when(
+     Worker_Total == 0 ~ 0,
+     Worker_Total == 1 ~ 1,
+     Worker_Total == 2 ~ 2,
+     Worker_Total >= 3 ~ 3
+    ),
+   # Determine what type of household the person is heading or not heading:
+   # (1) Householder of Household with Children
+   # (2) Non-Householder in a Household with Children 
+   # (3) Householder of a Household with Multiple Adults and no children 
+   # (4) Non-Householder in a Household with no children
+   # (5) Householder of a Single Person Household
+   HHtype = case_when(
+     Child_Total >= 1 & NP > 1 & HHder != 99 ~ 1,
+     Child_Total >= 1 & NP > 1 & HHder == 99 ~ 2,
+     Child_Total == 0 & NP > 1 & HHder != 99 ~ 3,
+     Child_Total == 0 & NP > 1 & HHder == 99 ~ 4,
+     NP == 1 & HHder != 99 ~ 5
+   )
   ) |> 
   mutate(
     # Non-multigenerational household WITH at least one (1) subfamily WITH at least one (1) child
@@ -980,7 +1023,7 @@ Reasonable rate Non-multigenerational households without the presence of subfami
 
 From there
 
-# 5.0 Visualizations
+# 5.0 Single Variate Crosstabs and Visualizations
 
 # 5.1 Tenure
 
@@ -1335,3 +1378,24 @@ ggsave(
   dpi = 300
 )
 ```
+
+# 5.6 Number of Children in a Household
+```{r}
+```
+
+# 5.7 Time Household Moved into Unit
+```{r}
+```
+
+# 5.8 Household Type 
+```{r}
+```
+
+# 5.9 Cost-Burden
+```{r}
+```
+
+# 5.10 AMI-Levels
+```{r}
+```
+

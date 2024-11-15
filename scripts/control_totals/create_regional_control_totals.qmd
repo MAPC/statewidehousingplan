@@ -2141,15 +2141,13 @@ proj.hh.MAPC97_by.mpo.tenure <- tenure_rates |>
 ------------------------------------------------------------------------
 
 ```{r}
-
 #===============================================================================
 # Iterate through household projections to create reweighter targeting files for households
 # MAPC101/RPA Versions
 
 for (i in yrs) {
   
-  #Filter the projected households dataframe by year i
-  
+  # Filter the projected households dataframe by year i
   if (i != 2020){
   tmp1 <- proj.hh.MAPC101_by.rpa.hhtype |> 
     filter(

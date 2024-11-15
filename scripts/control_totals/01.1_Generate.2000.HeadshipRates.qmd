@@ -96,6 +96,19 @@ pums_data <- read.csv(paste0(pums_path, "pums_overcrowding_2000_V_2024-11-09.csv
     PUMA = str_pad(PUMA, 5, "left", pad = 0),
     # Generate five-year age groupings to match UMDI population projections data.
     ageCAT6 = cut(AGE, breaks = c(-Inf, seq(4, 84, 5), Inf), labels = 1:18),
+    # ageCAT4 is the 2020 decennial census age breaks for age of householder - used for 2020 base year control total reweighter targets
+    ageCAT4 = case_when(
+      AGE %in% 15:24 ~ 1,
+      AGE %in% 25:34 ~ 2,
+      AGE %in% 35:44 ~ 3,
+      AGE %in% 45:54 ~ 4,
+      AGE %in% 55:59 ~ 5,
+      AGE %in% 60:64 ~ 6,
+      AGE %in% 65:74 ~ 7,
+      AGE %in% 75:84 ~ 8,
+      AGE >= 85 ~ 9,
+      .default = 0
+    ),
     # Counts as person
     person = case_when(
       PERNUM != 0 ~ 1,
@@ -126,13 +139,13 @@ pums_data <- read.csv(paste0(pums_path, "pums_overcrowding_2000_V_2024-11-09.csv
   ) |> 
   ungroup() |> 
   mutate(
-  # Create a variable that is a household flag for whether or not a household has children. 
+  # Create a variable that is a household flag for whether or not a household has children.
    child_flag = case_when(
       Child_Total > 0 ~ "1",
       Child_Total == 0 ~ "0",
       .default = "0"
     ),
-    # Determine if person is either a hhder or not a hhder
+  # Determine if person is either a hhder or not a hhder
    HHder = case_when(
      PERNUM == 1 ~ 1,
      PERNUM > 1 ~ 99
@@ -164,10 +177,12 @@ headship_rates.2000 <- pums_data |>
   filter(GQTYPE == 0) |> 
   # Groups by variables in the dataframe necessary to getting the granularity of
   # data we're interested in.
-  group_by(rpa_acr,ageCAT6) |> 
+  group_by(rpa_acr,ageCAT6,TEN_Group) |> 
   # Computes the weighted sum of individuals in each HH type category by the groups
   # assigned above.
-  count(var = HHtype, wt = HHWT) |>
+  count(var = HHtype, wt = HHWT)  |>
+  ungroup() |> 
+  group_by(rpa_acr, ageCAT6) |>
   # Recodes factor variables as the categories they represent.
   # Converts numbers into frequencies.                       
   mutate(

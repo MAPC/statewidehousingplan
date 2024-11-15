@@ -624,7 +624,7 @@ tbl.6 <- subset.adj.test |>
 ```{r}
 # Generating headship rates by RPA and 5-year age group for the ACS 2017-2022 PUMS
 headship_rates.split <- pums_data.adj |> 
-  # Join the PUMA to RPA ceosswalk to the PUMS data
+  # Join the PUMA to RPA crosswalk to the PUMS data
   left_join(
     xw,
     by = c('PUMA')

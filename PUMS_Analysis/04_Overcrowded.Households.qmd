@@ -29,6 +29,7 @@ knitr::opts_knit$set(root.dir = pums_path)
 
 ```{r}
 # Load Libraries for PUMS Analysis and PUMS API query functions
+library(here)
 # Sets seed and removes scientific notation
 source("C:/Project_Work/statewidehousingplan/PUMS_Analysis/PUMS_Helper_Functions.R")
 
@@ -61,21 +62,15 @@ xw <- read_csv(paste0(root, "Scenario_1/PUMA10_RPA_crosswalk.csv"))
 # 0.4 PUMS Data Cleaning
 
 ```{r}
-#Joing the PUMA to RPA crosswalk to the PUMS data.
-pums <- left_join(
-  pums,
-  xw,
-  by = c("PUMA")
-)
-
 # General Data Cleaning
-pums <- pums |> 
+pums_cleaned <- pums |> 
   # Create a household flag for whether there is a child in a household.
   mutate(
     # Generate five-year age groupings to match UMDI population projections data.
     Age_Group.5yr = cut(AGEP, breaks = c(-Inf, seq(4, 84, 5), Inf), labels = 1:18),
     # Create a household flag for whether there is a child (a person under the age of 18) in the household.
-    #Note: (1) indicates a person is under the age of 18. (0) indicates a person is 18 or older.
+    # (1) indicates a person is under the age of 18
+    # (0) indicates a person is 18 or older.
     child = case_when(
       AGEP < 18 ~ 1,
       AGEP >= 18 ~ 0,
@@ -98,7 +93,7 @@ pums <- pums |>
       # When ESR is NA, default to not in the laborforce.
       is.na(ESR) ~ 0,
       # If no information is present default to not in the laborforce.
-      .default ~ 0
+      .default = 0
     ),
     # Create a grouping variable for types of relationships to the householder.
     # NOTE: 
@@ -140,7 +135,7 @@ pums <- pums |>
     # Replace the NA for non-subfamily members with 0.
     SFN = replace_na(SFN, 0),
     # Adjust Household income (HINCP) to constant dollars (USD2021)
-    HINCP_adj = HINCP*ADJINC,
+    HINCP_adj = HINCP*as.numeric(ADJINC),
     # Household Income Groupings consistent with UrbanSim groupings
     HH.Income_Group = case_when(
       HINCP_adj <= 35000 ~ "<=$35,000",
@@ -151,7 +146,7 @@ pums <- pums |>
       .default = "0"
     ),
     # Householder Race Groupings. 
-    HHLDER.RACE_Group = case_when(
+    HHLDRRACE_Group = case_when(
       HHLDRRAC1P == "1" ~ "White Alone",
       HHLDRRAC1P == "2" ~ "Black or African American Alone",
       HHLDRRAC1P %in% c("3", "4", "5") ~ "AIAN Alone",
@@ -162,7 +157,7 @@ pums <- pums |>
       .default = "Unknown"
     ),
     # Householder Latine Groupings
-    HHDER.HISP_Group = case_when(
+    HHLDRHISP_Group = case_when(
       HHLDRHISP == "01" ~ "Non-Hispanic",
       HHLDRHISP != "01" ~ "Hispanic",
       .default = "Unknown"
@@ -172,6 +167,17 @@ pums <- pums |>
       RELSHIPP == 34 ~ 1,
       RELSHIPP != 34 ~ 0,
       .default = 0
+    ),
+    # Replace any NAs (for households that own and so dont have a GRPIP and vice versa)
+    GRPIP = replace_na(GRPIP, 0),
+    OCPIP = replace_na(OCPIP, 0),
+    # Define a "cost burdened" indicator.
+    # (1) A household paying more than 30% of its income in housing costs (GRPIP or OCPIP) is considered "cost burdened"
+    # (0) A household paying less than or equal to 30% of its income in housing costs is NOT considered "cost burdened"
+    CostBurdened = case_when(
+      GRPIP > 30 | OCPIP > 30 ~ "1",
+      GRPIP <= 30 | OCPIP <= 30 ~ "0",
+      .default = "0"
     )
   ) |>
   # Creating household flags for person variables.
@@ -182,9 +188,9 @@ pums <- pums |>
     # Sum the total number of workers in the household
     Worker_Total = sum(worker),
     # Create a variable which is the sum of the number of non-relatives in the household
-    Non.Relative_Total = sum(RELSHIPP_TYPE),
+    Non.Relative_Total = sum(RELSHIPP_Group),
     # Create a variable that is the sum of roommates in a household
-    Roommate_Total = sum(roommate.flag),
+    Roommate_Total = sum(roommate_flag),
     # Create a column which denotes the presence of subfamilies for a household.
     SFN_Total = sum(SFN),
   ) |> 
@@ -203,9 +209,9 @@ pums <- pums |>
      .default = "0"
    ),
    # Create a household flag for whether or not the household contains a subfamily.
-   SFN.flag = if_else(SFN.num > 0, 1, 0),
+   SFN.flag = if_else(SFN_Total > 0, 1, 0),
    # Create a household flag for presence of a non-relative in the household.
-   NONRELATIVE.flag = if_else(NONRELATIVE_count > 0, 1, 0),
+   NONRELATIVE.flag = if_else(Non.Relative_Total > 0, 1, 0),
    # Categorizing worker categories:
    # (0) no workers
    # (1) one worker
@@ -250,7 +256,7 @@ pums <- pums |>
   )
 
 # Create a subset of the PUMS file for 
-pums.subset.1 <- pums |> 
+pums.subset.1 <- pums_cleaned |> 
   filter(subset.flag.1 == 1)
 
 # And write to the subset as a .csv
@@ -261,7 +267,7 @@ write.csv(
 )
 
 # Create a subset of the PUMS file for
-pums.subset.2 <- pums |> 
+pums.subset.2 <- pums_cleaned |> 
   filter(subset.flag.2 == 1)
 
 # And write to the subset as a .csv
@@ -272,7 +278,7 @@ write.csv(
 )
 
 # Create a subset of the PUMS file for
-pums.subset.3 <- pums |> 
+pums.subset.3 <- pums_cleaned |> 
   filter(subset.flag.3 == 1)
 
 # And write to the subset as a .csv
@@ -505,7 +511,7 @@ A subfamily is defined as either 1) a married couple without children or a 2) si
 ```{r}
 ```
 
-# 2.2 Overcrowded Households by Presense of Subfamilies
+# 2.2 Overcrowded Households by Presence of Subfamilies
 
 ```{r}
 #===============================================================================
@@ -1380,22 +1386,26 @@ ggsave(
 ```
 
 # 5.6 Number of Children in a Household
+
 ```{r}
 ```
 
 # 5.7 Time Household Moved into Unit
+
 ```{r}
 ```
 
-# 5.8 Household Type 
+# 5.8 Household Type
+
 ```{r}
 ```
 
 # 5.9 Cost-Burden
+
 ```{r}
 ```
 
 # 5.10 AMI-Levels
+
 ```{r}
 ```
-

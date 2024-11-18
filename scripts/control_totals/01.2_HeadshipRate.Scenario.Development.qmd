@@ -72,7 +72,7 @@ variable_list <- c('RT', 'PUMA', 'ADJHSG','ADJINC','NP','TYPEHUGQ','BDSP','RMSP'
                    'HHLDRRAC1P','HHLDRHISP', 'HHT', 'HHT2', 'HINCP', 'HUGCL', 'HUPAC', 'HUPAOC',
                    'HUPARC', 'LNGI', 'MULTG', 'NPF', 'NPP', 'NR','NRC', 'PARTNER', 'PSF','R18',
                    'AGEP','RELSHIPP','RAC1P','OC','SFN','SFR','TEN', "SEX", "PINCP", "ESR",
-                   'GRPIP', 'OCPIP', 'MV')
+                   'GRPIP', 'OCPIP', 'MV', 'SCHL', 'HISP')
 
 # SEMP bottom coding has changed from $1 to $4 like WAGP
 
@@ -110,6 +110,38 @@ pums_data <- pums_query(var.list = variable_list, yr = vintage, srvy = "acs5") |
       AGEP >= 18 ~ 0,
       .default = 0
     ),
+    # Householder Race Groupings.
+    RACE_Group = case_when(
+      RAC1P == "1" ~ "White Alone",
+      RAC1P == "2" ~ "Black or African American Alone",
+      RAC1P %in% c("3", "4", "5") ~ "AIAN Alone",
+      RAC1P == "6" ~ "Asian Alone",
+      RAC1P == "7" ~ "NHPI Alone",
+      RAC1P == "8" ~ "Some Other Race Alone",
+      RAC1P == "9" ~ "Two or More Races Alone",
+      .default = "Unknown"
+    ),
+    # Householder Hispanic/Non-Hispanic Groupings
+    HISP_Group = case_when(
+      HISP == "01" ~ "Non-Hispanic",
+      HISP != "01" ~ "Hispanic",
+      .default = "Unknown"
+    ),
+    # Educational Attainment Groupings
+    # NOTE - Categories are:
+    # (1) High school degree or less
+    # (2) Associate's degree or some college
+    # (3) Bachelor's
+    # (4) MA or higher
+    SCHL = as.numeric(SCHL),
+    eduattn = case_when(
+      SCHL <= 17 ~ 1,
+      SCHL %in% 18:20 ~ 2,
+      SCHL == 21 ~ 3,
+      SCHL >= 22 ~ 4,
+      is.na(SCHL) ~ 0,
+      .default = 0
+    ),
     # Create a grouping variable for types of relationships to the householder.
     RELSHIPP_TYPE = case_when(
       # 1 indicates a person in a household that is related in some way to the householder.
@@ -139,7 +171,7 @@ pums_data <- pums_query(var.list = variable_list, yr = vintage, srvy = "acs5") |
     # Convert SFN into a numeric column. Introduces NAs for people not in subfamilies
     SFN = as.numeric(SFN),
     # Replace the NA for non-subfamily members with 0.
-    SFN = replace_na(SFN, 0),
+    SFN = replace_na(SFN, 0)
   ) |>
   # Creating household flags for person variables.
   group_by(SERIALNO) |> 
@@ -427,38 +459,6 @@ pums_data.adj <- pums_data.adj |>
     child = case_when(
       AGEP < 18 ~ 1,
       AGEP >= 18 ~ 0
-    ),
-    # Householder Race Groupings.
-    HHLDER.RACE_Group = case_when(
-      HHLDRRAC1P == "1" ~ "White Alone",
-      HHLDRRAC1P == "2" ~ "Black or African American Alone",
-      HHLDRRAC1P %in% c("3", "4", "5") ~ "AIAN Alone",
-      HHLDRRAC1P == "6" ~ "Asian Alone",
-      HHLDRRAC1P == "7" ~ "NHPI Alone",
-      HHLDRRAC1P == "8" ~ "SOR Alone",
-      HHLDRRAC1P == "9" ~ "Two or More Races Alone",
-      .default = "Unknown"
-    ),
-    # Householder Hispanic/Non-Hispanic Groupings
-    HHDER.HISP_Group = case_when(
-      HHLDRHISP == "01" ~ "Non-Hispanic",
-      HHLDRHISP != "01" ~ "Hispanic",
-      .default = "Unknown"
-    ),
-    # Educational Attainment Groupings
-    # NOTE - Categories are:
-    # (1) High school degree or less
-    # (2) Associate's degree or some college
-    # (3) Bachelor's
-    # (4) MA or higher
-    SCHL = as.numeric(SCHL),
-    eduattn = case_when(
-      SCHL <= 17 ~ 1,
-      SCHL %in% 18:20 ~ 2,
-      SCHL == 21 ~ 3,
-      SCHL >= 22 ~ 4,
-      is.na(SCHL) ~ 0,
-      .default = 0
     )
   ) |> 
   group_by(SERIALNO.adj) |> 

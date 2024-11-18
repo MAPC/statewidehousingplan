@@ -75,6 +75,7 @@ if (length(unique(xw$rpa_acr)) != 13){
 ```
 
 # 1.0 Load 2000 5% PUMS Records and Create Variables Needed to Calculate Headship Rates
+
 ```{r}
 # List of PUMS variables
 # SPORDER -> PERNUM
@@ -86,22 +87,29 @@ if (length(unique(xw$rpa_acr)) != 13){
 # TYPEHUGQ -> RECTYPE
 # NP -> PERSONS
 # PUMA -> PUMA
+# TENURE -> TENURE
 
 # Load in 2000 5% PUMS data
-pums_data <- read.csv(paste0(pums_path, "pums_overcrowding_2000_V_2024-09-18.csv")) |>
+pums_data <- read.csv(paste0(pums_path, "pums_overcrowding_2000_V_2024-11-09.csv")) |>
   # General Data Cleaning
   mutate(
     # Add leading zeros to PUMAs to match PUMA code from PUMA to RPA crosswalk.
     PUMA = str_pad(PUMA, 5, "left", pad = 0),
     # Generate five-year age groupings to match UMDI population projections data.
     ageCAT6 = cut(AGE, breaks = c(-Inf, seq(4, 84, 5), Inf), labels = 1:18),
-    # Counts as Worker
-    # NOTE: Categories are (0) under 16 or not in labor force, or (1) in labor force or non-civilian worker
-    # worker = case_when(
-    #   (ESR == "b" | ESR == 6) ~ 0,
-    #   (ESR == 1 | ESR == 2 | ESR == 3 | ESR == 4 | ESR == 5) ~ 1,
-    #   is.na(ESR) ~ 0
-    # ),
+    # ageCAT4 is the 2020 decennial census age breaks for age of householder - used for 2020 base year control total reweighter targets
+    ageCAT4 = case_when(
+      AGE %in% 15:24 ~ 1,
+      AGE %in% 25:34 ~ 2,
+      AGE %in% 35:44 ~ 3,
+      AGE %in% 45:54 ~ 4,
+      AGE %in% 55:59 ~ 5,
+      AGE %in% 60:64 ~ 6,
+      AGE %in% 65:74 ~ 7,
+      AGE %in% 75:84 ~ 8,
+      AGE >= 85 ~ 9,
+      .default = 0
+    ),
     # Counts as person
     person = case_when(
       PERNUM != 0 ~ 1,
@@ -112,13 +120,19 @@ pums_data <- read.csv(paste0(pums_path, "pums_overcrowding_2000_V_2024-09-18.csv
       AGE < 18 ~ 1,
       AGE >= 18 ~ 0,
       .default = 0
+    ),
+    # Creates a tenure grouping for:
+    TEN_Group = case_when(
+      # Owned with a mortgage or free and clear -> "Own"
+      US2000A_TENURE %in% c("1","2") ~ "Own",
+      # Rented or occupied without payment of rent -> "Rent"
+      US2000A_TENURE %in% c("3","4") ~ "Rent",
+      .default = "Unknown"
     )
   ) |>
   # Creating household flags for person variables.
   group_by(SERIAL) |> 
   mutate(
-    # # Sum the total number of workers in the household
-    # Worker_Total = sum(worker),
     # Sum the total number of children in the household
     Child_Total = sum(child),
     # Create a number of persons in the household
@@ -126,26 +140,23 @@ pums_data <- read.csv(paste0(pums_path, "pums_overcrowding_2000_V_2024-09-18.csv
   ) |> 
   ungroup() |> 
   mutate(
-  # Create a variable that is a household flag for whether or not a household has 
-  # Children. 
+  # Create a variable that is a household flag for whether or not a household has children.
    child_flag = case_when(
       Child_Total > 0 ~ "1",
       Child_Total == 0 ~ "0",
       .default = "0"
     ),
-   # Categorizing worker categories (0) no workers, (1) one worker, (2) two workers, (3) three or more workers
-   # WRKHH = case_when(
-   #   Worker_Total == 0 ~ 0,
-   #   Worker_Total == 1 ~ 1,
-   #   Worker_Total == 2 ~ 2,
-   #   Worker_Total >= 3 ~ 3
-   #  ),
-    # Determine if person is not hhder vs hhder of 0- wrk, 1wrk, 2 wrk, 3+wrk
+  # Determine if person is either a hhder or not a hhder
    HHder = case_when(
      PERNUM == 1 ~ 1,
      PERNUM > 1 ~ 99
    ),
-   # Determine what type of household the person is heading or not heading (1) Householder of Household with Children, (2) Non-Householder in a Household with Children, (3) Householder of a Household with Multiple Adults and no children, (4) Non-Householder in a Household with no children, (5) Householder of a Single Person Household
+   # Determine what type of household the person is heading or not heading:
+   # (1) Householder of Household with Children
+   # (2) Non-Householder in a Household with Children
+   # (3) Householder of a Household with Multiple Adults and no children
+   # (4) Non-Householder in a Household with no children
+   # (5) Householder of a Single Person Household
    HHtype = case_when(
      Child_Total > 0 & NP > 1 & HHder != 99 ~ 1,
      Child_Total > 0 & NP > 1 & HHder == 99 ~ 2,
@@ -160,7 +171,9 @@ pums_data <- read.csv(paste0(pums_path, "pums_overcrowding_2000_V_2024-09-18.csv
   )
 
 ```
+
 # 2.0 Calculate Headship Rates for 2000 by RPA. Age Group, and Household Type
+
 ```{r}
 headship_rates.2000 <- pums_data |> 
   # Includes only observations for people in households (omits GQ)                       
@@ -170,7 +183,7 @@ headship_rates.2000 <- pums_data |>
   group_by(rpa_acr,ageCAT6) |> 
   # Computes the weighted sum of individuals in each HH type category by the groups
   # assigned above.
-  count(var = HHtype, wt = HHWT) |>
+  count(var = HHtype, wt = HHWT)  |>
   # Recodes factor variables as the categories they represent.
   # Converts numbers into frequencies.                       
   mutate(
@@ -180,6 +193,34 @@ headship_rates.2000 <- pums_data |>
       var == 3 ~ "hhdernochild",
       var == 4 ~ "nothhdernochild",
       var == 5 ~ "single"),
+    freq = (n/sum(n))) |> 
+  # Removes the level of aggregation set earlier by group_by()
+  ungroup() |> 
+  select(
+    -c(n)
+  ) |> 
+  dplyr::rename(
+    freq.2000 = freq
+   ) |> 
+  mutate(
+    ageCAT6 = as.factor(ageCAT6)
+  )
+
+# Generating headship rates by RPA, 5-year age group, and Tenure for the 2000 Census PUMS 5% File
+tenure_rates.2000 <- pums_data |> 
+  # Includes only observations for people in households (omits GQ)                       
+  filter(GQTYPE == 0) |> 
+  # Groups by variables in the dataframe necessary to getting the granularity of
+  # data we're interested in.
+  group_by(rpa_acr,ageCAT6) |> 
+  # Computes the weighted sum of individuals in each HH type category by the groups
+  # assigned above.
+  count(var = TEN_Group, wt = HHWT)  |>
+  ungroup() |> 
+  group_by(rpa_acr, ageCAT6) |>
+  # Recodes factor variables as the categories they represent.
+  # Converts numbers into frequencies.                       
+  mutate(
     freq = (n/sum(n))) |> 
   # Removes the level of aggregation set earlier by group_by()
   ungroup() |> 
@@ -207,16 +248,43 @@ hr_check <- headship_rates.2000 |>
     flag = ifelse(freq_check != 1, 1, 0)
   )
 
-if (sum(hr_check$flag) > 0){
+# QC Check - determine if the frequencies in each Tenure, Age Group crosstab add to 1
+ten_check <- tenure_rates |> 
+  group_by(
+    rpa_acr,
+    ageCAT6
+  ) |> 
+  summarise(
+    freq_check = sum(freq)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    flag = ifelse(freq_check != 1, 1, 0)
+  )
+
+# Print statement to verify w/in headhship groups that the numbers all add up accordingly.
+if (sum(hr_check$flag) > 0 | sum(ten_check$flag) > 0){
+  # Print when numbers are incorrect.
   print("STOP! Check headship rate calculations!")
 } else{
+  #Print when numbers are correct.
   print("Proceed!")
+  
+  # Remove QC files.
+  rm(hr_check, ten_check)
 }
 
 # Write this dataframe to .csv
 write.csv(
   headship_rates.2000,
   paste0(hdsp.r_path,"hdsp.r_2000_RPA.AgeCat.HHtype.csv"),
+  row.names = FALSE
+)
+
+# Write this dataframe to .csv
+write.csv(
+  tenure_rates.2000,
+  paste0(hdsp.r_path,"hdsp.r_2000_RPA.AgeCat.Tenure.csv"),
   row.names = FALSE
 )
 ```

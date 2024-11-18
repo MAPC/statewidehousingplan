@@ -778,7 +778,7 @@ headship_rates <- pums_data |>
   filter(TYPEHUGQ == "1") |> 
   # Groups by variables in the dataframe necessary to getting the granularity of
   # data we're interested in.
-  group_by(rpa_acr, ageCAT6, tenure) |> 
+  group_by(rpa_acr, ageCAT6) |> 
   # Computes the weighted sum of individuals in each HH type category by the groups
   # assigned above.
   count(var = HHtype, wt = WGTP) |>
@@ -798,7 +798,40 @@ headship_rates <- pums_data |>
   ungroup() |> 
    select(
      -c(n)
-   )
+   ) |> 
+  mutate(
+    ageCAT6 = as.factor(ageCAT6)
+  )
+
+# Generating headship rates by RPA and 5-year age group for the ACS 2017-2022 PUMS
+tenure_rates <- pums_data |> 
+  # Join the PUMA to RPA ceosswalk to the PUMS data
+  left_join(
+    xw,
+    by = c('PUMA')
+  ) |>
+  # Includes only observations for people in households (omits GQ)                       
+  filter(TYPEHUGQ == "1") |> 
+  # Groups by variables in the dataframe necessary to getting the granularity of
+  # data we're interested in.
+  group_by(rpa_acr, ageCAT6) |> 
+  # Computes the weighted sum of individuals in each HH type category by the groups
+  # assigned above.
+  count(var = TEN_Group, wt = WGTP) |>
+  ungroup() |> 
+  group_by(rpa_acr, ageCAT6) |> 
+  # Converts numbers into frequencies.                       
+  mutate(
+    freq = (n/sum(n))
+  ) |> 
+  # Removes the level of aggregation set earlier by group_by()
+  ungroup() |> 
+  select(
+    -c(n)
+  ) |> 
+  mutate(
+    ageCAT6 = as.factor(ageCAT6)
+  )
 
 # QC Check - determine if the frequencies in each RP, Age Group crosstab add to 1
 hr_check <- headship_rates |> 
@@ -814,14 +847,31 @@ hr_check <- headship_rates |>
     flag = ifelse(freq_check != 1, 1, 0)
   )
 
-if (sum(hr_check$flag) > 0){
+# QC Check - determine if the frequencies in each Tenure, Age Group crosstab add to 1
+ten_check <- tenure_rates |> 
+  group_by(
+    rpa_acr,
+    ageCAT6
+  ) |> 
+  summarise(
+    freq_check = sum(freq)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    flag = ifelse(freq_check != 1, 1, 0)
+  )
+
+# Print statement to verify w/in headhship groups that the numbers all add up accordingly.
+if (sum(hr_check$flag) > 0 | sum(ten_check$flag) > 0){
+  # Print when numbers are incorrect.
   print("STOP! Check headship rate calculations!")
 } else{
+  #Print when numbers are correct.
   print("Proceed!")
+  
+  # Remove QC files.
+  rm(hr_check, ten_check)
 }
-
-#Remove QC check dataframe
-rm(hr_check)
 
 ```
 

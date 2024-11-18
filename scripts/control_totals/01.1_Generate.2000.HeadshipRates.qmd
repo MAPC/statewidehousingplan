@@ -45,6 +45,7 @@ library(tidyverse)
 library(data.table)
 library(mapcdatakeys)
 library(janitor)
+library(here)
 
 # Remove scientific notation
 options(scipen = 999)
@@ -53,7 +54,7 @@ set.seed(351)
 
 # Load Libraries for PUMS Analysis and PUMS API query functions
 # Sets seed and removes scientific notation
-source("C:/Project_Work/statewidehousingplan/PUMS_Analysis/PUMS_Helper_Functions.R")
+source(here("PUMS_Analysis/PUMS_Helper_Functions.R"))
 
 # Load PUMA x RPA Crosswalk
 xw <- read.csv(paste0(puma.xwalk_path, "PUMA_2000Geog.csv")) |> 
@@ -249,13 +250,13 @@ hr_check <- headship_rates.2000 |>
   )
 
 # QC Check - determine if the frequencies in each Tenure, Age Group crosstab add to 1
-ten_check <- tenure_rates |> 
+ten_check <- tenure_rates.2000 |> 
   group_by(
     rpa_acr,
     ageCAT6
   ) |> 
   summarise(
-    freq_check = sum(freq)
+    freq_check = sum(freq.2000)
   ) |> 
   ungroup() |> 
   mutate(

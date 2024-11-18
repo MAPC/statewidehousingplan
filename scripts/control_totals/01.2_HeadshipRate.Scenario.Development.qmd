@@ -683,7 +683,7 @@ tenure_rates.split <- pums_data.adj |>
     by = c('PUMA')
   ) |>
   # Includes only observations for people in households (omits GQ)                       
-  filter(TYPEHUGQ == "1") |> 
+  filter(SPORDER.adj == 1 & TYPEHUGQ == "1") |> 
   # Groups by variables in the dataframe necessary to getting the granularity of
   # data we're interested in.
   group_by(rpa_acr, ageCAT6) |> 
@@ -811,7 +811,7 @@ tenure_rates <- pums_data |>
     by = c('PUMA')
   ) |>
   # Includes only observations for people in households (omits GQ)                       
-  filter(TYPEHUGQ == "1") |> 
+  filter(SPORDER == 1 & TYPEHUGQ == "1") |> 
   # Groups by variables in the dataframe necessary to getting the granularity of
   # data we're interested in.
   group_by(rpa_acr, ageCAT6) |> 
@@ -1004,7 +1004,7 @@ if (sum(hr_check$flag) > 1){
 
 # Write to .csv
 write.csv(
-  hdshp.r_2000.compare.1721split,
+  hdshp.r_2000.compare.1721.split,
   paste0(root,"Scenario_2/headship.rates.comparison_2000.hsr_to_1721.household.split.hsr.csv"),
   row.names = FALSE
 )
@@ -1024,7 +1024,7 @@ ten.r_2000 <- read_csv(paste0(rwt_path,"Headship_rates/hdsp.r_2000_RPA.AgeCat.Te
 # Compare Headship Rates from 2000 5% PUMS and Headship Rates from 17-21 ACS 5-year with Split Households by RPA, Age Category, and Household Type
 ten.r_2000.compare.1721.split <- full_join(
   ten.r_2000,
-  ten.r_1721.split,
+  tenure_rates.split,
   by = c("rpa_acr","ageCAT6","var")
 ) |> 
   mutate(
@@ -1080,7 +1080,7 @@ if (sum(ten_check$flag) > 1){
 
 # Write to .csv
 write.csv(
-  ten.r_2000.compare.1721split,
+  ten.r_2000.compare.1721.split,
   paste0(root,"Scenario_2/ten.rates.comparison_2000.tr_to_1721.household.split.tr.csv"),
   row.names = FALSE
 )

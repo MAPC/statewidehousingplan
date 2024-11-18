@@ -176,6 +176,7 @@ pums_data <- read.csv(paste0(pums_path, "pums_overcrowding_2000_V_2024-11-09.csv
 # 2.0 Calculate Headship Rates for 2000 by RPA. Age Group, and Household Type
 
 ```{r}
+# Generating headship rates by RPA, 5-year age group, and Household Type for the 2000 Census PUMS 5% File
 headship_rates.2000 <- pums_data |> 
   # Includes only observations for people in households (omits GQ)                       
   filter(GQTYPE == 0) |> 
@@ -210,7 +211,7 @@ headship_rates.2000 <- pums_data |>
 # Generating headship rates by RPA, 5-year age group, and Tenure for the 2000 Census PUMS 5% File
 tenure_rates.2000 <- pums_data |> 
   # Includes only observations for people in households (omits GQ)                       
-  filter(GQTYPE == 0) |> 
+  filter(PERNUM == 1 & GQTYPE == 0) |> 
   # Groups by variables in the dataframe necessary to getting the granularity of
   # data we're interested in.
   group_by(rpa_acr,ageCAT6) |> 

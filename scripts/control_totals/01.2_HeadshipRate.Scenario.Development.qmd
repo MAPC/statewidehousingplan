@@ -13,7 +13,7 @@ editor: visual
 #root <- '../../../../Data/Working/Regional_Control_Totals/'
 
 # Base root. Toggle between S: and K: drive depending on mapped paths on your computer
- base <- "K:/DataServices/Projects/Current_Projects/"
+base <- "K:/DataServices/Projects/Current_Projects/"
 # base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
 
 #General K drive filepath
@@ -50,8 +50,8 @@ set.seed(351)
 
 # Load Libraries for PUMS Analysis and PUMS API query functions
 # Sets seed and removes scientific notation
-# source(here("PUMS_Analysis/PUMS_Helper_Functions.R"))
-source("C:/Project_Work/statewidehousingplan/PUMS_Analysis/PUMS_Helper_Functions.R")
+source(here("PUMS_Analysis/PUMS_Helper_Functions.R"))
+# source("C:/Project_Work/statewidehousingplan/PUMS_Analysis/PUMS_Helper_Functions.R")
 
 # Load PUMA x RPA Crosswalk
 xw <- read.csv(paste0(rwt_path, "PUMS_data/PUMA10_RPA_crosswalk.csv")) |> 
@@ -71,7 +71,8 @@ vintage <- 2021
 variable_list <- c('RT', 'PUMA', 'ADJHSG','ADJINC','NP','TYPEHUGQ','BDSP','RMSP','CPLT','HHLDRAGEP',
                    'HHLDRRAC1P','HHLDRHISP', 'HHT', 'HHT2', 'HINCP', 'HUGCL', 'HUPAC', 'HUPAOC',
                    'HUPARC', 'LNGI', 'MULTG', 'NPF', 'NPP', 'NR','NRC', 'PARTNER', 'PSF','R18',
-                   'AGEP','RELSHIPP','RAC1P','OC','SFN','SFR','TEN', "SEX", "PINCP", "ESR")
+                   'AGEP','RELSHIPP','RAC1P','OC','SFN','SFR','TEN', "SEX", "PINCP", "ESR",
+                   'GRPIP', 'OCPIP', 'MV')
 
 # SEMP bottom coding has changed from $1 to $4 like WAGP
 
@@ -363,7 +364,7 @@ rm(pums_data.adj.og, pums_data.adj.adj)
 # 3.2 Redefine SPORDER and Relationship Variables
 
 ```{r}
-# Create a test data frame before putting this into production
+# Redefine SPORDER and Relationship Variables in the pums_data.adj dataframe
 pums_data.adj <- pums_data.adj |>
   mutate(
     # Create a row ID number to loop through later.
@@ -405,10 +406,13 @@ pums_data.adj <- pums_data.adj |>
 # 3.3 Re-create households variables for split households
 
 ```{r}
+# Re-create households variables for split households
 pums_data.adj <- pums_data.adj |> 
   mutate(
     # Counts as Worker
-    # NOTE: Categories are (0) under 16 or not in labor force, or (1) in labor force or non-civilian worker
+    # NOTE: Categories are:
+    # (0) under 16 or not in labor force
+    # (1) in labor force or non-civilian worker
     worker = case_when(
       (ESR == "b" | ESR == 6) ~ 0,
       (ESR == 1 | ESR == 2 | ESR == 3 | ESR == 4 | ESR == 5) ~ 1,
@@ -440,14 +444,22 @@ pums_data.adj <- pums_data.adj |>
   ) |> 
   ungroup() |> 
   mutate(
-    # Categorizing worker categories (0) no workers, (1) one worker, (2) two workers, (3) three or more workers
+    # Categorizing worker categories:
+    # (0) no workers
+    # (1) one worker
+    # (2) two workers
+    # (3) three or more workers
     WRKHH = case_when(
       Worker_Total == 0 ~ 0,
       Worker_Total == 1 ~ 1,
       Worker_Total == 2 ~ 2,
       Worker_Total >= 3 ~ 3
       ),
-    # Determine if person is not hhder vs hhder of 0- wrk, 1wrk, 2 wrk, 3+wrk
+    # Determine if person is not hhder vs hhder of 
+    # (0) No workers
+    # (1) One worker
+    # (2) Two workers
+    # (3) Three or more workers
     HHder = case_when(
       SPORDER.adj == 1 & WRKHH == 0 ~ 0,
       SPORDER.adj == 1 & WRKHH == 1 ~ 1,
@@ -455,7 +467,12 @@ pums_data.adj <- pums_data.adj |>
       SPORDER.adj == 1 & WRKHH == 3 ~ 3,
       SPORDER.adj > 1 ~ 99
     ),
-    # Determine what type of household the person is heading or not heading (1) Householder of Household with Children, (2) Non-Householder in a Household with Children, (3) Householder of a Household with Multiple Adults and no children, (4) Non-Householder in a Household with no children, (5) Householder of a Single Person Household
+    # Determine what type of household the person is heading or not heading 
+    # (1) Householder of Household with Children
+    # (2) Non-Householder in a Household with Children
+    # (3) Householder of a Household with Multiple Adults and no children
+    # (4) Non-Householder in a Household with no children 
+    # (5) Householder of a Single Person Household
     HHtype = case_when(
       Child_Total >= 1 & NP.adj > 1 & HHder != 99 ~ 1,
       Child_Total >= 1 & NP.adj > 1 & HHder == 99 ~ 2,
@@ -464,9 +481,6 @@ pums_data.adj <- pums_data.adj |>
       NP.adj == 1 & HHder != 99 ~ 5
     )
   )
-
-test <- pums_data.adj |> 
-  filter(SERIALNO == "2017000008507")
 
 # List of meaningful recalculations:
 # 1. NP - summing the number of persons present in original and split subfamily households
@@ -633,7 +647,7 @@ headship_rates.split <- pums_data.adj |>
   filter(TYPEHUGQ == "1") |> 
   # Groups by variables in the dataframe necessary to getting the granularity of
   # data we're interested in.
-  group_by(rpa_acr, ageCAT6, tenure) |> 
+  group_by(rpa_acr, ageCAT6) |> 
   # Computes the weighted sum of individuals in each HH type category by the groups
   # assigned above.
   count(var = HHtype, wt = WGTP)  |>
@@ -656,6 +670,42 @@ headship_rates.split <- pums_data.adj |>
   ) |> 
   dplyr::rename(
     freq.split = freq
+  ) |> 
+  mutate(
+    ageCAT6 = as.factor(ageCAT6)
+  )
+
+# Generating headship rates by RPA and 5-year age group for the ACS 2017-2022 PUMS
+tenure_rates.split <- pums_data.adj |> 
+  # Join the PUMA to RPA crosswalk to the PUMS data
+  left_join(
+    xw,
+    by = c('PUMA')
+  ) |>
+  # Includes only observations for people in households (omits GQ)                       
+  filter(TYPEHUGQ == "1") |> 
+  # Groups by variables in the dataframe necessary to getting the granularity of
+  # data we're interested in.
+  group_by(rpa_acr, ageCAT6) |> 
+  # Computes the weighted sum of individuals in each HH type category by the groups
+  # assigned above.
+  count(var = TEN_Group, wt = WGTP)  |>
+  ungroup() |> 
+  group_by(rpa_acr, ageCAT6) |>
+  # Converts numbers into frequencies.                       
+  mutate(
+    freq = (n/sum(n))
+  ) |> 
+  # Removes the level of aggregation set earlier by group_by()
+  ungroup() |> 
+  select(
+    -c(n)
+  ) |> 
+  dplyr::rename(
+    freq.split = freq
+  ) |> 
+  mutate(
+    ageCAT6 = as.factor(ageCAT6)
   )
 
 # QC Check - determine if the frequencies in each RP, Age Group crosstab add to 1
@@ -672,19 +722,43 @@ hr_check <- headship_rates.split |>
     flag = ifelse(freq_check != 1, 1, 0)
   )
 
-if (sum(hr_check$flag) > 0){
+# QC Check - determine if the frequencies in each Tenure, Age Group crosstab add to 1
+ten_check <- tenure_rates.split |> 
+  group_by(
+    rpa_acr,
+    ageCAT6
+  ) |> 
+  summarise(
+    freq_check = sum(freq.split)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    flag = ifelse(freq_check != 1, 1, 0)
+  )
+
+# Print statement to verify w/in headhship groups that the numbers all add up accordingly.
+if (sum(hr_check$flag) > 0 | sum(ten_check$flag) > 0){
+  # Print when numbers are incorrect.
   print("STOP! Check headship rate calculations!")
 } else{
+  #Print when numbers are correct.
   print("Proceed!")
+  
+  # Remove QC files.
+  rm(hr_check, ten_check)
 }
-
-#Remove QC check dataframe
-rm(hr_check)
 
 # Export headship rates
 write.csv(
   headship_rates.split,
   paste0(root,"Scenario_2/headship.rates_household.split.csv"),
+  row.names = FALSE
+)
+
+# Export tenure rates
+write.csv(
+  tenure_rates.split,
+  paste0(root,"Scenario_2/tenure.rates_household.split.csv"),
   row.names = FALSE
 )
 
@@ -779,6 +853,7 @@ write.csv(
 ```
 
 # 6.0 Compare 2000 Headship Rates and 1721 Split Headship Rates by RPA, Age Category, and Household Type
+
 ```{r}
 hdsp.r_2000 <- read.csv(paste0(rwt_path,"Headship_rates/hdsp.r_2000_RPA.AgeCat.HHtype.csv")) |> 
   filter(

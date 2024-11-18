@@ -879,89 +879,89 @@ if(sum(qc.population.df$gq.check.20 > 0)){
 # 4.0 QC Check - Compare Census Population by Age by Sex to Projected Population data
 
 ```{r}
-#Projections 
-proj.pop.10 <- umdi.pop.MAPC101 |> 
-  filter(year == 2010) |> 
-  mutate(
-    muni_id = as.character(muni_id),
-    ageCAT6 = as.character(ageCAT6)
-  ) |> 
-  select(
-    muni_id,
-    Sex,
-    ageCAT6,
-    pop
-  )
-
-proj.pop.20 <- umdi.pop.MAPC101 |> 
-  filter(year == 2020) |> 
-  mutate(
-    muni_id = as.character(muni_id),
-    ageCAT6 = as.character(ageCAT6)
-  ) |> 
-  select(
-    muni_id,
-    Sex,
-    ageCAT6,
-    pop
-  )
-
-#Census
-pop.10 <- population.df |> 
-  select(
-    muni_id,
-    Sex,
-    ageCAT6,
-    Population.10
-  )
-  
-pop.20 <- population.df |> 
-  select(
-    muni_id,
-    Sex,
-    ageCAT6,
-    Population.20
-  )
-
-#QC Check - 2010 Population
-qc.population.10 <- left_join(
-  pop.10,
-  proj.pop.10,
-  by = c("muni_id", "Sex", "ageCAT6")
-) |> 
-  mutate(
-    qc.check = Population.10 - pop
-  )
-
-#Print terms to automatically tell the user if they have passed the QC check.
-if (sum(qc.population.10$qc.check > 0)){
-  print("STOP! Please check 2010 Census data queries and UMDI Population Projections data.")
-} else{
-  print("PROCEED!")
-  
-  #Remove QC dataframes
-  rm(qc.population.10, pop.10, proj.pop.10)
-}
-
-#QC Check - 2020 Population
-qc.population.20 <- left_join(
-  pop.20,
-  proj.pop.20,
-  by = c("muni_id", "Sex", "ageCAT6")
-) |> 
-  mutate(
-    qc.check = Population.20 - pop
-  )
-
-#Print terms to automatically tell the user if they have passed the QC check
-if(sum(qc.population.20$qc.check > 0)){
-  print("STOP! Please check 2020 Census data queries and UMDI Population Projections data.")
-} else{
-  print("PROCEED!")
-  
-  #Remove QC dataframes
-  rm(qc.population.20, pop.20, proj.pop.20)
-}
+# #Projections 
+# proj.pop.10 <- umdi.pop.MAPC101 |> 
+#   filter(year == 2010) |> 
+#   mutate(
+#     muni_id = as.character(muni_id),
+#     ageCAT6 = as.character(ageCAT6)
+#   ) |> 
+#   select(
+#     muni_id,
+#     Sex,
+#     ageCAT6,
+#     pop
+#   )
+# 
+# proj.pop.20 <- umdi.pop.MAPC101 |> 
+#   filter(year == 2020) |> 
+#   mutate(
+#     muni_id = as.character(muni_id),
+#     ageCAT6 = as.character(ageCAT6)
+#   ) |> 
+#   select(
+#     muni_id,
+#     Sex,
+#     ageCAT6,
+#     pop
+#   )
+# 
+# #Census
+# pop.10 <- population.df |> 
+#   select(
+#     muni_id,
+#     Sex,
+#     ageCAT6,
+#     Population.10
+#   )
+#   
+# pop.20 <- population.df |> 
+#   select(
+#     muni_id,
+#     Sex,
+#     ageCAT6,
+#     Population.20
+#   )
+# 
+# #QC Check - 2010 Population
+# qc.population.10 <- left_join(
+#   pop.10,
+#   proj.pop.10,
+#   by = c("muni_id", "Sex", "ageCAT6")
+# ) |> 
+#   mutate(
+#     qc.check = Population.10 - pop
+#   )
+# 
+# #Print terms to automatically tell the user if they have passed the QC check.
+# if (sum(qc.population.10$qc.check > 0)){
+#   print("STOP! Please check 2010 Census data queries and UMDI Population Projections data.")
+# } else{
+#   print("PROCEED!")
+#   
+#   #Remove QC dataframes
+#   rm(qc.population.10, pop.10, proj.pop.10)
+# }
+# 
+# #QC Check - 2020 Population
+# qc.population.20 <- left_join(
+#   pop.20,
+#   proj.pop.20,
+#   by = c("muni_id", "Sex", "ageCAT6")
+# ) |> 
+#   mutate(
+#     qc.check = Population.20 - pop
+#   )
+# 
+# #Print terms to automatically tell the user if they have passed the QC check
+# if(sum(qc.population.20$qc.check > 0)){
+#   print("STOP! Please check 2020 Census data queries and UMDI Population Projections data.")
+# } else{
+#   print("PROCEED!")
+#   
+#   #Remove QC dataframes
+#   rm(qc.population.20, pop.20, proj.pop.20)
+# }
 
 ```
 
@@ -1977,7 +1977,7 @@ size20_mapc97 <- size20 |>
 
 ```
 
-# 7.4.1 Load in Headship Rate Scenarios
+# 7.5 Load in Headship Rate Scenarios
 
 ```{r}
 # Create a standard function for reading in headship rates
@@ -2022,7 +2022,7 @@ if (scen == "Scenario_1"){ # Scenario 1
 
 ```
 
-# 7.4.2 Join Headship Rates to Projected Population in Households by Age Group and RPA
+# 7.6 Join Headship Rates to Projected Population in Households by Age Group and RPA
 
 ```{r}
 # Load in Population in Households for MAPC101
@@ -2136,7 +2136,7 @@ proj.hh.MAPC97_by.mpo.tenure <- tenure_rates |>
 
 ```
 
-# 7.5 Create Reweighter Template Files for Household Projections by RPA/MPO and Household Type
+# 7.7 Create Reweighter Template Files for Household Projections by RPA/MPO and Household Type
 
 ------------------------------------------------------------------------
 

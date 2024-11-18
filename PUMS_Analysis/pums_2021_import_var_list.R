@@ -454,7 +454,9 @@ over_list <- c('RT',
                'OC',
                'SFN',
                'SFR',
-               'TEN')
+               'TEN',
+               'OCPIP',
+               'GRPIP')
   
 over_vars <- uniq_vars %>%
   filter(var_code %in% over_list)
@@ -503,7 +505,9 @@ multiadult_list <- c('RT',
                'OC',
                'SFN',
                'SFR',
-               'TEN')
+               'TEN',
+               'GRPIP',
+               'OCPIP')
 
 # 15.1 export MULTIADULT
 write_csv(pums_multiadult_2021, paste0(exp_path,"/pums_multiadult_2021_V_",dateAsText,".csv"))
@@ -570,7 +574,9 @@ familysize_list <- c('uniq_obs',
                      'GRPIP',
                      'MV',
                      'SRNTSVAL',
-                     'YRBLT') # added 3 oct
+                     'YRBLT',
+                     'GRPIP',
+                     'OCPIP') # added 3 oct
 
 # 16.2 export familysize
 write_csv(pums_familysize_2021, paste0(exp_path,"/pums_familysize_2021_V_",dateAsText,".csv"))

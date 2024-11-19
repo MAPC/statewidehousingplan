@@ -71,10 +71,5 @@ get_full_parcel_data<-function (muni_name){
   return(full_parcels)
 }
 
-why<-get_full_parcel_data("Boston")
 
-ggplot(why)+geom_sf()
-
-par_geom_test<-par_geom%>%
-  st_transform(crs = st_crs(full_parcels[[1]]))
 

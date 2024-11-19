@@ -8,17 +8,31 @@ ma_munis<- st_read("https://services1.arcgis.com/hGdibHYSPO59RG1h/ArcGIS/rest/se
 psep_2030<- arc_read("https://services1.arcgis.com/7iJyYTjCtKsZS1LR/arcgis/rest/services/Coastal_flooding_probability_1000yr_storms/FeatureServer/0")%>%
   st_transform(crs = st_crs(ma_munis))%>%
   st_make_valid()%>%
-  st_union
+  st_union()
 
 psep_2050<-arc_read("https://services1.arcgis.com/7iJyYTjCtKsZS1LR/arcgis/rest/services/Coastal_flooding_probability_1000yr_storms/FeatureServer/1")%>%
   st_transform(crs = st_crs(ma_munis))%>%
   st_make_valid()%>%
-  st_union
+  st_union()
+
+what<-arc_read("https://services1.arcgis.com/7iJyYTjCtKsZS1LR/ArcGIS/rest/services/Coastal_flooding_probability_1000yr_storms/FeatureServer/01")
 
 psep_2070<-arc_read("https://services1.arcgis.com/7iJyYTjCtKsZS1LR/arcgis/rest/services/Coastal_flooding_probability_1000yr_storms/FeatureServer/2")%>%
   st_transform(crs = st_crs(ma_munis))%>%
   st_make_valid()%>%
   st_union()
+
+mcfrm_k <- st_read("K:/DataServices/Datasets/Environment and Energy/MCFRM/Extent_1pct/Extent_1pct_2pt4ftslr.shp")%>%
+  st_transform(crs = st_crs(ma_munis))
+
+psep_2030_shp<- arc.data2sf(arc.select(arc.open(paste0(arc_pro_gdb, "/psep2030_exp"))))%>%
+  st_transform(crs = st_crs(ma_munis))
+
+psep_2050_shp<- arc.data2sf(arc.select(arc.open(paste0(arc_pro_gdb, "/psep2050_exp"))))%>%
+  st_transform(crs = st_crs(ma_munis))
+
+psep_2070_shp<- arc.data2sf(arc.select(arc.open(paste0(arc_pro_gdb, "/psep2070_exp"))))%>%
+  st_transform(crs = st_crs(ma_munis))
 
 
 ### Munis in MC-FRM ##
@@ -32,10 +46,10 @@ muni_list <- st_intersection(st_make_valid(ma_munis), st_make_valid(psep_2070))%
 # ma_par_arc<- arc_read("https://services1.arcgis.com/hGdibHYSPO59RG1h/ArcGIS/rest/services/L3_TAXPAR_POLY_ASSESS_gdb/FeatureServer/0")%>%
 #    filter(CITY %in% muni_list$TOWN)
 
-#full_parcels<- NULL
+full_parcels<- NULL
 
 
-for (x in 80:length(muni_list$TOWN)){
+for (x in 1:length(muni_list$TOWN)){
   
   full_parcels[[x]]<- get_full_parcel_data(muni_name = muni_list$TOWN[x])
   
@@ -43,4 +57,4 @@ for (x in 80:length(muni_list$TOWN)){
 
 #all_parcels<-rbindlist(full_parcels)
 
-l#ength(muni_list$TOWN)
+#length(muni_list$TOWN)

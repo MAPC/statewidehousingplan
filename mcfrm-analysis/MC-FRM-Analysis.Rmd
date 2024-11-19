@@ -13,7 +13,7 @@ source("libraries.R")
 source("functions.R")
 source("make-data.R")
 
-
+# Run time start: 3:10 PM 11/14
 ```
 
 ## Defining Variables
@@ -21,11 +21,14 @@ source("make-data.R")
 ```{r}
 
 # output paths
-output_path<- paste0("C:/Users/",Sys.info()["username"],"/OneDrive - Metropolitan Area Planning Council")
+output_path<- paste0("C:/Users/",Sys.info()["user"],"/OneDrive - Metropolitan Area Planning Council/Documents - Data Services/_Current Projects/_Housing/Statewide Housing Plan - EOHLC/04_Data")
 
-arc_pro_gdb<- "K:/DataServices/Projects/Current_Projects/"
+arc_pro_gdb<- "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/SHP-MCFRM-InundatedUnits/SHP-MCFRM-InundatedUnits.gdb"
 
-
+ggplot()+
+  geom_sf(data = psep_2030,
+          fill = "light blue")+
+  
 
 ```
 
@@ -36,51 +39,67 @@ arc_pro_gdb<- "K:/DataServices/Projects/Current_Projects/"
 
 output_table<-NULL
 
-#fixing Boston
-
-full_parcels[[21]]<-full_parcels[[21]]%>%
-  st_transform(st_crs(full_parcels[[1]]))
-
 for (z in 1:length(full_parcels)){
-  
+
+#make sure all parcels have the right crs  
 all_parcels_int <-st_make_valid(full_parcels[[z]])%>%
-  mutate(psep2030 = st_intersects(psep_2030),
-         psep2050 = st_intersects(psep_2050),
-         psep2070 = st_intersects(psep_2070))%>%
-  st_drop_geometry()
-
-
+  st_transform(crs = st_crs(ma_munis))
+#filter parcels to the MC-FRM 2030 Projected Stormwater Espspsps 
 units_in_mcfrm30<- all_parcels_int%>%
-  filter(psep2030 = TRUE)%>%
+ st_filter(st_make_valid(psep_2030_shp))
+
+#summarize by use code (so later we can make sure only residential units are counted)
+mcfrm30_sum<-units_in_mcfrm30 %>%
   group_by(CITY, USE_CODE_SYMB)%>%
   summarize(units_2030 = sum(imputed_units),
-            value_2030 = sum(TOTAL_VAL))
+            value_2030 = sum(TOTAL_VAL))%>%
+  st_drop_geometry()
 
+#Repeat for 2050 scenario
 units_in_mcfrm50<- all_parcels_int%>%
+  st_filter(st_make_valid(psep_2050_shp))
+
+mcfrm50_sum<-units_in_mcfrm50 %>%
   group_by(CITY, USE_CODE_SYMB)%>%
   summarize(units_2050 = sum(imputed_units),
-            value_2050 = sum(TOTAL_VAL))
+            value_2050 = sum(TOTAL_VAL))%>%
+  st_drop_geometry()
 
-
+#Repeat for 2070 scenario
 units_in_mcfrm70 <-all_parcels_int%>%
+  st_filter(st_make_valid(psep_2070_shp))
+
+mcfrm70_sum<-units_in_mcfrm70 %>%
   group_by(CITY, USE_CODE_SYMB)%>%
   summarize(units_2070 = sum(imputed_units),
-            value_2070 = sum(TOTAL_VAL))
+            value_2070 = sum(TOTAL_VAL))%>%
+  st_drop_geometry()
 
-
-output_table[[z]]<- full_join(units_in_mcfrm30, units_in_mcfrm50, by = c("CITY", "USE_CODE_SYMB"))%>%
-  full_join(., units_in_mcfrm70, by = c("CITY", "USE_CODE_SYMB"))
+#joins the summarized tables to one table
+output_table[[z]]<- full_join(mcfrm30_sum, mcfrm50_sum, by = c("CITY", "USE_CODE_SYMB"))%>%
+  full_join(., mcfrm70_sum, by = c("CITY", "USE_CODE_SYMB"))
 
 }
 
-obt<-rbindlist(output_table)
+view(output_table[[98]])
 
+obt<-rbindlist(output_table)%>%
+  filter(!is.na(CITY))
+
+
+ggplot(all_parcels_int)+geom_sf()+
+  geom_sf(data = units_in_mcfrm70,
+          fill = "darkblue")+
+  geom_sf(data = units_in_mcfrm50,
+          fill = "blue")+
+  geom_sf(data= units_in_mcfrm30,
+          fill = "lightblue")
 
 ```
 
 ```{r}
 
-ggplot(st_union(st_make_valid(psep_2030)))+geom_sf()
+write.csv(obt, paste0(output_path, "/town_mcfrm_units_results.csv"))
 
 ```
 

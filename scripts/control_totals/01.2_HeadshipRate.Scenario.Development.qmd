@@ -571,7 +571,44 @@ if(sum(sum(subset.1$new.hhds), sum(subset.2$new.hhds)) != sum(sum(subset.1.adj.t
 
 ```
 
-# 3.5 Analysis of Subset Households
+# 3.5 Create PUMS Extract for Reweighter
+```{r}
+# Creating the PUMS data extract for Scenario 2
+pums_data.adj.rwt <- pums_data.adj |> 
+  left_join(
+    xw,
+    by = c("PUMA"),
+    relationship = "many-to-many"
+  )
+
+# Create a list of RPA's to cycle through when filtering for the reweighter extracts
+rpa.list <- c("BRPC","CCC","FRCOG","CMRPC","MAPC","MVC","MVPC","NMCOG","NPEDC","OCPC","PVPC","SRPEDD")
+
+# For loop to filter PUMS data by RPA for reweighter base data
+for (i in rpa.list){
+  # Filter PUMS data by RPA
+  tmp <- pums_data.adj.rwt |> 
+    filter(
+      rpa_acr == i
+    )
+  
+  # Write PUMS extract to reweighter input folder for Scenario 2
+  write.csv(
+    tmp,
+    file = paste0(rwt_path,"/Scenario_2/Input_Files/",i,"/Split.PUMS2021_",i,".csv"),
+    row.names = FALSE
+  )
+  
+  # Remove tmp file created for a specific RPA
+  rm(tmp)
+  
+  # Print statement 
+  print(paste0("Scenario 2 PUMS Extract for ", i, " written."))
+}
+
+```
+
+# 3.6 Analysis of Subset Households
 
 ```{r}
 # Full dataframe of subset households.

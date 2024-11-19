@@ -79,7 +79,11 @@ rpa_yrbuilt <- pums_rpa |>
   group_by(rpa_acr) |> 
   #summing hh weights to get estimate of households
   summarise(hh_est = sum(WGTP)) |> 
-  ungroup()
+  ungroup() |> 
+  mutate(
+    hh_total = sum(hh_est), 
+    percent = hh_est/hh_total
+  )
 
 write.csv(
   rpa_yrbuilt,
@@ -109,7 +113,12 @@ ct_yrbuilt <- pums_ct |>
   group_by(cmtyp08) |> 
   #summing hh weights to get estimate of households
   summarise(hh_est = sum(WGTP)) |> 
-  ungroup()
+  ungroup() |> 
+  mutate(
+    hh_total = sum(hh_est), 
+    percent = hh_est/hh_total
+  )
+
 
 write.csv(
   ct_yrbuilt,
@@ -138,7 +147,12 @@ build_typ <- pums_ct |>
   group_by(bld_typ) |> 
   #summing hh weights to get estimate of households
   summarise(hh_est = sum(WGTP)) |> 
-  ungroup()
+  ungroup() |> 
+  mutate(
+    hh_total = sum(hh_est), 
+    percent = hh_est/hh_total
+  )
+
 
 write.csv(
   build_typ,
@@ -168,7 +182,12 @@ ct_build_typ <- pums_ct |>
   group_by(cmtyp08, bld_typ) |> 
   #summing hh weights to get estimate of households 
   summarise(hh_est = sum(WGTP)) |> 
-  ungroup()
+  ungroup()|> 
+  mutate(
+    hh_total = sum(hh_est), 
+    percent = hh_est/hh_total
+  )
+
 
 write.csv(
   ct_build_typ,
@@ -209,7 +228,12 @@ ct_build_typ_inc <- pums_ct |>
   group_by(cmtyp08, bld_typ, HH.Income.Grp) |> 
   #summing hh weights to get estimate of households
   summarise(hh_est = sum(WGTP)) |> 
-  ungroup()
+  ungroup() |> 
+  mutate(
+    hh_total = sum(hh_est), 
+    percent = hh_est/hh_total
+  )
+
 
 write.csv(
   ct_build_typ_inc,
@@ -257,7 +281,12 @@ ct_build_typ_re <- pums_ct |>
   group_by(cmtyp08, bld_typ, HHLDER.RACE.Grp, HHDER.HISP.Grp) |> 
   #summing hh weights to get estimate of households 
   summarise(hh_est = sum(WGTP)) |> 
-  ungroup()
+  ungroup() |> 
+  mutate(
+    hh_total = sum(hh_est), 
+    percent = hh_est/hh_total
+  )
+
 
 write.csv(
   ct_build_typ_re,
@@ -293,7 +322,12 @@ ct_build_typ_ten <- pums_ct |>
   group_by(cmtyp08, bld_typ, tenure) |> 
   #summing hh weights to get estimate of households 
   summarise(hh_est = sum(WGTP)) |> 
-  ungroup()
+  ungroup() |> 
+  mutate(
+    hh_total = sum(hh_est), 
+    percent = hh_est/hh_total
+  )
+
 
 write.csv(
   ct_build_typ_ten,

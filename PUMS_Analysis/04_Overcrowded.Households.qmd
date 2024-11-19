@@ -6,6 +6,14 @@ editor: visual
 
 # 0.0 Setup - Define helper functions, set knitr path, load necessary packages, set muni data keys
 
+```{r}
+#===============================================================================
+#TODO:
+# x. Create a multigenerational variable that is more in line with IPUMS
+# x. 
+#===============================================================================
+```
+
 # 0.1 - Set knitr path + root for inputs
 
 ```{r, setup, include=FALSE}
@@ -43,7 +51,7 @@ variable_list <- c('RT', 'PUMA', 'ADJHSG','ADJINC','NP','TYPEHUGQ','BDSP','RMSP'
                    'AGEP','RELSHIPP','RAC1P','OC','SFN','SFR','TEN', "SEX", "PINCP", "ESR",
                    "MV", "GRPIP", "OCPIP")
 
-#Load PUMS variables
+# Load PUMS variables
 pums <- pums_query(var.list = variable_list, yr = vintage, srvy = "acs5") |> 
   mutate(
     PUMA = as.character(str_pad(PUMA, width = 5, side = "left", pad = 0))
@@ -325,7 +333,7 @@ OC.PPB <- pums_cleaned |>
     pct = oc.hh/sum(oc.hh)
   )
 
-#Write the output to csv
+# Write the output to csv
 write.csv(
   OC.PPB,
   paste0(output_path,"04_Overcrowding/overcrowding.PPB.StateLevel.csv"),
@@ -358,7 +366,7 @@ OC.FAMILY.PPB <- pums_cleaned |>
     -c(hh)
   )
 
-#Write the output to csv
+# Write the output to csv
 write.csv(
   OC.FAMILY.PPB,
   paste0(output_path, "04_Overcrowding/overcrowding.Child.PPB.StateLevel.csv"),
@@ -393,7 +401,7 @@ OC.BDRMS.PPB <- pums_cleaned |>
     -c(hh)
   )
 
-#Write the output to csv
+# Write the output to csv
 write.csv(
   OC.BDRMS.PPB,
   paste0(output_path, "04_Overcrowding/overcrowding.BDRMS.PPB.StateLevel.csv"),
@@ -435,7 +443,7 @@ OC.RPA.PPB <- pums_cleaned |>
     -c(hh)
   )
 
-#Write output to csv
+# Write output to csv
 write.csv(
   OC.RPA.PPB,
   paste0(output_path,"04_Overcrowding/overcrowding.PPB.RPALevel.csv"),
@@ -444,7 +452,7 @@ write.csv(
 
 #===============================================================================
 # 1.2.2 Overcrowding by RPA and family households
-OC.FAMILY.RPA.PPB <- pums |>
+OC.FAMILY.RPA.PPB <- pums_cleaned |>
   left_join(
     xw,
     by = c("PUMA"),
@@ -475,7 +483,7 @@ OC.FAMILY.RPA.PPB <- pums |>
     -c(hh)
   )
 
-#Write output to csv
+# Write output to csv
 write.csv(
   OC.FAMILY.RPA.PPB,
   paste0(output_path, "04_Overcrowding/overcrowding.Child.PPB.RPALevel.csv"),
@@ -484,7 +492,7 @@ write.csv(
 
 #===============================================================================
 # 1.2.3 Overcrowding by Number of Bedrooms and RPA
-OC.BDRMS.RPA.PPB <- pums |> 
+OC.BDRMS.RPA.PPB <- pums_cleaned |> 
   left_join(
     xw,
     by = c("PUMA"),
@@ -517,7 +525,7 @@ OC.BDRMS.RPA.PPB <- pums |>
     -c(hh)
   )
 
-#Write output to csv
+# Write output to csv
 write.csv(
   OC.BDRMS.RPA.PPB,
   paste0(output_path, "04_Overcrowding/overcrowding.BDRMS.PPB.RPALevel.csv"),
@@ -546,7 +554,7 @@ A subfamily is defined as either 1) a married couple without children or a 2) si
 ```{r}
 #===============================================================================
 # 2.2.1 Overcrowding by Presence of a Subfamily
-OC.SF.PPB <- pums |> 
+OC.SF.PPB <- pums_cleaned |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
     SFN.flag,
@@ -571,6 +579,7 @@ OC.SF.PPB <- pums |>
     -c(hh)
   )
 
+# Write output to csv
 write.csv(
   OC.SF.PPB,
   paste0(output_path, "04_Overcrowding/overcrowding.SF.PPB.csv"),
@@ -579,10 +588,10 @@ write.csv(
 
 #===============================================================================
 # 2.2.2 Overcrowding by Number of Subfamilies
-OC.NumSF.PPB <- pums |> 
+OC.NumSF.PPB <- pums_cleaned |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
-    SFN.num,
+    SFN_Total,
     overcrowded.ppb
   ) |> 
   summarise(
@@ -590,7 +599,7 @@ OC.NumSF.PPB <- pums |>
   ) |> 
   ungroup() |>
   group_by(
-    SFN.num
+    SFN_Total
   ) |> 
   mutate(
     hh = sum(oc.hh)
@@ -604,6 +613,7 @@ OC.NumSF.PPB <- pums |>
     -c(hh)
   )
 
+# Write output to csv
 write.csv(
   OC.NumSF.PPB,
   paste0(output_path, "04_Overcrowding/overcrowding.NumSF.PPB.csv"),
@@ -612,7 +622,12 @@ write.csv(
 
 #===============================================================================
 # 2.2.3 Overcrowding by RPA and Presence of a Subfamily
-OC.SF.RPA.PPB <- pums |> 
+OC.SF.RPA.PPB <- pums_cleaned |> 
+  left_join(
+    xw,
+    by = c("PUMA"),
+    relationship = "many-to-many"
+  ) |>
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
     rpa_acr,
@@ -639,6 +654,7 @@ OC.SF.RPA.PPB <- pums |>
     -c(hh)
   )
 
+# Write output to csv
 write.csv(
   OC.SF.RPA.PPB,
   paste0(output_path, "04_Overcrowding/overcrowding.SF.PPB.RPAlevel.csv"),
@@ -647,11 +663,16 @@ write.csv(
 
 #===============================================================================
 # 2.2.4 Overcrowding by RPA and Number of Subfamilies
-OC.NumSF.RPA.PPB <- pums |> 
+OC.NumSF.RPA.PPB <- pums_cleaned |>
+  left_join(
+    xw,
+    by = c("PUMA"),
+    relationship = "many-to-many"
+  ) |>
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
     rpa_acr,
-    SFN.num,
+    SFN_Total,
     overcrowded.ppb
   ) |> 
   summarise(
@@ -660,7 +681,7 @@ OC.NumSF.RPA.PPB <- pums |>
   ungroup() |>
   group_by(
     rpa_acr,
-    SFN.num
+    SFN_Total
   ) |> 
   mutate(
     hh = sum(oc.hh)
@@ -674,6 +695,7 @@ OC.NumSF.RPA.PPB <- pums |>
     -c(hh)
   )
 
+# Write output to csv
 write.csv(
   OC.NumSF.RPA.PPB,
   paste0(output_path, "04_Overcrowding/overcrowding.NumSF.PPB.RPAlevel.csv"),
@@ -695,7 +717,7 @@ A second definition is more expansive, one which IPUMS has coded into their micr
 # 3.1 Redefining Multigenerational households
 
 ```{r}
-pums <- pums |> 
+pums_ <- pums_cleaned |> 
   mutate(
     #Create a variable that categorizes people into "generations" by their relationship
     #to the householder
@@ -711,7 +733,7 @@ pums <- pums |>
 ```{r}
 #===============================================================================
 # 3.2.1 Overcrowding by Multigenerational Households (Census Definition)
-OC.MULTG.PPB <- pums |> 
+OC.MULTG.PPB <- pums_cleaned |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
     MULTG,
@@ -736,6 +758,7 @@ OC.MULTG.PPB <- pums |>
     -c(hh)
   )
 
+# Write output to csv
 write.csv(
   OC.MULTG.PPB,
   paste0(output_path, "04_Overcrowding/overcrowding.MULTG.PPB.csv"),
@@ -744,7 +767,12 @@ write.csv(
 
 #===============================================================================
 # 3.2.2 Overcrowding by RPA and Multigenerational Households (Census Definitions)
-OC.MULTG.RPA.PPB <- pums |> 
+OC.MULTG.RPA.PPB <- pums_cleaned |>
+  left_join(
+    xw,
+    by = c("PUMA"),
+    relationship = "many-to-many"
+  ) |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
     rpa_acr,
@@ -770,6 +798,8 @@ OC.MULTG.RPA.PPB <- pums |>
   select(
     -c(hh)
   )
+
+# Write output to csv
 write.csv(
   OC.MULTG.RPA.PPB,
   paste0(output_path, "04_Overcrowding/overcrowding.MULTG.PPB.RPAlevel.csv"),
@@ -790,7 +820,7 @@ A far greater proportion of households formed of people from multiple generation
 ```{r}
 #===============================================================================
 # 4.1.1 Overcrowding by Multigenerational Households (Census Definition) and Presence of Subfamily
-OC.MULTG.SF.PPB <- pums |> 
+OC.MULTG.SF.PPB <- pums_cleaned |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
     MULTG,
@@ -817,6 +847,7 @@ OC.MULTG.SF.PPB <- pums |>
     -c(hh)
   )
 
+# Write output to csv
 write.csv(
   OC.MULTG.SF.PPB,
   paste0(output_path, "04_Overcrowding/overcrowding.MULTG.SF.PPB.csv"),
@@ -825,7 +856,12 @@ write.csv(
 
 #===============================================================================
 # 4.1.2 Overcrowding by RPA and Multigenerational Households (Census Definitions) and Presence of Subfamily
-OC.MULTG.SF.RPA.PPB <- pums |> 
+OC.MULTG.SF.RPA.PPB <- pums_cleaned |>
+  left_join(
+    xw,
+    by = c("PUMA"),
+    relationship = "many-to-many"
+  ) |>  
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
     rpa_acr,
@@ -854,6 +890,7 @@ OC.MULTG.SF.RPA.PPB <- pums |>
     -c(hh)
   )
 
+# Write output to csv
 write.csv(
   OC.MULTG.SF.RPA.PPB,
   paste0(output_path, "04_Overcrowding/overcrowding.MULTG.SF.PPB.RPAlevel.csv"),
@@ -862,7 +899,7 @@ write.csv(
 
 #===============================================================================
 # 4.1.3 Overcrowding by RPA and Multigenerational Households (Census Definitions) and Presence of Subfamily and Presence of Children
-OC.MULTG.SF.Child.PPB <- pums |> 
+OC.MULTG.SF.Child.PPB <- pums_cleaned |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
     MULTG,
@@ -891,6 +928,7 @@ OC.MULTG.SF.Child.PPB <- pums |>
     -c(hh)
   )
 
+# Write output to csv
 write.csv(
   OC.MULTG.SF.FAMILY.PPB,
   paste0(output_path, "04_Overcrowding/overcrowding.MULTG.SF.Child.PPB.RPAlevel.csv"),
@@ -899,11 +937,11 @@ write.csv(
 
 #===============================================================================
 # 4.1.4 Overcrowding and Multigenerational Households (Census Definitions) and Number of Subfamilies
-OC.MULTG.NumSF.PPB <- pums |> 
+OC.MULTG.NumSF.PPB <- pums_cleaned |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
     MULTG,
-    SFN.num,
+    SFN_Total,
     overcrowded.ppb
   ) |> 
   summarise(
@@ -912,7 +950,7 @@ OC.MULTG.NumSF.PPB <- pums |>
   ungroup() |>
   group_by(
     MULTG,
-    SFN.num
+    SFN_Total
   ) |> 
   mutate(
     hh = sum(oc.hh)
@@ -926,6 +964,7 @@ OC.MULTG.NumSF.PPB <- pums |>
     -c(hh)
   )
 
+# Write output to csv
 write.csv(
   OC.MULTG.NumSF.PPB,
   paste0(output_path, "04_Overcrowding/overcrowding.MULTG.NumSF.PPB.csv"),
@@ -938,7 +977,7 @@ OC.MULTG.NumSF.Child.PPB <- pums |>
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
     MULTG,
-    SFN.num,
+    SFN_Total,
     child_flag,
     overcrowded.ppb
   ) |> 
@@ -948,7 +987,7 @@ OC.MULTG.NumSF.Child.PPB <- pums |>
   ungroup() |>
   group_by(
     MULTG,
-    SFN.num,
+    SFN_Total,
     child_flag
   ) |> 
   mutate(
@@ -963,6 +1002,7 @@ OC.MULTG.NumSF.Child.PPB <- pums |>
     -c(hh)
   )
 
+# Write output to csv
 write.csv(
   OC.MULTG.NumSF.PPB,
   paste0(output_path, "04_Overcrowding/overcrowding.MULTG.NumSF.Child.PPB.csv"),
@@ -971,12 +1011,17 @@ write.csv(
 
 #===============================================================================
 # 4.1.6 Overcrowding and Multigenerational Households (Census Definitions) and Number of Subfamilies by RPA
-OC.MULTG.NumSF.RPA.PPB <- pums |> 
+OC.MULTG.NumSF.RPA.PPB <- pums_cleaned |>
+  left_join(
+    xw,
+    by = c("PUMA"),
+    relationship = "many-to-many"
+  ) |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
     rpa_acr,
     MULTG,
-    SFN.num,
+    SFN_Total,
     overcrowded.ppb
   ) |> 
   summarise(
@@ -986,7 +1031,7 @@ OC.MULTG.NumSF.RPA.PPB <- pums |>
   group_by(
     rpa_acr,
     MULTG,
-    SFN.num
+    SFN_Total
   ) |> 
   mutate(
     hh = sum(oc.hh)
@@ -1000,6 +1045,7 @@ OC.MULTG.NumSF.RPA.PPB <- pums |>
     -c(hh)
   )
 
+# Write output to csv
 write.csv(
   OC.MULTG.NumSF.RPA.PPB,
   paste0(output_path, "04_Overcrowding/overcrowding.MULTG.NumSF.RPAlevel.PPB.csv"),
@@ -1008,12 +1054,17 @@ write.csv(
 
 #===============================================================================
 # 4.1.7 Overcrowding by RPA and Multigenerational Households (Census Definitions) and Number of Subfamilies and Presence of Children by RPA
-OC.MULTG.NumSF.Child.RPA.PPB <- pums |> 
+OC.MULTG.NumSF.Child.RPA.PPB <- pums_cleaned |>
+  left_join(
+    xw,
+    by = c("PUMA"),
+    relationship = "many-to-many"
+  ) |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
     rpa_acr,
     MULTG,
-    SFN.num,
+    SFN_Total,
     child_flag,
     overcrowded.ppb
   ) |> 
@@ -1024,7 +1075,7 @@ OC.MULTG.NumSF.Child.RPA.PPB <- pums |>
   group_by(
     rpa_acr,
     MULTG,
-    SFN.num,
+    SFN_Total,
     child_flag
   ) |> 
   mutate(
@@ -1039,6 +1090,7 @@ OC.MULTG.NumSF.Child.RPA.PPB <- pums |>
     -c(hh)
   )
 
+# Write output to csv
 write.csv(
   OC.MULTG.NumSF.Child.RPA.PPB,
   paste0(output_path, "04_Overcrowding/overcrowding.MULTG.NumSF.Child.RPAlevel.PPB.csv"),
@@ -1066,10 +1118,10 @@ From there
 ```{r}
 #===============================================================================
 # 5.1 Overcrowding by Tenure at the State-Level
-OC.TEN.PPB <- pums |> 
+OC.TEN.PPB <- pums_cleaned |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
-    TEN.desc,
+    TEN_Group,
     overcrowded.ppb
   ) |> 
   summarise(
@@ -1087,6 +1139,7 @@ OC.TEN.PPB <- pums |>
     pct = round(oc.hh/hh, digits = 3)
   )
 
+# Create a visualization of the table created above
 BG.OC.TEN.PPB <- OC.TEN.PPB |> 
   filter(overcrowded.ppb == "1") |> 
   ggplot(aes(x = TEN.desc, y = pct)) +
@@ -1105,8 +1158,10 @@ BG.OC.TEN.PPB <- OC.TEN.PPB |>
     axis.text.y = element_text(color = "black")
   )
 
+# View the table created above
 BG.OC.TEN.PPB
 
+# Save the visualization created above
 ggsave(
   filename = "BG.OC.TEN.PPB.jpeg",
   plot = BG.OC.TEN.PPB,
@@ -1118,13 +1173,25 @@ ggsave(
   dpi = 300
 )
 
+# Write the output to csv
+write.csv(
+  OC.TEN.PPB,
+  paste0(output_path,"04_Overcrowding/overcrowding.OC.TEN.Statelevel.PPB.csv"),
+  row.names = FALSE
+)
+
 #===============================================================================
-# 5.2 Overcrowding by Tenure at the State-Level
-OC.TEN.RPA.PPB <- pums |> 
+# 5.2 Overcrowding by Tenure at the RPA-Level
+OC.TEN.RPA.PPB <- pums_cleaned  |>
+  left_join(
+    xw,
+    by = c("PUMA"),
+    relationship = "many-to-many"
+  ) |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
     rpa_acr,
-    TEN.desc,
+    TEN_Group,
     overcrowded.ppb
   ) |> 
   summarise(
@@ -1142,12 +1209,12 @@ OC.TEN.RPA.PPB <- pums |>
     pct = round(oc.hh/hh, digits = 3)
   )
 
-# #Write the output to csv
-# write.csv(
-#   OC.PPB,
-#   paste0(output_path,"04_Overcrowding/overcrowding.PPB.StateLevel.csv"),
-#   row.names = FALSE
-# )
+# Write the output to csv
+write.csv(
+  OC.TEN.RPA.PPB,
+  paste0(output_path,"04_Overcrowding/overcrowding.OC.TEN.RPAlevel.PPB.csv"),
+  row.names = FALSE
+)
 ```
 
 # 5.2 Income Groups
@@ -1155,7 +1222,7 @@ OC.TEN.RPA.PPB <- pums |>
 ```{r}
 #===============================================================================
 # 5.2 Overcrowding by Income Groups at the State-Level
-OC.INC.PPB <- pums |> 
+OC.INC.PPB <- pums_cleaned |> 
   # Filters dataframe to households (non-group quarters units) and householders.
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
@@ -1176,6 +1243,13 @@ OC.INC.PPB <- pums |>
   mutate(
     pct = round(oc.hh/hh, digits = 3)
   )
+
+# Write the output to csv
+write.csv(
+  OC.INC.PPB,
+  paste0(output_path,"04_Overcrowding/overcrowding.OC.INC.Statelevel.PPB.csv"),
+  row.names = FALSE
+)
 
 # Use this list to set the order of the income groups in the bar graph
 level_order <- c("<=$35,000", "$35,001-$75,000", "$75,001-$125,000", "$125,001-$225,000", ">$225,000")
@@ -1213,38 +1287,46 @@ ggsave(
   units = "in",
   dpi = 300
 )
+
 ```
 
 # 5.3 Race Groups
 
 ```{r}
 #===============================================================================
-# 5.3 Overcrowding by Income Groups at the State-Level
-OC.HHLDER_RACE.PPB <- pums |> 
+# 5.3 Overcrowding by Household Race Groups at the State-Level
+OC.HHLDERRACE.PPB <- pums_cleaned |> 
   # Filters dataframe to households (non-group quarters units) and householders.
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
-    HHLDER.RACE.Grp,
+    HHLDERRACE_Group,
     overcrowded.ppb
   ) |> 
+  # Calculates the number of overcrowded and non-overcrowded households in each crosstab group.
   summarise(
-    # Calculates the number of overcrowded and non-overcrowded households in each crosstab group.
     oc.hh = sum(WGTP)
   ) |> 
   ungroup() |> 
   group_by(
-    HHLDER.RACE.Grp
+    HHLDERRACE_Group
   ) |> 
+  # Calculates the total number of households in the crosstab group (OC + Non-OC)
   mutate(
-    # Calculates the total number of households in the crosstab group (OC + Non-OC)
     hh = sum(oc.hh)
   ) |> 
   ungroup() |>
+  # Create a percent of overcrowded and non-overcrowded households within each crosstab group.
+  # Round to three digits.
   mutate(
-    # Create a percent of overcrowded and non-overcrowded households within each crosstab group.
-    # Round to three digits.
     pct = round(oc.hh/hh, digits = 3)
   )
+
+# Write the output to csv
+write.csv(
+  OC.HHLDERRACE.PPB,
+  paste0(output_path,"04_Overcrowding/overcrowding.OC.HHLDERRACE.Statelevel.PPB.csv"),
+  row.names = FALSE
+)
 
 # Creates a bar graph of using the dataframe created above.
 BG.OC.HHLDER_RACE.PPB <- OC.HHLDER_RACE.PPB |>
@@ -1285,32 +1367,39 @@ ggsave(
 
 ```{r}
 #===============================================================================
-# 5.4 Overcrowding by Income Groups at the State-Level
-OC.NONRELATE.PPB <- pums |> 
+# 5.4 Overcrowding by Presence of Nonrelatives at the State-Level
+OC.NONRELATE.PPB <- pums_cleaned |> 
   # Filters dataframe to households (non-group quarters units) and householders.
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
     NONRELATIVE.flag,
     overcrowded.ppb
   ) |> 
+  # Calculates the number of overcrowded and non-overcrowded households in each crosstab group.
   summarise(
-    # Calculates the number of overcrowded and non-overcrowded households in each crosstab group.
     oc.hh = sum(WGTP)
   ) |> 
   ungroup() |> 
   group_by(
     NONRELATIVE.flag
   ) |> 
+  # Calculates the total number of households in the crosstab group (OC + Non-OC)
   mutate(
-    # Calculates the total number of households in the crosstab group (OC + Non-OC)
     hh = sum(oc.hh)
   ) |> 
   ungroup() |>
+  # Create a percent of overcrowded and non-overcrowded households within each crosstab group.
+  # Round to three digits.
   mutate(
-    # Create a percent of overcrowded and non-overcrowded households within each crosstab group.
-    # Round to three digits.
     pct = round(oc.hh/hh, digits = 3)
   )
+
+# Write the output to csv
+write.csv(
+  OC.NONRELATE.PPB,
+  paste0(output_path,"04_Overcrowding/overcrowding.OC.NONRELATE.Statelevel.PPB.csv"),
+  row.names = FALSE
+)
 
 # Creates a bar graph of using the dataframe created above.
 BG.OC.NONRELATE.PPB <- OC.NONRELATE.PPB |> 
@@ -1354,31 +1443,38 @@ ggsave(
 ```{r}
 #===============================================================================
 # 5.5 Overcrowding by Income Groups at the State-Level
-OC.HHLDER_HISP.PPB <- pums |> 
+OC.HHLDERHISP.PPB <- pums_cleaned |> 
   # Filters dataframe to households (non-group quarters units) and householders.
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
-    HHDER.HISP.Grp,
+    HHDERHISP_Group,
     overcrowded.ppb
   ) |> 
+  # Calculates the number of overcrowded and non-overcrowded households in each crosstab group.
   summarise(
-    # Calculates the number of overcrowded and non-overcrowded households in each crosstab group.
     oc.hh = sum(WGTP)
   ) |> 
   ungroup() |> 
   group_by(
-    HHDER.HISP.Grp
+    HHDERHISP_Group
   ) |> 
+# Calculates the total number of households in the crosstab group (OC + Non-OC)
   mutate(
-    # Calculates the total number of households in the crosstab group (OC + Non-OC)
     hh = sum(oc.hh)
   ) |> 
   ungroup() |>
+# Create a percent of overcrowded and non-overcrowded households within each crosstab group.
+# Round to three digits.
   mutate(
-    # Create a percent of overcrowded and non-overcrowded households within each crosstab group.
-    # Round to three digits.
     pct = round(oc.hh/hh, digits = 3)
   )
+
+# Write the output to csv
+write.csv(
+  OC.HHLDERHISP.PPB,
+  paste0(output_path,"04_Overcrowding/overcrowding.OC.HHLDERHISP.Statelevel.PPB.csv"),
+  row.names = FALSE
+)
 
 # Creates the bar graph for the above table
 BG.OC.HHLDER_HISP.PPB <- OC.HHLDER_HISP.PPB |> 

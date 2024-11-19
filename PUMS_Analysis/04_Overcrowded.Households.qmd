@@ -10,7 +10,8 @@ editor: visual
 #===============================================================================
 #TODO:
 # x. Create a multigenerational variable that is more in line with IPUMS
-# x. 
+# x. Create a table creation function
+# x. Create a graph creation function
 #===============================================================================
 ```
 
@@ -1124,17 +1125,21 @@ OC.TEN.PPB <- pums_cleaned |>
     TEN_Group,
     overcrowded.ppb
   ) |> 
+  # Calculates the number of overcrowded and non-overcrowded households in each crosstab group.
   summarise(
     oc.hh = sum(WGTP)
   ) |> 
   ungroup() |> 
   group_by(
-    TEN.desc
+    TEN_Group
   ) |> 
+  # Calculates the total number of households in the crosstab group (OC + Non-OC)
   mutate(
     hh = sum(oc.hh)
   ) |> 
   ungroup() |>
+  # Create a percent of overcrowded and non-overcrowded households within each crosstab group.
+  # Round to three digits.
   mutate(
     pct = round(oc.hh/hh, digits = 3)
   )
@@ -1194,6 +1199,7 @@ OC.TEN.RPA.PPB <- pums_cleaned  |>
     TEN_Group,
     overcrowded.ppb
   ) |> 
+  # Calculates the number of overcrowded and non-overcrowded households in each crosstab group.
   summarise(
     oc.hh = sum(WGTP)
   ) |> 
@@ -1201,10 +1207,13 @@ OC.TEN.RPA.PPB <- pums_cleaned  |>
   group_by(
     rpa_acr
   ) |> 
+  # Calculates the total number of households in the crosstab group (OC + Non-OC)
   mutate(
     hh = sum(oc.hh)
   ) |> 
   ungroup() |> 
+  # Create a percent of overcrowded and non-overcrowded households within each crosstab group.
+  # Round to three digits.
   mutate(
     pct = round(oc.hh/hh, digits = 3)
   )
@@ -1229,6 +1238,7 @@ OC.INC.PPB <- pums_cleaned |>
     HH.Income.Grp,
     overcrowded.ppb
   ) |> 
+  # Calculates the number of overcrowded and non-overcrowded households in each crosstab group.
   summarise(
     oc.hh = sum(WGTP)
   ) |> 
@@ -1236,10 +1246,13 @@ OC.INC.PPB <- pums_cleaned |>
   group_by(
     HH.Income.Grp
   ) |> 
+  # Calculates the total number of households in the crosstab group (OC + Non-OC)
   mutate(
     hh = sum(oc.hh)
   ) |> 
   ungroup() |>
+  # Create a percent of overcrowded and non-overcrowded households within each crosstab group.
+  # Round to three digits.
   mutate(
     pct = round(oc.hh/hh, digits = 3)
   )

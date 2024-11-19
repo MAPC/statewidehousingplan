@@ -1677,11 +1677,148 @@ ggsave(
 # 5.8 Household Type
 
 ```{r}
+#===============================================================================
+# 5.8 Overcrowding by Household Type at the State-Level
+OC.HHtype.PPB <- pums_cleaned |> 
+  # Filters dataframe to households (non-group quarters units) and householders.
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
+  group_by(
+    HHtype,
+    overcrowded.ppb
+  ) |> 
+  # Calculates the number of overcrowded and non-overcrowded households in each crosstab group.
+  summarise(
+    oc.hh = sum(WGTP)
+  ) |> 
+  ungroup() |> 
+  group_by(
+    HHtype
+  ) |> 
+# Calculates the total number of households in the crosstab group (OC + Non-OC)
+  mutate(
+    hh = sum(oc.hh)
+  ) |> 
+  ungroup() |>
+# Create a percent of overcrowded and non-overcrowded households within each crosstab group.
+# Round to three digits.
+  mutate(
+    pct = round(oc.hh/hh, digits = 3)
+  )
+
+# Write the output to csv
+write.csv(
+  OC.HHtype.PPB,
+  paste0(output_path,"04_Overcrowding/overcrowding.OC.HHtype.Statelevel.PPB.csv"),
+  row.names = FALSE
+)
+
+# Creates the bar graph for the above table
+BG.OC.HHtype.PPB <-OC.HHtype.PPB |> 
+  # Filter for the overcrowded aggregates.
+  filter(overcrowded.ppb == "1") |> 
+  ggplot(aes(x = HHtype, y = pct)) +
+  geom_bar(stat = "identity", color = "black", fill = "steelblue") +
+  geom_text(aes(label = scales::percent(pct)), vjust = -0.3, size = 3.5) +
+  scale_y_continuous(label = scales::percent) +
+  labs(
+    title = "Households with Children are More Likely to Overcrowded Than Any Other Household Type",
+    x = "Household Type",
+    y = "Percent of Households which are Overcrowded"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(color = "black"),
+    axis.text.y = element_text(color = "black")
+  )
+
+# Print the bar graph created above.
+BG.OC.HHtype.PPB
+
+# Save an image of the bar graph created above.
+ggsave(
+  filename = "BG.OC.HHtype.PPB.jpeg",
+  plot = BG.OC.HHtype.PPB,
+  device = "jpeg",
+  path = output_path,
+  width = 10,
+  height = 7,
+  units = "in",
+  dpi = 300
+)
+
 ```
 
 # 5.9 Cost-Burden
 
 ```{r}
+#===============================================================================
+# 5.9 Overcrowding by Housing Cost Burdened Status at the State-Level
+OC.CostBurdened.PPB <- pums_cleaned |> 
+  # Filters dataframe to households (non-group quarters units) and householders.
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
+  group_by(
+    CostBurdened,
+    overcrowded.ppb
+  ) |> 
+  # Calculates the number of overcrowded and non-overcrowded households in each crosstab group.
+  summarise(
+    oc.hh = sum(WGTP)
+  ) |> 
+  ungroup() |> 
+  group_by(
+    CostBurdened
+  ) |> 
+# Calculates the total number of households in the crosstab group (OC + Non-OC)
+  mutate(
+    hh = sum(oc.hh)
+  ) |> 
+  ungroup() |>
+# Create a percent of overcrowded and non-overcrowded households within each crosstab group.
+# Round to three digits.
+  mutate(
+    pct = round(oc.hh/hh, digits = 3)
+  )
+
+# Write the output to csv
+write.csv(
+  OC.CostBurdened.PPB,
+  paste0(output_path,"04_Overcrowding/overcrowding.OC.CostBurdened.Statelevel.PPB.csv"),
+  row.names = FALSE
+)
+
+# Creates the bar graph for the above table
+BG.OC.CostBurdened.PPB <- OC.CostBurdened.PPB |> 
+  # Filter for the overcrowded aggregates.
+  filter(overcrowded.ppb == "1") |> 
+  ggplot(aes(x = CostBurdened, y = pct)) +
+  geom_bar(stat = "identity", color = "black", fill = "steelblue") +
+  geom_text(aes(label = scales::percent(pct)), vjust = -0.3, size = 3.5) +
+  scale_y_continuous(label = scales::percent) +
+  labs(
+    title = "Households with Children are More Likely to Overcrowded Than Any Other Household Type",
+    x = "Cost Burdened Status",
+    y = "Percent of Households which are Overcrowded"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(color = "black"),
+    axis.text.y = element_text(color = "black")
+  )
+
+# Print the bar graph created above.
+BG.OC.CostBurdened.PPB
+
+# Save an image of the bar graph created above.
+ggsave(
+  filename = "BG.OC.CostBurdened.PPB.jpeg",
+  plot = BG.OC.CostBurdened.PPB,
+  device = "jpeg",
+  path = output_path,
+  width = 10,
+  height = 7,
+  units = "in",
+  dpi = 300
+)
 ```
 
 # 5.10 AMI-Levels

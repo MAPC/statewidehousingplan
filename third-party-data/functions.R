@@ -60,3 +60,119 @@ mortgage_calculator <- function(df, down_payment, loan_term, ho_insurance, condo
     
   return(mortgage_df)
 }
+
+# Function to compare monthly homeownership costs to HUD income levels
+## input 1: a table that has gone through the mortgage calculator and includes fields for muni_id, fiscal year, number of bedrooms, and estimated monthly payment 
+## input 2: the output wanted in the summary table - either 'count' or 'percent'
+## output: a summary table with either counts or percents of homes affordable to buyers at different income levels by municipality, fiscal year, and household size
+
+affordable_sales <- function(df, output_type) {
+
+  ### read in table with HUD income lmiits from database
+  # Set the driver
+  drv = dbDriver("PostgreSQL")
+  ch.ds = dbConnect(drv, host='10.10.10.240', port='5432', dbname='ds', user='viewer', password=rstudioapi::askForPassword("Database password"))
+  # Prompt database connection 
+  #db_connection <- dbConnect(drv, host = host, port = port, dbname = dbname, user = user, password = password)
+  ami_table <- dbGetQuery(ch.ds, "SELECT * FROM tabular.hous_section8_income_limits_by_year_m") |> 
+    # create income limits for 100% and 120% AMI
+    mutate(
+      # 100% AMI
+      il_100_1 = il_50_1*2,
+      il_100_2 = il_50_2*2,
+      il_100_3 = il_50_3*2,
+      il_100_4 = il_50_4*2,
+      il_100_5 = il_50_5*2,
+      il_100_6 = il_50_6*2,
+      il_100_7 = il_50_7*2,
+      il_100_8 = il_50_8*2,
+      #120% AMI
+      il_120_1 = il_100_1*1.2,
+      il_120_2 = il_100_2*1.2,
+      il_120_3 = il_100_3*1.2,
+      il_120_4 = il_100_4*1.2,
+      il_120_5 = il_100_5*1.2,
+      il_120_6 = il_100_6*1.2,
+      il_120_7 = il_100_7*1.2,
+      il_120_8 = il_100_8*1.2,
+      # mutate columns so they show the upper limit of 1/3 of monthly income rather than annual income
+      across(.cols = -c(seq_id, muni_id, municipal, countyname, areaname, fy_year, median), function(x){(x/12)*0.3})
+    ) 
+  #close db connection
+  dbDisconnect(ch.ds)
+  
+  # create blank output table to write to
+  output <- NULL
+  
+  ### loop through household sizes 1-8
+  for (hh_size in 1:8){
+    # choose only columns for current household size from ami table and rename columns
+    ami_table_filtered <- ami_table |> 
+      select(muni_id, municipal, fy_year, ends_with(as.character(hh_size))) |> 
+      `colnames<-`(c("muni_id", "municipal", "fy_year", "il50","il30","il80","il100", "il120"))
+      
+    # create variable for bed size
+    bed_size = case_when(
+      hh_size <= 2 ~ 0,
+      hh_size <= 4 ~ 2,
+      hh_size <= 6 ~ 3, 
+      hh_size > 6 ~ 4 
+    )  
+    
+    # build output table for current hh size
+    output[[hh_size]] <- df |> 
+      # select only needed columns
+      select(muni_id, bedrooms, fy, monthly_payment) |> 
+      # clean up fiscal year field
+      mutate(
+        fy_year = case_when(
+          fy == 16 ~ 2016,
+          fy == 17 ~ 2017,
+          fy == 18 ~ 2018,
+          fy == 19 ~ 2019,
+          fy == 20 ~ 2020,
+          fy == 21 ~ 2021,
+          fy == 22 ~ 2022,
+          fy == 23 ~ 2023,
+          fy == 24 ~ 2024,
+          TRUE ~ fy
+        )
+      ) |> 
+      # filter to minimum number of bedrooms for household size
+      filter(bedrooms >= bed_size) |> 
+      # join in ami table by hh size
+      left_join(ami_table_filtered, by = c("muni_id", "fy_year")) |>
+      # create fields to track affordability at different income limits
+      mutate(
+        hh_size = hh_size,
+        affordable_30 = ifelse(monthly_payment <= il30, TRUE, FALSE),
+        affordable_50 = ifelse(monthly_payment <= il50, TRUE, FALSE),
+        affordable_80 = ifelse(monthly_payment <= il80, TRUE, FALSE),
+        affordable_100 = ifelse(monthly_payment <= il100, TRUE, FALSE),
+        affordable_120 = ifelse(monthly_payment <= il120, TRUE, FALSE)
+        ) |>
+      group_by(municipal, fy_year, hh_size) 
+      
+    # if else statement to determine what summary table to output based on function input
+    if(output_type == 'count'){
+      output[[hh_size]] <- summarize(output[[hh_size]],
+        # get total transactions that were available to a hh at the given size
+        total_transactions = n(),
+        # get count of affordable transactions at different income levels
+        across(starts_with('affordable_'), sum),
+      )
+    } else if (output_type == 'percent'){
+      output[[hh_size]] <- summarize(output[[hh_size]],
+        # get total transactions that were available to a hh at the given size
+        total_transactions = n(),
+        # get percent of affordable transactions at different income levels
+        across(starts_with('affordable_'), function(x){round(sum(x)/total_transactions, digits = 3)})
+      )
+    } else{
+      print("Please specify either count or percent as an output")
+    }
+  }
+  output_all <- rbindlist(output)
+  return(output_all)
+}
+

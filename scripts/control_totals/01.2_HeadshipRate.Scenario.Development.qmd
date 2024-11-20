@@ -72,7 +72,7 @@ variable_list <- c('RT', 'PUMA', 'ADJHSG','ADJINC','NP','TYPEHUGQ','BDSP','RMSP'
                    'HHLDRRAC1P','HHLDRHISP', 'HHT', 'HHT2', 'HINCP', 'HUGCL', 'HUPAC', 'HUPAOC',
                    'HUPARC', 'LNGI', 'MULTG', 'NPF', 'NPP', 'NR','NRC', 'PARTNER', 'PSF','R18',
                    'AGEP','RELSHIPP','RAC1P','OC','SFN','SFR','TEN', "SEX", "PINCP", "ESR",
-                   'GRPIP', 'OCPIP', 'MV', 'SCHL', 'HISP')
+                   'GRPIP', 'OCPIP', 'MV', 'SCHL', 'HISP', 'WKHP')
 
 # SEMP bottom coding has changed from $1 to $4 like WAGP
 
@@ -82,14 +82,38 @@ pums_data <- pums_query(var.list = variable_list, yr = vintage, srvy = "acs5") |
   mutate(
     # Generate five-year age groupings to match UMDI population projections data.
     ageCAT6 = cut(AGEP, breaks = c(-Inf, seq(4, 84, 5), Inf), labels = 1:18),
+    # Renaming the 5-year age group variable.
+    AgeCat = ageCAT6,
+    # Generate a custom age grouping
+    # Levels are (0) 0-14; (4) 15 to 19; (5) 20 to 24; (6) 25 to 34; (7) 35 to 44; (8) 45 to 54; (9) 55 to 64 (10) 65 to 74 (11) 75+
+    PAGEC2 = cut(AGEP, breaks = c(-Inf, 14, 19, 24, 34, 44, 54, 64, 74, 79, 84, Inf), labels = c(0, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13)),
+    # Generate ten-year age groupings 
+    # ageCAT4 is the 2020 decennial census age breaks for age of householder - used for 2020 base year control total reweighter targets
+    ageCAT4 = case_when(
+      AGEP %in% 15:24 ~ 1,
+      AGEP %in% 25:34 ~ 2,
+      AGEP %in% 35:44 ~ 3,
+      AGEP %in% 45:54 ~ 4,
+      AGEP %in% 55:59 ~ 5,
+      AGEP %in% 60:64 ~ 6,
+      AGEP %in% 65:74 ~ 7,
+      AGEP %in% 75:84 ~ 8,
+      AGEP >= 85 ~ 9
+    ), 
+    # Creates a tenure grouping for reweighter file:
+    tenure = case_when(# Owned with a mortgage or free and clear -> "1"
+      TEN %in% c('1', '2') ~ 1,
+      # Rented or occupied without payment of rent -> "2"
+      TEN %in% c('3', '4') ~ 2,
+      .default = 999
+    ), 
     # Creates a tenure grouping for:
-    TEN_Group = case_when(
-      # Owned with a mortgage or free and clear -> "Own"
-      TEN %in% c('1','2') ~ "Own",
+    TEN_Group = case_when(# Owned with a mortgage or free and clear -> "Own"
+      TEN %in% c('1', '2') ~ "Own",
       # Rented or occupied without payment of rent -> "Rent"
-      TEN %in% c('3','4') ~ "Rent",
+      TEN %in% c('3', '4') ~ "Rent",
       .default = "Unknown"
-    ),
+    ), 
     # Counts as Worker
     # NOTE - Categories are:
     # (0) under 16 or not in labor force
@@ -97,6 +121,17 @@ pums_data <- pums_query(var.list = variable_list, yr = vintage, srvy = "acs5") |
     worker = case_when(
       (ESR == "b" | ESR == 6) ~ 0,
       (ESR == 1 | ESR == 2 | ESR == 3 | ESR == 4 | ESR == 5) ~ 1,
+      is.na(ESR) ~ 0
+    ),
+    # Categorizing Civilian Labor Force or not
+    # NOTE: Categories ar
+    # (0) under 16 or non-civilian
+    # (1) in labor force
+    # (2) not in labor force
+    lf = case_when(
+      ESR == "b" | ESR == 4 | ESR == 5  ~ 0,
+      ESR == 1 | ESR == 2 | ESR == 3  ~ 1,
+      ESR == 6 ~ 2,
       is.na(ESR) ~ 0
     ),
     # Counts as person
@@ -581,30 +616,45 @@ pums_data.adj.rwt <- pums_data.adj |>
     relationship = "many-to-many"
   )
 
-# Create a list of RPA's to cycle through when filtering for the reweighter extracts
-rpa.list <- c("BRPC","CCC","FRCOG","CMRPC","MAPC","MVC","MVPC","NMCOG","NPEDC","OCPC","PVPC","SRPEDD")
+# Write PUMS extract to reweighter input folder for Scenario 2
+write.csv(
+  pums_data.adj.rwt,
+  file = paste0(rwt_path, '/PUMS_data/PUMS2021.Split_formatted.csv'),
+  row.names = FALSE
+)
 
-# For loop to filter PUMS data by RPA for reweighter base data
-for (i in rpa.list){
-  # Filter PUMS data by RPA
-  tmp <- pums_data.adj.rwt |> 
-    filter(
-      rpa_acr == i
-    )
-  
-  # Write PUMS extract to reweighter input folder for Scenario 2
-  write.csv(
-    tmp,
-    file = paste0(rwt_path,"/Scenario_2/Input_Files/",i,"/Split.PUMS2021_",i,".csv"),
-    row.names = FALSE
-  )
-  
-  # Remove tmp file created for a specific RPA
-  rm(tmp)
-  
-  # Print statement 
-  print(paste0("Scenario 2 PUMS Extract for ", i, " written."))
-}
+# # Creating the PUMS data extract for Scenario 2
+# pums_data.adj.rwt <- pums_data.adj |> 
+#   left_join(
+#     xw,
+#     by = c("PUMA"),
+#     relationship = "many-to-many"
+#   )
+# 
+# # Create a list of RPA's to cycle through when filtering for the reweighter extracts
+# rpa.list <- c("BRPC","CCC","FRCOG","CMRPC","MAPC","MVC","MVPC","NMCOG","NPEDC","OCPC","PVPC","SRPEDD")
+# 
+# # For loop to filter PUMS data by RPA for reweighter base data
+# for (i in rpa.list){
+#   # Filter PUMS data by RPA
+#   tmp <- pums_data.adj.rwt |> 
+#     filter(
+#       rpa_acr == i
+#     )
+#   
+#   # Write PUMS extract to reweighter input folder for Scenario 2
+#   write.csv(
+#     tmp,
+#     file = paste0(rwt_path,"/Scenario_2/Input_Files/",i,"/Split.PUMS2021_",i,".csv"),
+#     row.names = FALSE
+#   )
+#   
+#   # Remove tmp file created for a specific RPA
+#   rm(tmp)
+#   
+#   # Print statement 
+#   print(paste0("Scenario 2 PUMS Extract for ", i, " written."))
+# }
 
 ```
 

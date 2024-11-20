@@ -2006,11 +2006,9 @@ size20_mapc97 <- size20 |>
 # Create a standard function for reading in headship rates
 hdsp.r_read <- function(scenario, file){
   # Read in the .csv with headship rates
-  hdsp.r <- read.csv(
-  paste0(root, scen, file)
-)
+  read_csv(paste0(root, scen,"/", file))
   # Return the headship rate object
-  return(hdsp.r)
+  # return(hdsp.r)
 }
 
 # Logic for which headship rates to use by Scenario
@@ -2022,7 +2020,7 @@ if (scen == "Scenario_1"){ # Scenario 1
 
 } else if (scen == "Scenario_2"){ #Scenario 2
   
-  hdsp.r_read(scenario = scen, file = "headship.rates.comparison_2000.hsr_to_1721.household.split.hsr.csv") |> 
+  hdsp.r <- hdsp.r_read(scenario = scen, file = "headship.rates.comparison_2000.hsr_to_1721.household.split.hsr.csv") |> 
     select(
       rpa_acr,
       ageCAT6,

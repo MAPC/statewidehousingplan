@@ -1,8 +1,11 @@
-### Scripts for requests involving third party data
+## Scripts for requests involving third party data
 
 #### 2024
 
+## Materials
+`functions.R` contains functions written previously or for use in the statewide housing plan by MAPC staff that are utilized in the analyses listed below
 
+### Analayses
 __1. units in coastal flood risk areas__  
 
 __2. sales affordable to middle income buyers__ 

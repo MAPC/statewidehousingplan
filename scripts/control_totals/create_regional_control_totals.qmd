@@ -2018,7 +2018,7 @@ if (scen == "Scenario_1"){ # Scenario 1
   # hdsp.r_read(scenario = scen, file = "/headship_rates.1721.csv")
 
 
-} else if (scen == "Scenario_2"){ #Scenario 2
+} else if (scen == "Scenario_2"){ # Scenario 2
   
   hdsp.r <- hdsp.r_read(scenario = scen, file = "headship.rates.comparison_2000.hsr_to_1721.household.split.hsr.csv") |> 
     select(
@@ -2031,11 +2031,11 @@ if (scen == "Scenario_1"){ # Scenario 1
       freq = freq.scenario2
     )
   
-} else if (scen == "Scenario_3"){ #Scenario 3
+} else if (scen == "Scenario_3"){ # Scenario 3
   
   hdsp.r_read(scenario = scen, file = "")
   
-} else { #Scenario 4
+} else {  #Scenario 4
   
   hdsp.r_read(scenario = scen, file = "")
   
@@ -2060,7 +2060,7 @@ proj.hh.MAPC101_by.rpa.hhtype <- hdsp.r |>
     relationship = "many-to-many") |>
   rowwise() |>
   # Calculating the number of households in each RPA and age category
-  mutate(hh = round(hhpop * freq, 0),) |>
+  mutate(hh = round(hhpop * freq, 0)) |>
   # Filter the headships rates for the three household type categories
   # 1. hhderchild = households with a child under 18
   # 3. hhdernochild = Multiple adult, no children households
@@ -2109,10 +2109,8 @@ proj.hh.MAPC97_by.mpo.hhtype <- hdsp.r |>
   ) |> 
   rename(mpo=rpa_acr) |> 
   rowwise() |> 
-  #Calculating the number of households in each RPA and age catergory
-  mutate(
-    hh = round(hhpop*freq, 0)
-  )  |> 
+  # Calculating the number of households in each RPA and age category
+  mutate(hh = round(hhpop * freq, 0)) |>
   # Filter the headships rates foe the three household type categories
   # 1. hhderchild = households with a child under 18
   # 3. hhdernochild = Multiple adult, no children households
@@ -2127,7 +2125,7 @@ proj.hh.MAPC97_by.mpo.hhtype <- hdsp.r |>
       var == "single" ~ "x == 5"
     ),
     AgeCat = paste0("x == 1", ageCAT6)
-  ) |> 
+  )  |>
   select(-c(pop, hhpop, freq, var, ageCAT6)) |> 
   relocate(mpo, AgeCat, HHtype, hh, year)
 

@@ -36,6 +36,8 @@ mortgage_calculator <- function(df, down_payment, loan_term, ho_insurance, condo
   
   ## MORTGAGE CALCULATOR
   mortgage_df <- df |> 
+    # filter to only include sales of sinlge family homes and condos
+    filter(restype %in% c("R1F", "CON")) |> 
     # joining average property tax rate to warren data by municipality
     left_join(prop_taxrate, by = "municipal") |> 
     # joining mortgage rates
@@ -122,21 +124,10 @@ affordable_sales <- function(df, output_type) {
     # build output table for current hh size
     output[[hh_size]] <- df |> 
       # select only needed columns
-      select(muni_id, bedrooms, fy, monthly_payment) |> 
+      select(muni_id, bedrooms, month, year, monthly_payment) |> 
       # clean up fiscal year field
       mutate(
-        fy_year = case_when(
-          fy == 16 ~ 2016,
-          fy == 17 ~ 2017,
-          fy == 18 ~ 2018,
-          fy == 19 ~ 2019,
-          fy == 20 ~ 2020,
-          fy == 21 ~ 2021,
-          fy == 22 ~ 2022,
-          fy == 23 ~ 2023,
-          fy == 24 ~ 2024,
-          TRUE ~ fy
-        )
+        fy_year = ifelse(month <= 6, year, year+1)
       ) |> 
       # filter to minimum number of bedrooms for household size
       filter(bedrooms >= bed_size) |> 
@@ -155,19 +146,25 @@ affordable_sales <- function(df, output_type) {
       
     # if else statement to determine what summary table to output based on function input
     if(output_type == 'count'){
-      output[[hh_size]] <- summarize(output[[hh_size]],
+      output[[hh_size]] <- mutate(output[[hh_size]],
         # get total transactions that were available to a hh at the given size
         total_transactions = n(),
         # get count of affordable transactions at different income levels
-        across(starts_with('affordable_'), sum),
-      )
+        across(starts_with('affordable_'), sum)
+      ) |> 
+        select(municipal, fy_year, hh_size, total_transactions, affordable_30, affordable_50, affordable_80, affordable_100,
+               affordable_120) |> 
+        distinct()
     } else if (output_type == 'percent'){
-      output[[hh_size]] <- summarize(output[[hh_size]],
+      output[[hh_size]] <- mutate(output[[hh_size]],
         # get total transactions that were available to a hh at the given size
         total_transactions = n(),
         # get percent of affordable transactions at different income levels
         across(starts_with('affordable_'), function(x){round(sum(x)/total_transactions, digits = 3)})
-      )
+      ) |> 
+        select(municipal, fy_year, hh_size, total_transactions, affordable_30, affordable_50, affordable_80, affordable_100,
+               affordable_120) |> 
+        distinct()
     } else{
       print("Please specify either count or percent as an output")
     }

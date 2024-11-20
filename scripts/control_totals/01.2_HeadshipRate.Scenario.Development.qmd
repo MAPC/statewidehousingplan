@@ -511,6 +511,16 @@ pums_data.adj <- pums_data.adj |>
   ) |> 
   ungroup() |> 
   mutate(
+    # Categorizing Household Size
+    size = case_when(
+      NP.adj == 1 ~ 1,
+      NP.adj == 2 ~ 2,
+      NP.adj == 3 ~ 3,
+      NP.adj == 4 ~ 4,
+      NP.adj == 5 ~ 5,
+      NP.adj == 6 ~ 6,
+      NP.adj >= 7 ~ 7,
+    ),
     # Categorizing worker categories:
     # (0) no workers
     # (1) one worker

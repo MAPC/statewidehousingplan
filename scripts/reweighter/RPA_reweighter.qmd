@@ -14,21 +14,21 @@ This set of scripts runs the household reweighter to produce reweighted PUMS dat
 ```{r, setup, include=FALSE}
 
 # Set Scenario name
-scen <- 'Scenario_1'
+scen <- 'Scenario_2'
 
 # Set ACS / PUMS vintage
 vintage <-  2021
 
 # Set headship rate scenario
-hdshp <- 'acs1721'
+hdshp <- 'scen2'
 
 # Set MAPC at 101 or 97 towns
 reb <- 'MAPC101'
 # reb <- 'MAPC97'
 
 # Root Directory
- #root <- 'S:/Network Shares/K Drive/DataServices/Projects/'
- root <- 'K:/DataServices/Projects/'
+ root <- 'S:/Network Shares/K Drive/DataServices/Projects/'
+ #root <- 'K:/DataServices/Projects/'
 
 ctrltotal.path <- paste0(root, 'Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/', scen, '/')
 
@@ -75,10 +75,13 @@ mpos <- unlist(c(mapcdatakeys::all_muni_data_keys |> select(mpo) |> unique()))
 Formatted PUMS data is created by the *create_regional_control_totals.qmd* in section 6.2
 
 ```{r}
-
-pums_data <- fread(paste0(workpath, '/PUMS_data/PUMS', vintage, '_formatted.csv')) |> filter(TYPEHUGQ == "1") |> 
+if(scen=='Scenario_1'){
+pums_data <- fread(paste0(workpath, 'PUMS_data/PUMS', vintage, '_formatted.csv')) |> filter(TYPEHUGQ == "1") |> 
   mutate(AgeCat = ageCAT6)
-
+} else if(scen=='Scenario_2'){
+  pums_data <- fread(paste0(workpath, 'PUMS_data/PUMS', vintage, '.Split_formatted.csv')) |> filter(TYPEHUGQ == "1") |> 
+  mutate(AgeCat = ageCAT6)
+}
 # Make Input folders for reweighter by RPA
 dir.create(paste0(workpath, scen, '/Input_Files/'), showWarnings = F)
 dir.create(paste0(workpath, scen, '/Output_Files/'), showWarnings = F)
@@ -121,9 +124,15 @@ for (m in mpos){
   outfile2 <- paste0(workpath, scen, '/Input_Files/', m, '/reweighting_config_2020baseyear_', m, '.json')
   cfig1 = readLines(infile1)
   cfig1 = gsub('PUMS2021', paste0('PUMS2021_', m), cfig1)
+  if (scen == 'Scenario_2'){
+    cfig1 = gsub('SPORDER', 'SPORDER.adj', cfig1)
+  }
   writeLines(cfig1, outfile1)
   cfig2 = readLines(infile2)
   cfig2 = gsub('PUMS2021', paste0('PUMS2021_', m), cfig2)
+  if (scen == 'Scenario_2'){
+    cfig2 = gsub('SPORDER', 'SPORDER.adj', cfig2)
+  }
   writeLines(cfig2, outfile2)
 }
 
@@ -323,6 +332,7 @@ for (yr in c(2025,2030,2035,2040,2045,2050)){
     setkey(tsum, mpo)
     
     # Calculate total households from the reweighter outputs
+    if (scen=='Scenario_1'){
     pums <- fread(paste0(inpath, 'PUMS', vintage, '_', mid, '.csv'))
     setkey(pums, SERIALNO, SPORDER)
     
@@ -341,6 +351,26 @@ for (yr in c(2025,2030,2035,2040,2045,2050)){
     comp.out[,diff:= TARGET - rw_HH]
     fwrite(comp.out,paste0(outpath,'reweighter_QC_', scen, '_', reb, '_', mid, '_', hdshp, '_', yr,' .csv'))
     comp.dt <- rbind(comp.dt,comp.out)
+    } else if (scen=='Scenario_2'){
+      pums <- fread(paste0(inpath, 'PUMS', vintage, '_', mid, '.csv'))
+    setkey(pums, SERIALNO, SPORDER.adj)
+    
+    rw <- data.table()
+    
+    x <- fread(paste0(outpath, 'weights_final_', scen, '_', mid, '_', yr, '.csv')) |> select(SERIALNO, SPORDER.adj, new_WGTP) |> mutate(mpo = mid) |> setDT()
+    setkey(x, SERIALNO, SPORDER.adj)
+    xp <- pums[x]
+    fwrite(xp, paste0(outpath, '/reweighted_PUMS_', scen, '_', reb, '_', mid, '_', hdshp, '_', yr, '.csv'))
+    xsum <- xp[SPORDER.adj == 1, lapply(.SD, sum), .(mpo), .SDcols = c('WGTP', 'new_WGTP')]
+    xsum[, rw_HH := round(new_WGTP)][, pums_baseline_hh := round(WGTP)]
+    rw <- rbind(rw, xsum)
+    setkey(rw, mpo)
+    comp <- tsum[rw]
+    comp.out <- comp[,.(year,mpo,pums_baseline_hh, TARGET,rw_HH)]
+    comp.out[,diff:= TARGET - rw_HH]
+    fwrite(comp.out,paste0(outpath,'reweighter_QC_', scen, '_', reb, '_', mid, '_', hdshp, '_', yr,' .csv'))
+    comp.dt <- rbind(comp.dt,comp.out)
+    }
   }
 }
 
@@ -476,7 +506,7 @@ for (yr in c(2020,2025,2030,2035,2040,2045,2050)){
   dt <- rbind(dt,tmp)
 }
   setorder(dt,rpa_acr,year)
-
+if(scen=='Scenario_1'){
   hh <- dt |> 
     filter(SPORDER==1) |> 
     mutate(tenure = case_when(
@@ -487,7 +517,18 @@ for (yr in c(2020,2025,2030,2035,2040,2045,2050)){
     ungroup() |> 
     mutate(hh = round(hh)) |> 
     setDT()
-  
+} else if(scen=='Scenario_2'){
+  hh <- dt |> 
+    filter(SPORDER.adj==1) |> 
+    mutate(tenure = case_when(
+      TEN %in% 1:2 ~ 'own',
+      TEN %in% 3:4 ~ 'rent')) |> 
+    group_by(year,mpo,tenure) |> 
+    count(wt=new_WGTP, name='hh') |> 
+    ungroup() |> 
+    mutate(hh = round(hh)) |> 
+    setDT()
+} 
   uw <- hh |> 
     pivot_wider(id_cols = 'mpo', names_from = c('tenure','year'), values_from = 'hh') |>
     left_join(vax, by=c('mpo'='rpa_acr')) |> 

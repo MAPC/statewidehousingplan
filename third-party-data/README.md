@@ -17,6 +17,7 @@ the count and percent of sales by municipality and fiscal year that were afforda
 The functions contained in this script are documented below, with more detailed comments included in the script itself.
 
 `mortgage_calculator()`
+
 inputs:
 - a data frame that includes a property's sale price, assessed home value, sale date (year), and residence type
 - down payment percentage entered as a decimal
@@ -50,3 +51,18 @@ inputs:
 
 output:
 - a summary table by municipality, fiscal year, and household size that includes the total number of condos and single family properties
+
+assumptions:
+- to avoid calculating affordability of homes where households would be overcrowded, a minimum number of bedrooms is set for each household size such that there is at least one bedroom for every two people in the household
+- 'affordable' for each group is considered 30% of the monthly HUD income limit
+
+methods:
+1. HUD income limits are pulled from MAPC's database
+2. 100% AMI is calculated for all household sizes by calculating twice the 50% limits
+3. 120% AMI is then calculated as 1.2 times the 100% income limits
+4. For all income groups (30%, 50%, 80%, 100%, and 120%) a monthly housing affordability threshold is calculated as 30% of monthly income ((annual income limit / 12 months)*.3)
+The following steps occur in a loop that runs 8 times, once for each household size 1 through 8
+5. the input data frame is filtered to exclude homes where a household of the given size would be overcrowded
+6. new variables are created for 30%, 50%, 80%, 100%, and 120% AMI and the value in each is TRUE where the income limit is greater than the monthly payment estimated by the mortgage calculator
+7. the new variables created in step 6 are summarized by municipality, fiscal year, and household size and reported as either counts or percents based on the function input
+

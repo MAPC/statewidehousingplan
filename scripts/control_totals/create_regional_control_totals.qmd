@@ -966,7 +966,8 @@ if(sum(qc.population.df$gq.check.20 > 0)){
 
 ```
 
-# 5.1 Calculate the Percentage of People in Households by RPA and MPO
+# 5.0 Determine the Percentage of People in Households and Project the NUMBER of People in Households for the MPO and RPA
+# 5.1 Calculate the PERCENTAGE of People in Households by RPA and MPO
 
 ```{r}
 #===============================================================================
@@ -1057,7 +1058,7 @@ write.csv(
 
 ```
 
-# 5.2 Calculate the projected number of people in households
+# 5.2 Calculate the projected NUMBER of people in households
 
 ```{r}
 #===============================================================================
@@ -1996,7 +1997,7 @@ size20_mapc97 <- size20 |>
 
 ```
 
-# 7.5 Load in Headship Rate Scenarios
+# 7.3 Load in Headship Rate Scenarios
 
 ```{r}
 # Create a standard function for reading in headship rates
@@ -2047,7 +2048,7 @@ if (scen == "Scenario_1"){ # Scenario 1
 
 ```
 
-# 7.6 Join Headship Rates to Projected Population in Households by Age Group and RPA
+# 7.4 Join Headship Rates to Projected Population in Households by Age Group and RPA
 
 ```{r}
 # Load in Population in Households for MAPC101
@@ -2159,7 +2160,7 @@ proj.hh.MAPC97_by.mpo.tenure <- tenure_rates |>
 
 ```
 
-# 7.7 Create Reweighter Template Files for Household Projections by RPA/MPO and Household Type
+# 7.5 Create Reweighter Template Files for Household Projections by RPA/MPO and Household Type
 
 ------------------------------------------------------------------------
 

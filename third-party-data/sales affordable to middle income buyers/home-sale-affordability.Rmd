@@ -50,10 +50,8 @@ write.csv(
 
 write.csv(
   affordable_percents,
-  paste0(output_path, "affordable_counts.csv"),
+  paste0(output_path, "affordable_percents.csv"),
   row.names = FALSE
 )
 
 ```
-
-

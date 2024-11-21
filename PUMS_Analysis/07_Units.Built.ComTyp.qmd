@@ -51,12 +51,12 @@ rpa_xw <- read_csv(paste0(rpa_path, 'PUMA10_RPA_crosswalk.csv')) |>
   )
 
 # Load PUMA to Community Type Crosswalk
-ct_xw <- read_csv("C:/GitHub/statewidehousingplan/PUMS_Analysis/muni_puma_types_xwalk_2024.csv") |> 
+ct_xw <- read_csv("C:/GitHub/statewidehousingplan/PUMS_Analysis/new_puma_types_w_rural_2024.csv") |> 
   mutate(
     PUMA = as.character(PUMACE10),
     PUMA = str_pad(PUMA, 5, side = "left", pad = "0")
     ) |> 
-  select(PUMA, cmtyp08, puma_type) |> 
+  select(PUMA, puma_type) |> 
   distinct()
 
 #x <- read_csv("C:/GitHub/statewidehousingplan/PUMS_Analysis/new_puma_types_w_rural_2024.csv")

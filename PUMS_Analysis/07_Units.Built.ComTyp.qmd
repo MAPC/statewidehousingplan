@@ -8,6 +8,7 @@ editor: visual
 
 ```{r, setup, include=FALSE}
 library(tidyverse)
+options(scipen = 999)
 #Use when Rproject is open
 #root <- '../../../../Data/Working/Regional_Control_Totals/'
 
@@ -17,7 +18,7 @@ root <-"K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/0
 #PUMS K drive filepath
 pums_path <- "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS/ipums_2021/"
 
-rpa_path <- "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/Scenario_1/"
+rpa_path <- "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Reweighter/PUMS_data/"
 
 #Set output filepath
 output_path <- "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS/outputs/"
@@ -38,8 +39,8 @@ pums <- read_csv(paste0(pums_path,"pums_unitsbuilt_2021_V_2024-10-09.csv")) |>
   mutate(
     PUMA = as.character(str_pad(PUMA, width = 5, side = "left", pad = 0))
   ) |> 
-  #filter to only units build since 2010
-  filter(YRBLT >= 2010)
+  #create flag for units built 2010 or later
+  mutate(yrblt_flag = ifelse(YRBLT >= 2010, 1, 0))
 
 # Load PUMA to RPA Crosswalk
 rpa_xw <- read_csv(paste0(rpa_path, 'PUMA10_RPA_crosswalk.csv')) |> 
@@ -55,13 +56,14 @@ ct_xw <- read_csv("C:/GitHub/statewidehousingplan/PUMS_Analysis/muni_puma_types_
     PUMA = as.character(PUMACE10),
     PUMA = str_pad(PUMA, 5, side = "left", pad = "0")
     ) |> 
-  select(PUMA, puma_type, cmtyp08) |> 
+  select(PUMA, cmtyp08, puma_type) |> 
   distinct()
 
 #x <- read_csv("C:/GitHub/statewidehousingplan/PUMS_Analysis/new_puma_types_w_rural_2024.csv")
 ```
 
 # Crosstab: Estimated Households by RPA
+
 ```{r}
 # Join RPA xw to pums data
 pums_rpa <- left_join(
@@ -76,13 +78,13 @@ rpa_yrbuilt <- pums_rpa |>
   #filtering to exclude group quarters and only include the first person in each hh and only untils 2010 later
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   #grouping by RPA and year built
-  group_by(rpa_acr) |> 
+  group_by(rpa_acr, yrblt_flag) |> 
   #summing hh weights to get estimate of households
   summarise(hh_est = sum(WGTP)) |> 
   ungroup() |> 
   mutate(
     hh_total = sum(hh_est), 
-    percent = hh_est/hh_total
+    percent = round(hh_est/hh_total, digits = 3)
   )
 
 write.csv(
@@ -94,6 +96,7 @@ write.csv(
 ```
 
 # Crosstab: Estimated Households by Community Type
+
 ```{r}
 # Join RPA xw to pums data
 pums_ct <- left_join(
@@ -110,13 +113,13 @@ ct_yrbuilt <- pums_ct |>
   #filtering to exclude group quarters and only include the first person in each hh 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   #grouping by community type
-  group_by(cmtyp08) |> 
+  group_by(puma_type, yrblt_flag) |> 
   #summing hh weights to get estimate of households
   summarise(hh_est = sum(WGTP)) |> 
   ungroup() |> 
   mutate(
     hh_total = sum(hh_est), 
-    percent = hh_est/hh_total
+    percent = round(hh_est/hh_total, digits = 3)
   )
 
 
@@ -127,7 +130,9 @@ write.csv(
 )
 
 ```
+
 # Crosstab: Estimated Households by Building Type
+
 ```{r}
 
 build_typ <- pums_ct |> 
@@ -144,13 +149,13 @@ build_typ <- pums_ct |>
   #filtering to exclude group quarters and only include the first person in each hh 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   #grouping by building type
-  group_by(bld_typ) |> 
+  group_by(bld_typ, yrblt_flag) |> 
   #summing hh weights to get estimate of households
   summarise(hh_est = sum(WGTP)) |> 
   ungroup() |> 
   mutate(
     hh_total = sum(hh_est), 
-    percent = hh_est/hh_total
+    percent = round(hh_est/hh_total, digits = 3)
   )
 
 
@@ -163,6 +168,7 @@ write.csv(
 ```
 
 # Crosstab: Estimated Households by Community Type and Building Type
+
 ```{r}
 
 ct_build_typ <- pums_ct |> 
@@ -179,13 +185,13 @@ ct_build_typ <- pums_ct |>
   #filtering to exclude group quarters and only include the first person in each hh 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   #grouping by community type and building type
-  group_by(cmtyp08, bld_typ) |> 
+  group_by(puma_type, bld_typ, yrblt_flag) |> 
   #summing hh weights to get estimate of households 
   summarise(hh_est = sum(WGTP)) |> 
   ungroup()|> 
   mutate(
     hh_total = sum(hh_est), 
-    percent = hh_est/hh_total
+    percent = round(hh_est/hh_total, digits = 3)
   )
 
 
@@ -198,6 +204,7 @@ write.csv(
 ```
 
 # Crosstab: Estimated Households by Community Type, Building Type, and Income
+
 ```{r}
 
 ct_build_typ_inc <- pums_ct |> 
@@ -225,13 +232,13 @@ ct_build_typ_inc <- pums_ct |>
   #filtering to exclude group quarters and only include the first person in each hh 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   #grouping by community type and building type
-  group_by(cmtyp08, bld_typ, HH.Income.Grp) |> 
+  group_by(puma_type, bld_typ, HH.Income.Grp, yrblt_flag) |> 
   #summing hh weights to get estimate of households
   summarise(hh_est = sum(WGTP)) |> 
   ungroup() |> 
   mutate(
     hh_total = sum(hh_est), 
-    percent = hh_est/hh_total
+    percent = round(hh_est/hh_total, digits = 3)
   )
 
 
@@ -244,7 +251,9 @@ write.csv(
 ```
 
 # Crosstab: Estimated Households by Community Type, Building Type, and Race and Ethnicity
+
 ?? do we want separate tables by race and ethnicity or one table for both?
+
 ```{r}
 
 ct_build_typ_re <- pums_ct |> 
@@ -278,13 +287,13 @@ ct_build_typ_re <- pums_ct |>
   #filtering to exclude group quarters and only include the first person in each hh 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   #grouping by community type, building type, and race and ethnicity
-  group_by(cmtyp08, bld_typ, HHLDER.RACE.Grp, HHDER.HISP.Grp) |> 
+  group_by(puma_type, bld_typ, HHLDER.RACE.Grp, HHDER.HISP.Grp, yrblt_flag) |> 
   #summing hh weights to get estimate of households 
   summarise(hh_est = sum(WGTP)) |> 
   ungroup() |> 
   mutate(
     hh_total = sum(hh_est), 
-    percent = hh_est/hh_total
+    percent = round(hh_est/hh_total, digits = 3)
   )
 
 
@@ -297,6 +306,7 @@ write.csv(
 ```
 
 # Crosstab: Estimated Households by Community Type, Building Type, and Tenure
+
 ```{r}
 
 ct_build_typ_ten <- pums_ct |> 
@@ -319,13 +329,13 @@ ct_build_typ_ten <- pums_ct |>
   #filtering to exclude group quarters and only include the first person in each hh 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   #grouping by community type and building type
-  group_by(cmtyp08, bld_typ, tenure) |> 
+  group_by(puma_type, bld_typ, tenure, yrblt_flag) |> 
   #summing hh weights to get estimate of households 
   summarise(hh_est = sum(WGTP)) |> 
   ungroup() |> 
   mutate(
     hh_total = sum(hh_est), 
-    percent = hh_est/hh_total
+    percent = round(hh_est/hh_total, digits = 3)
   )
 
 
@@ -336,9 +346,3 @@ write.csv(
 )
 
 ```
-
-
-
-
-
-

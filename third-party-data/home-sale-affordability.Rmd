@@ -30,3 +30,24 @@ affordable_counts <- affordable_sales(warren_res_monthly, 'count')
   
 affordable_percents <- affordable_sales(warren_res_monthly, 'percent')
 ```
+
+# Write summary tables to project folder
+
+```{r}
+output_path <- "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/sales affordable to middle income buyers/"
+
+write.csv(
+  affordable_counts,
+  paste0(output_path, "affordable_counts.csv"),
+  row.names = FALSE
+)
+
+write.csv(
+  affordable_percents,
+  paste0(output_path, "affordable_counts.csv"),
+  row.names = FALSE
+)
+
+```
+
+

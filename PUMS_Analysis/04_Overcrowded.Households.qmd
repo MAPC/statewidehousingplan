@@ -18,29 +18,61 @@ editor: visual
 # 0.1 - Set knitr path + root for inputs
 
 ```{r, setup, include=FALSE}
-#Use when Rproject is open
-#root <- '../../../../Data/Working/Regional_Control_Totals/'
+# Use when Rproject is open
+# root <- '../../../../Data/Working/Regional_Control_Totals/'
 
-#General K drive filepath
+# Base root. Toggle between S: and K: drive depending on mapped paths on your computer
+base <- "K:/DataServices/Projects/Current_Projects/"
+
+# General K drive filepath
 root <-"K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/"
 
-#PUMS K drive filepath
+# PUMS K drive filepath
 pums_path <- "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS/ipums_2021/"
 
-#Set output filepath
+# Set output filepath
 output_path <- "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS/outputs/"
 
-#Set knitr path
+# Reweighter files path
+rwt_path <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Reweighter/")
+
+# Set knitr path
 knitr::opts_knit$set(root.dir = pums_path)
 ```
 
 # 0.2 - Set package dependencies, set environment, set up data keys
 
 ```{r}
-# Load Libraries for PUMS Analysis and PUMS API query functions
+library(tidycensus)
+library(tidyverse)
+library(data.table)
+library(mapcdatakeys)
+library(janitor)
+library(readxl)
 library(here)
+library(RPostgreSQL)
+
+# Remove scientific notation
+options(scipen = 999)
+# Set random seed
+set.seed(351)
+
+# Load Libraries for PUMS Analysis and PUMS API query functions
 # Sets seed and removes scientific notation
-source("C:/Project_Work/statewidehousingplan/PUMS_Analysis/PUMS_Helper_Functions.R")
+source(here("PUMS_Analysis/PUMS_Helper_Functions.R"))
+source(file = "C:/Project_Work/Local_Data/General/census.data_connection.R")
+source(file = "C:/Project_Work/housing/dbConnections.R")
+
+# Load PUMA x RPA Crosswalk
+xw <- read.csv(paste0(rwt_path, "PUMS_data/PUMA10_RPA_crosswalk.csv")) |> 
+  mutate(PUMA = str_pad(PUMA, 5, "left", pad = 0))
+
+# Pull AMI Table for 2021
+ami_table <- get_mapc_database(
+  db.table_name = "hous_section8_income_limits_by_year_m",
+  year = 2021,
+  vars = "*"
+)
 
 # Set PUMS vintage final year for {tidycensus} API query.
 vintage <- 2021
@@ -60,15 +92,7 @@ pums <- pums_query(var.list = variable_list, yr = vintage, srvy = "acs5") |>
 
 ```
 
-# 0.3 PUMA to RPA Crosswalk
-
-```{r}
-# Load in PUMA to RPA Crosswalk
-xw <- read_csv(paste0(root, "Scenario_1/PUMA10_RPA_crosswalk.csv"))
-
-```
-
-# 0.4 PUMS Data Cleaning
+# 0.3 PUMS Data Cleaning
 
 ```{r}
 # General Data Cleaning
@@ -76,7 +100,7 @@ pums_cleaned <- pums |>
   # Create a household flag for whether there is a child in a household.
   mutate(
     # Generate five-year age groupings to match UMDI population projections data.
-    Age_Group.5yr = cut(AGEP, breaks = c(-Inf, seq(4, 84, 5), Inf), labels = 1:18),
+    ageCAT6 = cut(AGEP, breaks = c(-Inf, seq(4, 84, 5), Inf), labels = 1:18),
     # Create a household flag for whether there is a child (a person under the age of 18) in the household.
     # (1) indicates a person is under the age of 18
     # (0) indicates a person is 18 or older.
@@ -85,6 +109,21 @@ pums_cleaned <- pums |>
       AGEP >= 18 ~ 0,
       .default = 0
     ),
+    # Generate ten-year age groupings
+    # ageCAT4 is the 2020 decennial census age breaks for age of householder - used for 2020 base year control total reweighter targets
+    ageCAT4 = case_when(
+      AGEP %in% 0:14 ~ 0,
+      AGEP %in% 15:24 ~ 1,
+      AGEP %in% 25:34 ~ 2,
+      AGEP %in% 35:44 ~ 3,
+      AGEP %in% 45:54 ~ 4,
+      AGEP %in% 55:59 ~ 5,
+      AGEP %in% 60:64 ~ 6,
+      AGEP %in% 65:74 ~ 7,
+      AGEP %in% 75:84 ~ 8,
+      AGEP >= 85 ~ 9,
+      .default = 0
+    ), 
     # Counts as Worker
     # NOTE: Categories are:
     # (0) under 16 or not in labor force
@@ -537,7 +576,7 @@ write.csv(
 
 # 1.3 General Analysis
 
-About 1.8 percent of households across the state are overcrowded, which is classified as having more than two persons per bedroom in a given household. Family households (households with a child under 18 years old) have a higher proportion of households which are overcrowded - 5.4 percent. Regarding overcrowding by the number of bedrooms in a household, I expect the proportion of overcrowded households to decrease as the number of bedrooms increases. This is confirmed by the data. 4.9 percent and 5.1 percent of one bedrooms and studios, respectively, are overcrowded. The proportion of overcrowded households drops to 2.4 percent for two bedroom households and further to 0.8 percent for households with three bedrooms.The trend follows for households with more bedrooms. A point to delve further on is the incidence of overcrowding in one bedroom and studio units. The Census doesn't singularly define studio units, I've classified them as units where the number of rooms equals one and the number of bedrooms is zero (as opposed to a one bedroom unit where there is one bedroom and at least one room).
+About 1.8 percent of households (48,725 households) across the state are overcrowded, which is classified as having more than two persons per bedroom in a given household. Family households (households with a child under 18 years old) have a higher proportion of households which are overcrowded - 5.4 percent (41,501 households). Regarding overcrowding by the number of bedrooms in a household, I expect the proportion of overcrowded households to decrease as the number of bedrooms increases. This is confirmed by the data. 4.9 percent (17,558 households) and 5.1 percent (3,731 households) of one bedrooms and studios, respectively, are overcrowded. The proportion of overcrowded households drops to 2.4 percent for two bedroom households and further to 0.8 percent for households with three bedrooms.The trend follows for households with more bedrooms. A point to delve further on is the incidence of overcrowding in one bedroom and studio units. The Census doesn't singularly define studio units, I've classified them as units where the number of rooms equals one and the number of bedrooms is zero (as opposed to a one bedroom unit where there is one bedroom and at least one room).
 
 When looking at the proportion of overcrowded households by RPA clear differences arise across the state. The Berkshires, Cape Code, Martha's Vineyard and Nantucket all have less than one percent of their households be overcrowded. MAPC has the highest percentage of overcrowded households across all RPA regions with 2.1 percent of households being overcrowded. The other RPAs fall closer to the statewide proportion.
 
@@ -707,7 +746,7 @@ write.csv(
 
 # 2.3 Subfamily Analysis
 
-Presence of a subfamily (see definition) is associated with a greater proportion of households being over crowded. Only 1.5 percent of households without a subfamily are overcrowded compared to 10.2 percent of households with a subfamily present. One would expect as the *number* of subfamilies in a household increases (a proxy for number of people since at least two people constitute a subfamily) the proportion of households which are overcrowded would also increase. Our expectation is validated in the data -- nine percent (9%) of households with one subfamily are overcrowded, 47% of households with two subfamilies are overcrowded, and *all* households with three subfamilies are overcrowded. This is consistent across RPA regions.
+Presence of a subfamily (see definition) is associated with a greater proportion of households being over crowded. Only 1.5 percent of households without a subfamily are overcrowded compared to 10.5 percent of households with a subfamily present. One would expect as the *number* of subfamilies in a household increases (a proxy for number of people since at least two people constitute a subfamily) the proportion of households which are overcrowded would also increase. Our expectation is validated in the data -- nine percent (9%) of households with one subfamily are overcrowded, 47% of households with two subfamilies are overcrowded, and *all* households with three subfamilies are overcrowded. This is consistent across RPA regions.
 
 # 3.0 Multigenerational Household Analysis
 
@@ -718,15 +757,15 @@ A second definition is more expansive, one which IPUMS has coded into their micr
 # 3.1 Redefining Multigenerational households
 
 ```{r}
-pums_ <- pums_cleaned |> 
-  mutate(
-    #Create a variable that categorizes people into "generations" by their relationship
-    #to the householder
-    GEN = case_when(
-      #
-      
-    )
-  )
+# pums_ <- pums_cleaned |> 
+#   mutate(
+#     #Create a variable that categorizes people into "generations" by their relationship
+#     #to the householder
+#     GEN = case_when(
+#       #
+#       
+#     )
+#   )
 ```
 
 # 3.2 Overcrowding by Presence of Multiple Generations in a Household (Census Definition)
@@ -931,7 +970,7 @@ OC.MULTG.SF.Child.PPB <- pums_cleaned |>
 
 # Write output to csv
 write.csv(
-  OC.MULTG.SF.FAMILY.PPB,
+  OC.MULTG.SF.Child.PPB,
   paste0(output_path, "04_Overcrowding/overcrowding.MULTG.SF.Child.PPB.RPAlevel.csv"),
   row.names = FALSE
 )
@@ -974,7 +1013,7 @@ write.csv(
 
 #===============================================================================
 # 4.1.5 Overcrowding by RPA and Multigenerational Households (Census Definitions) and Number of Subfamilies and Presence of Children
-OC.MULTG.NumSF.Child.PPB <- pums |> 
+OC.MULTG.NumSF.Child.PPB <- pums_cleaned |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
     MULTG,
@@ -1147,7 +1186,7 @@ OC.TEN.PPB <- pums_cleaned |>
 # Create a visualization of the table created above
 BG.OC.TEN.PPB <- OC.TEN.PPB |> 
   filter(overcrowded.ppb == "1") |> 
-  ggplot(aes(x = TEN.desc, y = pct)) +
+  ggplot(aes(x = TEN_Group, y = pct)) +
   geom_bar(stat = "identity", color = "black", fill = "steelblue") +
   geom_text(aes(label = scales::percent(pct)), vjust = -0.3, size = 3.5) +
   #scale_x_discrete(limits = rev) +
@@ -1224,6 +1263,7 @@ write.csv(
   paste0(output_path,"04_Overcrowding/overcrowding.OC.TEN.RPAlevel.PPB.csv"),
   row.names = FALSE
 )
+
 ```
 
 # 5.2 Income Groups
@@ -1235,7 +1275,7 @@ OC.INC.PPB <- pums_cleaned |>
   # Filters dataframe to households (non-group quarters units) and householders.
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
-    HH.Income.Grp,
+    HH.Income_Group,
     overcrowded.ppb
   ) |> 
   # Calculates the number of overcrowded and non-overcrowded households in each crosstab group.
@@ -1244,7 +1284,7 @@ OC.INC.PPB <- pums_cleaned |>
   ) |> 
   ungroup() |> 
   group_by(
-    HH.Income.Grp
+    HH.Income_Group
   ) |> 
   # Calculates the total number of households in the crosstab group (OC + Non-OC)
   mutate(
@@ -1271,7 +1311,7 @@ level_order <- c("<=$35,000", "$35,001-$75,000", "$75,001-$125,000", "$125,001-$
 BG.OC.INC.PPB <- OC.INC.PPB |> 
   # Filter for the overcrowded aggregates.
   filter(overcrowded.ppb == "1") |> 
-  ggplot(aes(x = factor(HH.Income.Grp, level_order), y = pct)) +
+  ggplot(aes(x = factor(HH.Income_Group, level_order), y = pct)) +
   geom_bar(stat = "identity", color = "black", fill = "steelblue") +
   geom_text(aes(label = scales::percent(pct)), vjust = -0.3, size = 3.5) +
   scale_y_continuous(label = scales::percent) +

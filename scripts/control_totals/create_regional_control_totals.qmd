@@ -21,8 +21,8 @@ hdshp <- 'scen2'
 # root <- '../../../../Data/Working/Regional_Control_Totals/'
 
 # Base root. Toggle between S: and K: drive depedning on mapped paths on your computer
-#base <- "K:/DataServices/Projects/Current_Projects/"
-base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
+base <- "K:/DataServices/Projects/Current_Projects/"
+#base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
 
 # General K drive filepath
 root <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/")
@@ -1416,6 +1416,159 @@ if (scen == "Scenario_1"){
   
 }
 
+```
+
+# 6.3 Create Headship rates from this PUMS vintage
+```{r}
+# Generating headship rates by RPA, 5-year Age Group, and Household Type for the ACS 2017-2021 PUMS
+headship_rates <- pums_data |> 
+  # Inclues only observations for people in households (omits GQ)                   
+  filter(TYPEHUGQ == "1") |>                     
+  # Groups by variables in the dataframe necessary to getting the granularity of data we're interested in.
+  group_by(rpa_acr, ageCAT6) |> 
+  #Computes the weighted sum of individuals in each HH type category by the groups
+  #assigned above.
+  count(var = HHtype, wt = WGTP) |>
+  ungroup() |> 
+  #Recodes factor variables as the categories they represent.
+  #Converts numbers into frequencies.                 
+  group_by(rpa_acr, ageCAT6) |> 
+  mutate(
+    var = case_when(
+      var == 1 ~ "hhderchild",
+      var == 2 ~ "nothhderchild",
+      var == 3 ~ "hhdernochild",
+      var == 4 ~ "nothhdernochild",
+      var == 5 ~ "single"),
+    freq = (n/sum(n))) |> 
+  # Removes the level of aggregation set earlier by group_by()
+  ungroup() |> 
+  select(
+    -c(n)
+  )
+
+# Generating headship rates by RPA, 5-year age group, and Tenure for the ACS 2017-2022 PUMS
+tenure_rates <- pums_data |> 
+  # Inclues only observations for people in households (omits GQ)                
+  filter(TYPEHUGQ == "1" & SPORDER == 1 & !ageCAT6 %in% c("1","2")) |>                     
+  #Groups by variables in the dataframe necessary to getting the granularity of
+  #data we're interested in.
+  group_by(rpa_acr, ageCAT6) |> 
+  #Computes the weighted sum of individuals in each HH type category by the groups
+  #assigned above.
+  count(var = tenure, wt = WGTP) |>
+  mutate(
+    freq = (n/sum(n))) |> 
+  # Removes the level of aggregation set earlier by group_by()
+  ungroup() |> 
+  select(
+    -c(n)
+  ) |> 
+  rename(tenure=var)
+
+# QC Check - determine if the frequencies in each Household Type, Age Group crosstab add to 1
+hr_check <- headship_rates |> 
+  group_by(
+    rpa_acr,
+    ageCAT6
+  ) |> 
+  summarise(
+    freq_check = sum(freq)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    flag = ifelse(freq_check != 1, 1, 0)
+  )
+
+# QC Check - determine if the frequencies in each Tenure, Age Group crosstab add to 1
+ten_check <- tenure_rates |> 
+  group_by(
+    rpa_acr,
+    ageCAT6
+  ) |> 
+  summarise(
+    freq_check = sum(freq)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    flag = ifelse(freq_check != 1, 1, 0)
+  )
+
+# Print statement to verify w/in headhship groups that the numbers all add up accordingly.
+if (sum(hr_check$flag) > 0 | sum(ten_check$flag) > 0){
+  # Print when numbers are incorrect.
+  print("STOP! Check headship rate calculations!")
+} else{
+  #Print when numbers are correct.
+  print("Proceed!")
+  
+  # Remove QC files.
+  rm(hr_check, ten_check)
+}
+
+# Write an intermediate file for the headship rates from this PUMS vintage
+write.csv(
+  headship_rates,
+  paste0(output_path, "headship_rates.pums",hdshp,".csv"),
+  row.names = FALSE
+)
+
+# Write an intermediate file for the tenure rates from this PUMS vintage
+write.csv(
+  tenure_rates,
+  paste0(output_path, "tenure_rates.pums",hdshp,".csv"),
+  row.names = FALSE
+)
+
+#TODO:
+# 1. Compare to 2015-2019 ACS PUMS Headship rates
+# 2. Compare to adjusted headships rates from last projections
+
+```
+
+# 6.4 Create Laborforce Participation rates for ACS 2017-2021 PUMS
+```{r}
+# Create laborforce participation rates for the ACS 2017-2021 PUMS
+lfpr <- pums_data |> 
+  # Takes only observations that are in housing units and in the labor force.
+  filter(TYPEHUGQ == "1" & lf >= 1) |> 
+  # Sets the level of aggregation (e.g. we want the number of observations by year, by RPA, by age group, by sex, by educational attainment) 
+  group_by(rpa_acr, ageCAT6, eduattn, SEX) |> 
+  # Sums up the number of observations by the level of aggregation set above using the person weight.
+  count(var = lf, wt = PWGTP) |> 
+  # Removes the level of aggregation set earlier by group_by()
+  ungroup() |> 
+  # Recodes factor variables as the categories they represent.
+  # Converts numbers into frequencies.
+  mutate(
+    var = case_when(
+      var == 1 ~ "in LF",
+      var == 2 ~ "not in LF"),
+    SEX = case_when(
+      SEX == 1 ~ "Male",
+      SEX == 2 ~ "Female"),
+    EDUATTN = case_when(
+      eduattn == 1 ~ "High School or less",
+      eduattn == 2 ~ "Some college or Associate's degree",
+      eduattn == 3 ~ "Bachelor's",
+      eduattn == 4 ~ "Master's or higher")
+  ) |> 
+  group_by(rpa_acr, ageCAT6, SEX, EDUATTN) |>  
+  # Converts numbers into frequencies for those in and not in the laborforce, based
+  # on the demographic variables.
+  mutate(
+    freq = (n/sum(n))
+  ) |>  
+  ungroup() |> 
+  filter(var == "in LF") |> 
+  # Drops the "n" variable 
+  select(-n)
+
+#===============================================================================
+#TODO:
+# 1. Compare to 2015-2019 ACS PUMS headship rates
+# 2. Compare to CPS rates
+# 3. Do a similar lfpr adjustment exercise we did last time to the 2015-2019 lfpr
 
 ```
 
@@ -1703,165 +1856,7 @@ write.csv(
 )
 ```
 
-# 7.2 Create Headship rates from this PUMS vintage
-
-```{r}
-# Generating headship rates by RPA, 5-year Age Group, and Household Type for the ACS 2017-2022 PUMS
-headship_rates <- pums_data |> 
-  # Inclues only observations for people in households (omits GQ)                   
-  filter(TYPEHUGQ == "1") |>                     
-  # Groups by variables in the dataframe necessary to getting the granularity of data we're interested in.
-  group_by(rpa_acr, ageCAT6) |> 
-  #Computes the weighted sum of individuals in each HH type category by the groups
-  #assigned above.
-  count(var = HHtype, wt = WGTP) |>
-  ungroup() |> 
-  #Recodes factor variables as the categories they represent.
-  #Converts numbers into frequencies.                 
-  group_by(rpa_acr, ageCAT6) |> 
-  mutate(
-    var = case_when(
-      var == 1 ~ "hhderchild",
-      var == 2 ~ "nothhderchild",
-      var == 3 ~ "hhdernochild",
-      var == 4 ~ "nothhdernochild",
-      var == 5 ~ "single"),
-    freq = (n/sum(n))) |> 
-  # Removes the level of aggregation set earlier by group_by()
-  ungroup() |> 
-  select(
-    -c(n)
-  )
-
-# Generating headship rates by RPA, 5-year age group, and Tenure for the ACS 2017-2022 PUMS
-tenure_rates <- pums_data |> 
-  # Inclues only observations for people in households (omits GQ)                
-  filter(TYPEHUGQ == "1" & SPORDER == 1 & ageCAT6 > 3) |>                     
-  #Groups by variables in the dataframe necessary to getting the granularity of
-  #data we're interested in.
-  group_by(rpa_acr, ageCAT6) |> 
-  #Computes the weighted sum of individuals in each HH type category by the groups
-  #assigned above.
-  count(var = tenure, wt = WGTP) |>
-  mutate(
-    freq = (n/sum(n))) |> 
-  # Removes the level of aggregation set earlier by group_by()
-  ungroup() |> 
-  select(
-    -c(n)
-  ) |> 
-  rename(tenure=var)
-
-# QC Check - determine if the frequencies in each Household Type, Age Group crosstab add to 1
-hr_check <- headship_rates |> 
-  group_by(
-    rpa_acr,
-    ageCAT6
-  ) |> 
-  summarise(
-    freq_check = sum(freq)
-  ) |> 
-  ungroup() |> 
-  mutate(
-    flag = ifelse(freq_check != 1, 1, 0)
-  )
-
-# QC Check - determine if the frequencies in each Tenure, Age Group crosstab add to 1
-ten_check <- tenure_rates |> 
-  group_by(
-    rpa_acr,
-    ageCAT6
-  ) |> 
-  summarise(
-    freq_check = sum(freq)
-  ) |> 
-  ungroup() |> 
-  mutate(
-    flag = ifelse(freq_check != 1, 1, 0)
-  )
-
-# Print statement to verify w/in headhship groups that the numbers all add up accordingly.
-if (sum(hr_check$flag) > 0 | sum(ten_check$flag) > 0){
-  # Print when numbers are incorrect.
-  print("STOP! Check headship rate calculations!")
-} else{
-  #Print when numbers are correct.
-  print("Proceed!")
-  
-  # Remove QC files.
-  rm(hr_check, ten_check)
-}
-
-# Write an intermediate file for the headship rates from this PUMS vintage
-write.csv(
-  headship_rates,
-  paste0(output_path, "headship_rates.pums",hdshp,".csv"),
-  row.names = FALSE
-)
-
-# Write an intermediate file for the tenure rates from this PUMS vintage
-write.csv(
-  tenure_rates,
-  paste0(output_path, "tenure_rates.pums",hdshp,".csv"),
-  row.names = FALSE
-)
-
-#TODO:
-# 1. Compare to 2015-2019 ACS PUMS Headship rates
-# 2. Compare to adjusted headships rates from last projections
-
-```
-
-# 7.3 Create Laborforce Participation rates for ACS 2017-2021 PUMS
-
-```{r}
-# Create laborforce participation rates for the ACS 2017-2021 PUMS
-lfpr <- pums_data |> 
-  # Takes only observations that are in housing units and in the labor force.
-  filter(TYPEHUGQ == "1" & lf >= 1) |> 
-  # Sets the level of aggregation (e.g. we want the number of observations by year, by RPA, by age group, by sex, by educational attainment) 
-  group_by(rpa_acr, ageCAT6, eduattn, SEX) |> 
-  # Sums up the number of observations by the level of aggregation set above using the person weight.
-  count(var = lf, wt = PWGTP) |> 
-  # Removes the level of aggregation set earlier by group_by()
-  ungroup() |> 
-  # Recodes factor variables as the categories they represent.
-  # Converts numbers into frequencies.
-  mutate(
-    var = case_when(
-      var == 1 ~ "in LF",
-      var == 2 ~ "not in LF"),
-    SEX = case_when(
-      SEX == 1 ~ "Male",
-      SEX == 2 ~ "Female"),
-    EDUATTN = case_when(
-      eduattn == 1 ~ "High School or less",
-      eduattn == 2 ~ "Some college or Associate's degree",
-      eduattn == 3 ~ "Bachelor's",
-      eduattn == 4 ~ "Master's or higher")
-  ) |> 
-  group_by(rpa_acr, ageCAT6, SEX, EDUATTN) |>  
-  # Converts numbers into frequencies for those in and not in the laborforce, based
-  # on the demographic variables.
-  mutate(
-    freq = (n/sum(n))
-  ) |>  
-  ungroup() |> 
-  filter(var == "in LF") |> 
-  # Drops the "n" variable 
-  select(-n)
-
-#===============================================================================
-#TODO:
-# 1. Compare to 2015-2019 ACS PUMS headship rates
-# 2. Compare to CPS rates
-# 3. Do a similar lfpr adjustment exercise we did last time to the 2015-2019 lfpr
-
-```
-
-# 7.4 Create Household Projections by RPA and Household Type
-
-# 7.4.0 Create 2020 control total targets using Decennial Census 2020 DHC
+# 7.2 Create 2020 control total targets using Decennial Census 2020 DHC
 
 ```{r}
 #===============================================================================
@@ -2015,11 +2010,15 @@ hdsp.r_read <- function(scenario, file){
 # Logic for which headship rates to use by Scenario
 if (scen == "Scenario_1"){ # Scenario 1
   
+  print("Using Headship Rates for Scenario 1.")
+  
   hdsp.r <- headship_rates
   # hdsp.r_read(scenario = scen, file = "/headship_rates.1721.csv")
 
 
 } else if (scen == "Scenario_2"){ # Scenario 2
+  
+  print("Using Headship Rates for Scenario 2.")
   
   hdsp.r <- hdsp.r_read(scenario = scen, file = "headship.rates.comparison_2000.hsr_to_1721.household.split.hsr.csv") |> 
     select(
@@ -2034,9 +2033,13 @@ if (scen == "Scenario_1"){ # Scenario 1
   
 } else if (scen == "Scenario_3"){ # Scenario 3
   
+  print("Using Headship Rates for Scenario 3.")
+  
   hdsp.r_read(scenario = scen, file = "")
   
 } else {  #Scenario 4
+  
+  print("Using Headship Rates for Scenario 4.")
   
   hdsp.r_read(scenario = scen, file = "")
   

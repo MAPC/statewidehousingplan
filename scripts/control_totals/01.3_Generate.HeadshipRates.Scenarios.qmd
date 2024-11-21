@@ -96,9 +96,6 @@ pums_data <- pums_query(var.list = variable_list, yr = vintage, srvy = "acs5") |
     ageCAT6 = cut(AGEP, breaks = c(-Inf, seq(4, 84, 5), Inf), labels = 1:18),
     # Renaming the 5-year age group variable.
     AgeCat = ageCAT6,
-    # Generate a custom age grouping
-    # Levels are (0) 0-14; (4) 15 to 19; (5) 20 to 24; (6) 25 to 34; (7) 35 to 44; (8) 45 to 54; (9) 55 to 64 (10) 65 to 74 (11) 75+
-    PAGEC2 = cut(AGEP, breaks = c(-Inf, 14, 19, 24, 34, 44, 54, 64, 74, 79, 84, Inf), labels = c(0, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13)),
     # Generate ten-year age groupings 
     # ageCAT4 is the 2020 decennial census age breaks for age of householder - used for 2020 base year control total reweighter targets
     ageCAT4 = case_when(
@@ -680,21 +677,18 @@ write.csv(
 
 ```{r}
 # Full dataframe of subset households.
-subset.adj.test <- bind_rows(subset.1.adj.test, subset.2.adj.test) |> 
-  mutate(
-
-  )
+subset.adj.test <- bind_rows(subset.1.adj.test, subset.2.adj.test)
   
-#Households by RPA
-tbl.1 <- subset.adj.test |> 
-  filter(SPORDER.adj == 1 & TYPEHUGQ == 1) |> 
-  group_by(rpa_acr) |> 
-  summarise(
-    hhds = sum(WGTP)
-  ) |> 
-  ungroup()
-
-write.csv(tbl.1, file = paste0(root,scen,"/Analysis/tbl.1_hh.by.rpa.csv"), row.names = F)
+# #Households by RPA
+# tbl.1 <- subset.adj.test |> 
+#   filter(SPORDER.adj == 1 & TYPEHUGQ == 1) |> 
+#   group_by(rpa_acr) |> 
+#   summarise(
+#     hhds = sum(WGTP)
+#   ) |> 
+#   ungroup()
+# 
+# write.csv(tbl.1, file = paste0(root,scen,"/Analysis/tbl.1_hh.by.rpa.csv"), row.names = F)
 
 # Households by Household Type
 tbl.2 <- subset.adj.test |> 
@@ -709,19 +703,19 @@ tbl.2 <- subset.adj.test |>
 
 write.csv(tbl.2, file = paste0(root,scen,"/Analysis/tbl.2_hh.by.HHtype.csv"), row.names = F)
 
-#Households by Household Types and RPA
-tbl.3 <- subset.adj.test |> 
-  filter(SPORDER.adj == 1 & TYPEHUGQ == 1) |> 
-  group_by(
-    rpa_acr,
-    HHtype
-  ) |> 
-  summarise(
-    hhds = sum(WGTP)
-  ) |> 
-  ungroup()
-
-write.csv(tbl.3, file = paste0(root,scen,"/Analysis/tbl.3_hh.by.rpa.HHtype.csv"), row.names = F)
+# #Households by Household Types and RPA
+# tbl.3 <- subset.adj.test |> 
+#   filter(SPORDER.adj == 1 & TYPEHUGQ == 1) |> 
+#   group_by(
+#     rpa_acr,
+#     HHtype
+#   ) |> 
+#   summarise(
+#     hhds = sum(WGTP)
+#   ) |> 
+#   ungroup()
+# 
+# write.csv(tbl.3, file = paste0(root,scen,"/Analysis/tbl.3_hh.by.rpa.HHtype.csv"), row.names = F)
 
 #Households by Household Size
 tbl.4 <- subset.adj.test |> 
@@ -767,7 +761,7 @@ write.csv(tbl.6, file = paste0(root,scen,"/Analysis/tbl.6_hh.by.HHsize.NumChildr
 tbl.7 <- subset.adj.test |> 
   filter(SPORDER.adj == 1 & TYPEHUGQ == 1) |> 
   group_by(
-    WAGPALLC_US
+    WAGPALLC_US.adj
   ) |> 
   summarise(
     hhds = sum(WGTP)
@@ -831,7 +825,7 @@ tbl.11 <- subset.adj.test |>
 write.csv(tbl.11, file = paste0(root,scen,"/Analysis/tbl.11_persons.by.Race.Eth.csv"), row.names = F)
 
 # Persons in households by Educational Attainment
-tbl.11 <- subset.adj.test |> 
+tbl.12 <- subset.adj.test |> 
   filter(TYPEHUGQ == 1) |> 
   group_by(
     eduattn

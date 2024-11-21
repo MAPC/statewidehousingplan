@@ -29,17 +29,23 @@ mortgage_calculator <- function(df, down_payment, loan_term, ho_insurance, condo
   prop_taxrate = read_csv(paste0(calc_data_path, "prop_taxrates_ma_2024.csv")) |> 
     # filter table to only include years represented in the data frame
     filter(fyear >= start_year & fyear <= end_year) |>
-    group_by(Municipality) |> 
-    # calculate the average property tax rate by municipality in the given time frame
-    summarise(proptaxrate = mean(Residential)/1000) |>
-    rename(municipal = Municipality)
+    # property tax rate is reported as amount per $1000 of assessed value
+    # calculate this ratio
+    mutate(proptaxrate = Residential/1000) |> 
+    # select only necessary columns and then rename
+    select(Municipality, fyear, Residential) |> 
+    `colnames<-` (c('municipal', 'fy_year', 'proptaxrate'))
   
   ## MORTGAGE CALCULATOR
   mortgage_df <- df |> 
     # filter to only include sales of sinlge family homes and condos
     filter(restype %in% c("R1F", "CON")) |> 
+    # make clean fiscal year field
+    mutate(
+      fy_year = ifelse(month <= 6, year, year+1)
+    ) |> 
     # joining average property tax rate to warren data by municipality
-    left_join(prop_taxrate, by = "municipal") |> 
+    left_join(prop_taxrate, by = c("municipal", "fy_year")) |> 
     # joining mortgage rates
     left_join(fmrate, by = 'year') |> 
     # calculate estimated monthly payment
@@ -124,11 +130,7 @@ affordable_sales <- function(df, output_type) {
     # build output table for current hh size
     output[[hh_size]] <- df |> 
       # select only needed columns
-      select(muni_id, bedrooms, month, year, monthly_payment) |> 
-      # clean up fiscal year field
-      mutate(
-        fy_year = ifelse(month <= 6, year, year+1)
-      ) |> 
+      select(muni_id, bedrooms, month, year, fy_year, monthly_payment) |> 
       # filter to minimum number of bedrooms for household size
       filter(bedrooms >= bed_size) |> 
       # join in ami table by hh size

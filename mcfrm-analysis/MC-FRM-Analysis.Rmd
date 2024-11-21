@@ -11,9 +11,9 @@ output: html_document
 
 source("libraries.R")
 source("functions.R")
+# This will take many hours--loads 98 parcel feature layers
 source("make-data.R")
 
-# Run time start: 3:10 PM 11/14
 ```
 
 ## Defining Variables
@@ -25,9 +25,7 @@ output_path<- paste0("C:/Users/",Sys.info()["user"],"/OneDrive - Metropolitan Ar
 
 arc_pro_gdb<- "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/SHP-MCFRM-InundatedUnits/SHP-MCFRM-InundatedUnits.gdb"
 
-ggplot()+
-  geom_sf(data = psep_2030,
-          fill = "light blue")+
+
   
 
 ```
@@ -44,7 +42,7 @@ for (z in 1:length(full_parcels)){
 #make sure all parcels have the right crs  
 all_parcels_int <-st_make_valid(full_parcels[[z]])%>%
   st_transform(crs = st_crs(ma_munis))
-#filter parcels to the MC-FRM 2030 Projected Stormwater Espspsps 
+#filter parcels to the MC-FRM 2030 
 units_in_mcfrm30<- all_parcels_int%>%
  st_filter(st_make_valid(psep_2030_shp))
 
@@ -81,12 +79,12 @@ output_table[[z]]<- full_join(mcfrm30_sum, mcfrm50_sum, by = c("CITY", "USE_CODE
 
 }
 
-view(output_table[[98]])
-
+# One big table with all the summarized outputs
 obt<-rbindlist(output_table)%>%
+  #some parcels do not have the city populated, there is no data for these parcels
   filter(!is.na(CITY))
 
-
+#maps the last city run through the loop
 ggplot(all_parcels_int)+geom_sf()+
   geom_sf(data = units_in_mcfrm70,
           fill = "darkblue")+
@@ -98,7 +96,7 @@ ggplot(all_parcels_int)+geom_sf()+
 ```
 
 ```{r}
-
+#exports to sharepint
 write.csv(obt, paste0(output_path, "/town_mcfrm_units_results.csv"))
 
 ```

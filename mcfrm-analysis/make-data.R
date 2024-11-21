@@ -4,7 +4,7 @@
 ma_munis<- st_read("https://services1.arcgis.com/hGdibHYSPO59RG1h/ArcGIS/rest/services/Massachusetts_Municipalities_Hosted/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson")
 
 ## MC-FRM ##
-
+## ArcOnline MC-FRM layers that didn't work for some reason but should be identical to the ones loaded below saved in a geodatabase locally
 psep_2030<- arc_read("https://services1.arcgis.com/7iJyYTjCtKsZS1LR/arcgis/rest/services/Coastal_flooding_probability_1000yr_storms/FeatureServer/0")%>%
   st_transform(crs = st_crs(ma_munis))%>%
   st_make_valid()%>%
@@ -15,16 +15,12 @@ psep_2050<-arc_read("https://services1.arcgis.com/7iJyYTjCtKsZS1LR/arcgis/rest/s
   st_make_valid()%>%
   st_union()
 
-what<-arc_read("https://services1.arcgis.com/7iJyYTjCtKsZS1LR/ArcGIS/rest/services/Coastal_flooding_probability_1000yr_storms/FeatureServer/01")
-
 psep_2070<-arc_read("https://services1.arcgis.com/7iJyYTjCtKsZS1LR/arcgis/rest/services/Coastal_flooding_probability_1000yr_storms/FeatureServer/2")%>%
   st_transform(crs = st_crs(ma_munis))%>%
   st_make_valid()%>%
   st_union()
 
-mcfrm_k <- st_read("K:/DataServices/Datasets/Environment and Energy/MCFRM/Extent_1pct/Extent_1pct_2pt4ftslr.shp")%>%
-  st_transform(crs = st_crs(ma_munis))
-
+# MC-FRM Percent Storm Exceedance Probability (0.1% annual) 2030, 2050, 2070
 psep_2030_shp<- arc.data2sf(arc.select(arc.open(paste0(arc_pro_gdb, "/psep2030_exp"))))%>%
   st_transform(crs = st_crs(ma_munis))
 
@@ -42,12 +38,8 @@ muni_list <- st_intersection(st_make_valid(ma_munis), st_make_valid(psep_2070))%
 
 ## parcels ##
 
-# # Break in case of function failure
-# ma_par_arc<- arc_read("https://services1.arcgis.com/hGdibHYSPO59RG1h/ArcGIS/rest/services/L3_TAXPAR_POLY_ASSESS_gdb/FeatureServer/0")%>%
-#    filter(CITY %in% muni_list$TOWN)
-
+# creates a list of tables with spatial parcel data with the MAPC parcel database
 full_parcels<- NULL
-
 
 for (x in 1:length(muni_list$TOWN)){
   
@@ -55,6 +47,3 @@ for (x in 1:length(muni_list$TOWN)){
   
   }
 
-#all_parcels<-rbindlist(full_parcels)
-
-#length(muni_list$TOWN)

@@ -30,6 +30,9 @@ output_path <- paste0(base, "/Housing/StatewideHousingPlan/04_Analysis/Data/Work
 
 #Set knitr path
 knitr::opts_knit$set(root.dir = pums_path)
+
+# Set Scenario
+scen <- "Scenario_2"
 ```
 
 # 0.2 - Set package dependencies, set environment, set up data keys
@@ -42,6 +45,7 @@ library(mapcdatakeys)
 library(janitor)
 library(readxl)
 library(here)
+library(RPostgreSQL)
 
 # Remove scientific notation
 options(scipen = 999)
@@ -51,11 +55,19 @@ set.seed(351)
 # Load Libraries for PUMS Analysis and PUMS API query functions
 # Sets seed and removes scientific notation
 source(here("PUMS_Analysis/PUMS_Helper_Functions.R"))
-# source("C:/Project_Work/statewidehousingplan/PUMS_Analysis/PUMS_Helper_Functions.R")
+source(file = "C:/Project_Work/Local_Data/General/census.data_connection.R")
+source(file = "C:/Project_Work/housing/dbConnections.R")
 
 # Load PUMA x RPA Crosswalk
 xw <- read.csv(paste0(rwt_path, "PUMS_data/PUMA10_RPA_crosswalk.csv")) |> 
   mutate(PUMA = str_pad(PUMA, 5, "left", pad = 0))
+
+# Pull AMI Table for 2021
+ami_table <- get_mapc_database(
+  db.table_name = "hous_section8_income_limits_by_year_m",
+  year = 2021,
+  vars = "*"
+)
 
 ```
 
@@ -90,6 +102,7 @@ pums_data <- pums_query(var.list = variable_list, yr = vintage, srvy = "acs5") |
     # Generate ten-year age groupings 
     # ageCAT4 is the 2020 decennial census age breaks for age of householder - used for 2020 base year control total reweighter targets
     ageCAT4 = case_when(
+      AGEP %in% 0:14 ~ 0,
       AGEP %in% 15:24 ~ 1,
       AGEP %in% 25:34 ~ 2,
       AGEP %in% 35:44 ~ 3,
@@ -98,7 +111,8 @@ pums_data <- pums_query(var.list = variable_list, yr = vintage, srvy = "acs5") |
       AGEP %in% 60:64 ~ 6,
       AGEP %in% 65:74 ~ 7,
       AGEP %in% 75:84 ~ 8,
-      AGEP >= 85 ~ 9
+      AGEP >= 85 ~ 9,
+      .default = 0
     ), 
     # Creates a tenure grouping for reweighter file:
     tenure = case_when(# Owned with a mortgage or free and clear -> "1"
@@ -511,6 +525,18 @@ pums_data.adj <- pums_data.adj |>
   ) |> 
   ungroup() |> 
   mutate(
+    # Create Income Groups that reflect UrbanSim Household Income Buckets
+    # (1) <= $35,000
+    # (2) $35,001 - $75,000
+    # (3) $75,001 - $125,000
+    # (4) $125,001 - $225,000
+    # (5) > $225,000
+    WAGPALLC_US.adj = 
+      cut(
+        HINCP.adj.2021USD,
+        breaks = c(-Inf, 35000, 75000, 125000, 225000, Inf),
+        labels = c("1", "2", "3", "4", "5")
+    ),
     # Categorizing Household Size
     size = case_when(
       NP.adj == 1 ~ 1,
@@ -610,7 +636,22 @@ print(sum(sum(subset.1.adj.test$WGTP), sum(subset.2.adj.test$WGTP)))
 # Compare the total number of households in subsets #1 and #2 to the number of households created by the household split. If they are not equivalent, a warning message will be printed. If they are, an affirmative will be printed.
 if(sum(sum(subset.1$new.hhds), sum(subset.2$new.hhds)) != sum(sum(subset.1.adj.test$WGTP), sum(subset.2.adj.test$WGTP))){
   print("STOP! The number of households identified in the earlier code should match what is produced after splitting households!")
+  
 } else{
+  # Write a file with Households for Subset 1
+  write.csv(
+    subset.1.adj.test,
+    file = paste0(rwt_path, '/PUMS_data/PUMS2021.Split_subset1.csv'),
+    row.names = FALSE
+  )
+  
+  # Write a file with Households for Subset 2
+  write.csv(
+    subset.2.adj.test,
+    file = paste0(rwt_path, '/PUMS_data/PUMS2021.Split_subset2.csv'),
+    row.names = FALSE
+  )
+  
   print("Proceed!")
 }
 
@@ -640,18 +681,8 @@ write.csv(
 ```{r}
 # Full dataframe of subset households.
 subset.adj.test <- bind_rows(subset.1.adj.test, subset.2.adj.test) |> 
-  # Join the PUMA to RPA ceosswalk to the PUMS data
-  left_join(
-    xw,
-    by = c('PUMA')
-  ) |> 
   mutate(
-    WAGPALLC_US = 
-      cut(
-        HINCP.adj.2021USD,
-        breaks = c(-Inf, 35000, 75000, 125000, 225000, Inf),
-        labels = c("1", "2", "3", "4", "5")
-      )
+
   )
   
 #Households by RPA
@@ -663,6 +694,8 @@ tbl.1 <- subset.adj.test |>
   ) |> 
   ungroup()
 
+write.csv(tbl.1, file = paste0(root,scen,"/Analysis/tbl.1_hh.by.rpa.csv"), row.names = F)
+
 # Households by Household Type
 tbl.2 <- subset.adj.test |> 
   filter(SPORDER.adj == 1 & TYPEHUGQ == 1) |> 
@@ -673,6 +706,8 @@ tbl.2 <- subset.adj.test |>
     hhds = sum(WGTP)
   ) |> 
   ungroup()
+
+write.csv(tbl.2, file = paste0(root,scen,"/Analysis/tbl.2_hh.by.HHtype.csv"), row.names = F)
 
 #Households by Household Types and RPA
 tbl.3 <- subset.adj.test |> 
@@ -686,6 +721,8 @@ tbl.3 <- subset.adj.test |>
   ) |> 
   ungroup()
 
+write.csv(tbl.3, file = paste0(root,scen,"/Analysis/tbl.3_hh.by.rpa.HHtype.csv"), row.names = F)
+
 #Households by Household Size
 tbl.4 <- subset.adj.test |> 
   filter(SPORDER.adj == 1 & TYPEHUGQ == 1) |> 
@@ -697,6 +734,8 @@ tbl.4 <- subset.adj.test |>
   ) |> 
   ungroup()
 
+write.csv(tbl.4, file = paste0(root,scen,"/Analysis/tbl.4_hh.by.HHsize.csv"), row.names = F)
+
 #Households by Presence of Children
 tbl.5 <- subset.adj.test |> 
   filter(SPORDER.adj == 1 & TYPEHUGQ == 1) |> 
@@ -707,6 +746,8 @@ tbl.5 <- subset.adj.test |>
     hhds = sum(WGTP)
   ) |> 
   ungroup()
+
+write.csv(tbl.5, file = paste0(root,scen,"/Analysis/tbl.5_hh.by.NumChildren.csv"), row.names = F)
 
 #Households by Household Size and Presence of Children
 tbl.6 <- subset.adj.test |> 
@@ -720,6 +761,8 @@ tbl.6 <- subset.adj.test |>
   ) |> 
   ungroup()
 
+write.csv(tbl.6, file = paste0(root,scen,"/Analysis/tbl.6_hh.by.HHsize.NumChildren.csv"), row.names = F)
+
 #Households by Household Income
 tbl.7 <- subset.adj.test |> 
   filter(SPORDER.adj == 1 & TYPEHUGQ == 1) |> 
@@ -730,6 +773,8 @@ tbl.7 <- subset.adj.test |>
     hhds = sum(WGTP)
   ) |> 
   ungroup()
+
+write.csv(tbl.7, file = paste0(root,scen,"/Analysis/tbl.7_hh.by.HHincome.csv"), row.names = F)
 
 #Households by Householder Age
 tbl.8 <- subset.adj.test |> 
@@ -742,6 +787,8 @@ tbl.8 <- subset.adj.test |>
   ) |> 
   ungroup()
 
+write.csv(tbl.8, file = paste0(root,scen,"/Analysis/tbl.8_hh.by.HHerAge.csv"), row.names = F)
+
 #Households by the Number of Workers in the Household
 tbl.9 <- subset.adj.test |> 
   filter(SPORDER.adj == 1 & TYPEHUGQ == 1) |> 
@@ -753,16 +800,55 @@ tbl.9 <- subset.adj.test |>
   ) |> 
   ungroup()
 
-#============
-# TODO:
-# 4. Race/Eth
-# 5. Educational Attainment
+write.csv(tbl.9, file = paste0(root,scen,"/Analysis/tbl.9_hh.by.NumWorker.csv"), row.names = F)
+
+# Households by Subset and Overcrowding
+tbl.10 <- subset.adj.test |> 
+  filter(SPORDER.adj == 1 & TYPEHUGQ == 1) |> 
+  group_by(
+    overcrowded.ppb,
+    adj.flag
+  ) |> 
+  summarise(
+    hhds = sum(WGTP)
+  ) |> 
+  ungroup()
+
+write.csv(tbl.10, file = paste0(root,scen,"/Analysis/tbl.10_hh.by.OverCrowd.SubsetNum.csv"), row.names = F)
+
+# Persons in households by Race and Ethnicity
+tbl.11 <- subset.adj.test |> 
+  filter(TYPEHUGQ == 1) |> 
+  group_by(
+    RACE_Group,
+    HISP_Group
+  ) |> 
+  summarise(
+    hhds = sum(PWGTP)
+  ) |> 
+  ungroup()
+
+write.csv(tbl.11, file = paste0(root,scen,"/Analysis/tbl.11_persons.by.Race.Eth.csv"), row.names = F)
+
+# Persons in households by Educational Attainment
+tbl.11 <- subset.adj.test |> 
+  filter(TYPEHUGQ == 1) |> 
+  group_by(
+    eduattn
+  ) |> 
+  summarise(
+    hhds = sum(PWGTP)
+  ) |> 
+  ungroup()
+
+write.csv(tbl.12, file = paste0(root,scen,"/Analysis/tbl.12_persons.by.eduattainment.csv"), row.names = F)
+
 ```
 
 # 4.0 Calculate Headship Rates for Split Households PUMS
 
 ```{r}
-# Generating headship rates by RPA and 5-year age group for the ACS 2017-2022 PUMS
+# Generating headship rates by RPA and 5-year age group for the ACS 2017-2021 PUMS
 headship_rates.split <- pums_data.adj |> 
   # Join the PUMA to RPA crosswalk to the PUMS data
   left_join(

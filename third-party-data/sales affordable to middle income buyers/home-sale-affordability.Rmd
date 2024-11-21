@@ -20,7 +20,13 @@ warren_res <- read_csv("K:/DataServices/Datasets/Housing/Warren Group - Home Sal
 # Run the mortgage calculator
 
 ```{r}
-warren_res_monthly <- mortgage_calculator(warren_res, .2, 30, 1000, 300)
+warren_res_monthly <- mortgage_calculator(
+  df = warren_res, # running on warren property sales data
+  down_payment = .2, # 20% down payment
+  loan_term = 30, # 30 year loan term
+  ho_insurance = 1000, # $1,000 a year for homeowners insurance
+  condo_fee = 300 # $300 per month condo fee
+  )
 ```
 
 # Run the affordability summary function

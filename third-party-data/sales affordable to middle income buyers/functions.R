@@ -10,9 +10,6 @@ mortgage_calculator <- function(df, down_payment, loan_term, ho_insurance, condo
   ## MAKE VARIABLES 
   # data paths
   calc_data_path <- "K:/DataServices/Datasets/Housing/Warren Group - Home Sales/attainable_housing/calculator_data/"
-  # start and end year for data
-  start_year = min(df$year)
-  end_year = max(df$year)
   
   ## MORTGAGE INTERST RATES TABLE
   # these are national mortgage rates downloaded from Freddie Mac here: https://www.freddiemac.com/pmms
@@ -26,15 +23,19 @@ mortgage_calculator <- function(df, down_payment, loan_term, ho_insurance, condo
     summarize(mortgage_rate_30 = mean(pmms30))
   
   ## PROPERTY TAX RATE TABLE - THIS TABLE WILL NEED TO BE UPDATED WITH FUTURE YEARS AS DATA BECOMES AVAILABLE!
-  prop_taxrate = read_csv(paste0(calc_data_path, "prop_taxrates_ma_2024.csv")) |> 
-    # filter table to only include years represented in the data frame
-    filter(fyear >= start_year & fyear <= end_year) |>
+ prop_taxrate = read_csv(paste0(calc_data_path, "prop_taxrates_ma_2024.csv")) |> 
     # property tax rate is reported as amount per $1000 of assessed value
     # calculate this ratio
     mutate(proptaxrate = Residential/1000) |> 
     # select only necessary columns and then rename
-    select(Municipality, fyear, Residential) |> 
-    `colnames<-` (c('municipal', 'fy_year', 'proptaxrate'))
+    select(Municipality, fyear, proptaxrate) |> 
+    `colnames<-` (c('municipal', 'fy_year', 'proptaxrate')) |> 
+    # need to create rows for property taxes from 2000-2002
+    group_by(municipal) |>
+    complete(fy_year = full_seq(2000:2024, 1)) |> 
+    # applying 2023 tax rates back to 2000 through 2002
+    fill(proptaxrate, .direction = "up")
+
   
   ## MORTGAGE CALCULATOR
   mortgage_df <- df |> 
@@ -144,6 +145,7 @@ affordable_sales <- function(df, output_type) {
         affordable_100 = ifelse(monthly_payment <= il100, TRUE, FALSE),
         affordable_120 = ifelse(monthly_payment <= il120, TRUE, FALSE)
         ) |>
+      arrange(fy_year, municipal) |> 
       group_by(municipal, fy_year, hh_size) 
       
     # if else statement to determine what summary table to output based on function input

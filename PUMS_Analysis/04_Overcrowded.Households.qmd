@@ -62,17 +62,15 @@ set.seed(351)
 source(here("PUMS_Analysis/PUMS_Helper_Functions.R"))
 source(file = "C:/Project_Work/Local_Data/General/census.data_connection.R")
 source(file = "C:/Project_Work/housing/dbConnections.R")
+# source(file = "C:/Project_Work/housing/ami-analysis.R")
 
 # Load PUMA x RPA Crosswalk
 xw <- read.csv(paste0(rwt_path, "PUMS_data/PUMA10_RPA_crosswalk.csv")) |> 
   mutate(PUMA = str_pad(PUMA, 5, "left", pad = 0))
 
-# Pull AMI Table for 2021
-ami_table <- get_mapc_database(
-  db.table_name = "hous_section8_income_limits_by_year_m",
-  year = 2021,
-  vars = "*"
-)
+# Load MUnicipality to PUMA Crosswalk
+muni2puma<-read_csv(paste0(rwt_path, "PUMS_data/pums_muni_inter.csv")) |> 
+  select(TOWN_ID, PUMACE10)
 
 # Set PUMS vintage final year for {tidycensus} API query.
 vintage <- 2021
@@ -90,6 +88,60 @@ pums <- pums_query(var.list = variable_list, yr = vintage, srvy = "acs5") |>
     PUMA = as.character(str_pad(PUMA, width = 5, side = "left", pad = 0))
   )
 
+```
+
+```{r}
+# Pull AMI Table for 2021
+ami_table <- get_mapc_database(
+  db.table_name = "hous_section8_income_limits_by_year_m",
+  year = 2021,
+  vars = "*"
+) |>
+  mutate(
+    #100% AMI
+    il_100_1 = il_50_1 * 2,
+    il_100_2 = il_50_2 * 2,
+    il_100_3 = il_50_3 * 2,
+    il_100_4 = il_50_4 * 2,
+    il_100_5 = il_50_5 * 2,
+    il_100_6 = il_50_6 * 2,
+    il_100_7 = il_50_7 * 2,
+    il_100_8 = il_50_8 * 2,
+    # 40 % AMI
+    il40_1 = il_100_1 * 0.4,
+    il40_2 = il_100_2 * 0.4,
+    il40_3 = il_100_3 * 0.4,
+    il40_4 = il_100_4 * 0.4,
+    il40_5 = il_100_5 * 0.4,
+    il40_6 = il_100_6 * 0.4,
+    il40_7 = il_100_7 * 0.4,
+    il40_8 = il_100_8 * 0.4,
+    # 60 % AMI
+    il60_1 = il_100_1 * 0.6,
+    il60_2 = il_100_2 * 0.6,
+    il60_3 = il_100_3 * 0.6,
+    il60_4 = il_100_4 * 0.6,
+    il60_5 = il_100_5 * 0.6,
+    il60_6 = il_100_6 * 0.6,
+    il60_7 = il_100_7 * 0.6,
+    il60_8 = il_100_8 * 0.6,
+    # 70 % AMI
+    il70_1 = il_100_1 * 0.7,
+    il70_2 = il_100_2 * 0.7,
+    il70_3 = il_100_3 * 0.7,
+    il70_4 = il_100_4 * 0.7,
+    il70_5 = il_100_5 * 0.7,
+    il70_6 = il_100_6 * 0.7,
+    il70_7 = il_100_7 * 0.7,
+    il70_8 = il_100_8 * 0.7
+  ) |> 
+  left_join(
+    muni2puma,
+    by = c("muni_id" = "TOWN_ID")
+  ) |> 
+  select(-c(municipal, muni_id, countyname, areaname)) |> 
+  distinct(PUMACE10, .keep_all = TRUE) |> 
+  relocate(PUMACE10)
 ```
 
 # 0.3 PUMS Data Cleaning

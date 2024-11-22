@@ -4,23 +4,73 @@ format: html
 editor: visual
 ---
 
-## Quarto
+# 0.1 - Set knitr path + root for inputs
 
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+```{r, setup, include=FALSE}
+# Use when Rproject is open
+# root <- '../../../../Data/Working/Regional_Control_Totals/'
 
-## Running Code
+# Base root. Toggle between S: and K: drive depending on mapped paths on your computer
+base <- "K:/DataServices/Projects/Current_Projects/"
 
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+# General K drive filepath
+root <-"K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/"
 
-```{r}
-1 + 1
+# PUMS K drive filepath
+pums_path <- "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS/ipums_2021/"
+
+# Set output filepath
+output_path <- "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS/outputs/"
+
+# Reweighter files path
+rwt_path <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Reweighter/")
+
+# Set knitr path
+knitr::opts_knit$set(root.dir = pums_path)
 ```
 
-You can add options to executable code like this
+# 0.2 - Set package dependencies, set environment, set up data keys
 
 ```{r}
-#| echo: false
-2 * 2
-```
+library(tidycensus)
+library(tidyverse)
+library(data.table)
+library(mapcdatakeys)
+library(janitor)
+library(readxl)
+library(here)
+library(RPostgreSQL)
 
-The `echo: false` option disables the printing of code (only output is displayed).
+# Remove scientific notation
+options(scipen = 999)
+# Set random seed
+set.seed(351)
+
+# Load Libraries for PUMS Analysis and PUMS API query functions
+# Sets seed and removes scientific notation
+source(here("PUMS_Analysis/PUMS_Helper_Functions.R"))
+source(file = "C:/Project_Work/Local_Data/General/census.data_connection.R")
+source(file = "C:/Project_Work/housing/dbConnections.R")
+# source(file = "C:/Project_Work/housing/ami-analysis.R")
+
+# Load PUMA x RPA Crosswalk
+xw <- read.csv(paste0(rwt_path, "PUMS_data/PUMA10_RPA_crosswalk.csv")) |> 
+  mutate(PUMA = str_pad(PUMA, 5, "left", pad = 0))
+
+# Set PUMS vintage final year for {tidycensus} API query.
+vintage <- 2021
+
+# List of PUMS variables
+variable_list <- c('RT', 'PUMA', 'ADJHSG','ADJINC','NP','TYPEHUGQ','BDSP','RMSP','CPLT','HHLDRAGEP',
+                   'HHLDRRAC1P','HHLDRHISP', 'HHT', 'HHT2', 'HINCP', 'HUGCL', 'HUPAC', 'HUPAOC',
+                   'HUPARC', 'LNGI', 'MULTG', 'NPF', 'NPP', 'NR','NRC', 'PARTNER', 'PSF','R18',
+                   'AGEP','RELSHIPP','RAC1P','OC','SFN','SFR','TEN', "SEX", "PINCP", "ESR",
+                   "MV", "GRPIP", "OCPIP")
+
+# Load PUMS variables
+pums <- pums_query(var.list = variable_list, yr = vintage, srvy = "acs5") |> 
+  mutate(
+    PUMA = as.character(str_pad(PUMA, width = 5, side = "left", pad = 0))
+  )
+
+```

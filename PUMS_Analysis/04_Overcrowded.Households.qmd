@@ -70,7 +70,11 @@ xw <- read.csv(paste0(rwt_path, "PUMS_data/PUMA10_RPA_crosswalk.csv")) |>
 
 # Load MUnicipality to PUMA Crosswalk
 muni2puma<-read_csv(paste0(rwt_path, "PUMS_data/pums_muni_inter.csv")) |> 
-  select(TOWN_ID, PUMACE10)
+  select(TOWN_ID, PUMACE10) |> 
+  dplyr::rename(muni_id = TOWN_ID)
+
+# 
+muni2rpa <- mapcdatakeys::all_muni_data_keys |> select(muni_id, rpa_acr)
 
 # Set PUMS vintage final year for {tidycensus} API query.
 vintage <- 2021
@@ -89,14 +93,12 @@ pums <- pums_query(var.list = variable_list, yr = vintage, srvy = "acs5") |>
   )
 
 ```
-
+# WORK IN PROGRESS - Less Than Elegant AMI Table Generation
 ```{r}
 # Pull AMI Table for 2021
-ami_table <- get_mapc_database(
-  db.table_name = "hous_section8_income_limits_by_year_m",
-  year = 2021,
-  vars = "*"
-) |>
+puma.ami_table <- get_mapc_database(db.table_name = "hous_section8_income_limits_by_year_m",
+                               year = 2021,
+                               vars = "*") |>
   mutate(
     #100% AMI
     il_100_1 = il_50_1 * 2,
@@ -134,14 +136,171 @@ ami_table <- get_mapc_database(
     il70_6 = il_100_6 * 0.7,
     il70_7 = il_100_7 * 0.7,
     il70_8 = il_100_8 * 0.7
-  ) |> 
-  left_join(
-    muni2puma,
-    by = c("muni_id" = "TOWN_ID")
-  ) |> 
-  select(-c(municipal, muni_id, countyname, areaname)) |> 
+  ) |>
+  left_join(muni2puma,
+            by = c("muni_id")) |>
+  select(-c(
+    municipal,
+    muni_id,
+    countyname,
+    areaname,
+    seq_id,
+    fy_year,
+    median
+  )) |>
+  group_by(PUMACE10) |>
+  mutate(across(starts_with("il"), ~ round(mean(.), 0))) |>
+  ungroup() |>
   distinct(PUMACE10, .keep_all = TRUE) |> 
   relocate(PUMACE10)
+  
+  # Pull AMI Table for 2021
+rpa.ami_table <- get_mapc_database(db.table_name = "hous_section8_income_limits_by_year_m",
+                               year = 2021,
+                               vars = "*") |>
+  mutate(
+    #100% AMI
+    il_100_1 = il_50_1 * 2,
+    il_100_2 = il_50_2 * 2,
+    il_100_3 = il_50_3 * 2,
+    il_100_4 = il_50_4 * 2,
+    il_100_5 = il_50_5 * 2,
+    il_100_6 = il_50_6 * 2,
+    il_100_7 = il_50_7 * 2,
+    il_100_8 = il_50_8 * 2,
+    # 40 % AMI
+    il40_1 = il_100_1 * 0.4,
+    il40_2 = il_100_2 * 0.4,
+    il40_3 = il_100_3 * 0.4,
+    il40_4 = il_100_4 * 0.4,
+    il40_5 = il_100_5 * 0.4,
+    il40_6 = il_100_6 * 0.4,
+    il40_7 = il_100_7 * 0.4,
+    il40_8 = il_100_8 * 0.4,
+    # 60 % AMI
+    il60_1 = il_100_1 * 0.6,
+    il60_2 = il_100_2 * 0.6,
+    il60_3 = il_100_3 * 0.6,
+    il60_4 = il_100_4 * 0.6,
+    il60_5 = il_100_5 * 0.6,
+    il60_6 = il_100_6 * 0.6,
+    il60_7 = il_100_7 * 0.6,
+    il60_8 = il_100_8 * 0.6,
+    # 70 % AMI
+    il70_1 = il_100_1 * 0.7,
+    il70_2 = il_100_2 * 0.7,
+    il70_3 = il_100_3 * 0.7,
+    il70_4 = il_100_4 * 0.7,
+    il70_5 = il_100_5 * 0.7,
+    il70_6 = il_100_6 * 0.7,
+    il70_7 = il_100_7 * 0.7,
+    il70_8 = il_100_8 * 0.7
+  ) |>
+  left_join(muni2rpa,
+            by = c("muni_id")) |>
+  select(-c(
+    municipal,
+    muni_id,
+    countyname,
+    areaname,
+    seq_id,
+    fy_year,
+    median
+  )) |>
+  group_by(rpa_acr) |>
+  mutate(across(starts_with("il"), ~ round(mean(.), 0))) |>
+  ungroup() |>
+  distinct(rpa_acr, .keep_all = TRUE) |> 
+  relocate(rpa_acr)
+
+```
+
+# WORK IN PROGRESS - Elegant AMI Table Generation Function
+```{r}
+# 
+# ami_aggregations <- function(join_table, agg_param){
+#   
+#   # Pull AMI Table for 2021
+#   ami_table <- get_mapc_database(
+#     db.table_name = "hous_section8_income_limits_by_year_m",
+#     year = 2021,
+#     vars = "*"
+#   ) |>
+#     mutate(
+#       #100% AMI
+#       il_100_1 = il_50_1 * 2,
+#       il_100_2 = il_50_2 * 2,
+#       il_100_3 = il_50_3 * 2,
+#       il_100_4 = il_50_4 * 2,
+#       il_100_5 = il_50_5 * 2,
+#       il_100_6 = il_50_6 * 2,
+#       il_100_7 = il_50_7 * 2,
+#       il_100_8 = il_50_8 * 2,
+#       # 40 % AMI
+#       il40_1 = il_100_1 * 0.4,
+#       il40_2 = il_100_2 * 0.4,
+#       il40_3 = il_100_3 * 0.4,
+#       il40_4 = il_100_4 * 0.4,
+#       il40_5 = il_100_5 * 0.4,
+#       il40_6 = il_100_6 * 0.4,
+#       il40_7 = il_100_7 * 0.4,
+#       il40_8 = il_100_8 * 0.4,
+#       # 60 % AMI
+#       il60_1 = il_100_1 * 0.6,
+#       il60_2 = il_100_2 * 0.6,
+#       il60_3 = il_100_3 * 0.6,
+#       il60_4 = il_100_4 * 0.6,
+#       il60_5 = il_100_5 * 0.6,
+#       il60_6 = il_100_6 * 0.6,
+#       il60_7 = il_100_7 * 0.6,
+#       il60_8 = il_100_8 * 0.6,
+#       # 70 % AMI
+#       il70_1 = il_100_1 * 0.7,
+#       il70_2 = il_100_2 * 0.7,
+#       il70_3 = il_100_3 * 0.7,
+#       il70_4 = il_100_4 * 0.7,
+#       il70_5 = il_100_5 * 0.7,
+#       il70_6 = il_100_6 * 0.7,
+#       il70_7 = il_100_7 * 0.7,
+#       il70_8 = il_100_8 * 0.7
+#     ) |>
+#     left_join(
+#       join_table,
+#       by = c("muni_id")
+#     ) |>
+#     select(-c(
+#       municipal,
+#       muni_id,
+#       countyname,
+#       areaname,
+#       seq_id,
+#       fy_year,
+#       median
+#     ))
+#   
+#   group_list <- ami_table |> pull(ami_table[[agg_param]])
+#   
+#   aggr.ami_table <- NULL
+#   
+#   for (i in group_list){
+#     tmp <- ami_table |>
+#       group_by(ami_table$agg_param[[i]]) |>
+#       mutate(across(starts_with("il"), ~ round(mean(.), 0))) |>
+#       ungroup() |>
+#       relocate(ami_table$agg_param)
+#     
+#     aggr.ami_table <- bind_rows(aggr.ami_table, tmp)
+#     
+#   }
+#   
+#   return(ami_table)
+#   
+# }
+# 
+# ami_table.PUMA <- ami_aggregations(muni2puma, agg_param = PUMACE10)
+# 
+# ami_table.RPA <- ami_aggregations(muni2rpa, agg_param = rpa_acr)
+
 ```
 
 # 0.3 PUMS Data Cleaning

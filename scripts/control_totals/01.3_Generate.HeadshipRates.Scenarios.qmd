@@ -662,7 +662,7 @@ file_check = paste0(rwt_path, '/PUMS_data/PUMS2021.Split_formatted.csv')
 if (!file.exists(file_check)){
   
   # Creating the PUMS data extract for Scenario 2
-  pums_data.adj.rwt <- pums_data.adj |>
+  pums_data.adj.rwt <- full.pums_data.adj |>
     left_join(
       xw,
       by = c("PUMA"),
@@ -849,6 +849,106 @@ tbl.12 <- subset.adj.test |>
 write.csv(tbl.12, file = paste0(root,scen,"/Analysis/tbl.12_persons.by.eduattainment.csv"), row.names = F)
 
 ```
+# 4.0 Create Sampling Subsets
+
+```{r}
+# Subset of unsplit that do not need to be reordered
+partial.pums_data.og <- full.pums_data.adj |> 
+  filter(SPORDER.adj == 1 & TYPEHUGQ == 1 & subset.flag.1 == 0 & adj.flag == 0)
+
+# Subset of Subset 1 split households.
+partial.pums_data.subset1 <- full.pums_data.adj |> 
+  filter(SPORDER.adj == 1 & TYPEHUGQ == 1 & subset.flag.1 == 1 & adj.flag == 1)
+
+# Subset of Subset 2 split households.
+partial.pums_data.subset2 <- full.pums_data.adj |> 
+  filter(SPORDER.adj == 1 & TYPEHUGQ == 1 & subset.flag.2 == 1 & adj.flag == 2)
+
+```
+```{r}
+years <- c(2020,2025,2030,2035,2040,2045,2050)
+
+total_split.hhds <- sum(nrow(partial.pums_data.subset1), nrow(partial.pums_data.subset2))
+
+sample.size <- round(total_split.hhds*0.25, 0)
+
+for (i in years){
+  
+  df.row.1 <- nrow(partial.pums_data.subset1.sample)
+  df.row.2 <- nrow(partial.pums_data.subset2.sample)
+  
+  if (df.row.1 >= sample.size) {
+    
+    test <- slice_sample(partial.pums_data.subset1.sample, n = sample.size, replace = F)
+    print(sum(test$WGTP))
+    test_sporder.adj <- test |> pull(SPORDER.adj)
+    partial.pums_data.subset1 <- filter(!SPORDER.adj %in% test_sporder.adj)
+    
+    assign(test, paste0("pums.sample_",i))
+    
+  } else if (df.row.1 < sample.size & df.row.1 != 0) {
+    
+    test <- slice_sample(partial.pums_data.subset1.sample, n = sample.size, replace = F)
+    print(sum(test$WGTP))
+    test_sporder.adj <- test |> pull(SPORDER.adj)
+    partial.pums_data.subset1 <- filter(!SPORDER.adj %in% test_sporder.adj)
+    
+    assign(test, paste0("pums.sample_",i))
+    
+  } else if (){
+    
+  }
+
+}
+
+
+
+```
+
+# 5.0 Create Headship Rate Generation function
+```{r}
+create_hdsp.r <- function(df){
+  # Generating headship rates by RPA and 5-year age group for the ACS 2017-2021 PUMS
+  hdsp.r <- df |>
+    # Join the PUMA to RPA crosswalk to the PUMS data
+    left_join(
+      xw,
+      by = c('PUMA'),
+      relationship = "many-to-many"
+    ) |>
+    # Includes only observations for people in households (omits GQ)
+    filter(SPORDER.adj == "1" & TYPEHUGQ == "1") |>
+    # Groups by variables in the dataframe necessary to getting the granularity of
+    # data we're interested in.
+    group_by(rpa_acr, ageCAT6) |>
+    # Computes the weighted sum of individuals in each HH type category by the groups
+    # assigned above.
+    count(var = HHtype, wt = WGTP)  |>
+    ungroup() |>
+    group_by(rpa_acr, ageCAT6) |>
+    # Recodes factor variables as the categories they represent.
+    # Converts numbers into frequencies.
+    mutate(
+      var = case_when(
+        var == 1 ~ "hhderchild",
+        var == 2 ~ "nothhderchild",
+        var == 3 ~ "hhdernochild",
+        var == 4 ~ "nothhdernochild",
+        var == 5 ~ "single"
+      ),
+      freq = (n / sum(n))
+    ) |>
+    # Removes the level of aggregation set earlier by group_by()
+    ungroup() |>
+    select(-c(n)) |>
+    dplyr::rename(freq.split = freq) |>
+    mutate(ageCAT6 = as.factor(ageCAT6))
+  
+  return(hdsp.r)
+  
+}
+```
+
 
 # 4.0 Calculate Headship Rates for Split Households PUMS
 
@@ -861,7 +961,7 @@ headship_rates.split <- pums_data.adj |>
     by = c('PUMA')
   ) |>
   # Includes only observations for people in households (omits GQ)                       
-  filter(TYPEHUGQ == "1") |> 
+  filter(SPORDER.adj == "1" & TYPEHUGQ == "1") |> 
   # Groups by variables in the dataframe necessary to getting the granularity of
   # data we're interested in.
   group_by(rpa_acr, ageCAT6) |> 
@@ -892,38 +992,38 @@ headship_rates.split <- pums_data.adj |>
     ageCAT6 = as.factor(ageCAT6)
   )
 
-# Generating headship rates by RPA and 5-year age group for the ACS 2017-2022 PUMS
-tenure_rates.split <- pums_data.adj |> 
-  # Join the PUMA to RPA crosswalk to the PUMS data
-  left_join(
-    xw,
-    by = c('PUMA')
-  ) |>
-  # Includes only observations for people in households (omits GQ)                       
-  filter(SPORDER.adj == 1 & TYPEHUGQ == "1") |> 
-  # Groups by variables in the dataframe necessary to getting the granularity of
-  # data we're interested in.
-  group_by(rpa_acr, ageCAT6) |> 
-  # Computes the weighted sum of individuals in each HH type category by the groups
-  # assigned above.
-  count(var = TEN_Group, wt = WGTP)  |>
-  ungroup() |> 
-  group_by(rpa_acr, ageCAT6) |>
-  # Converts numbers into frequencies.                       
-  mutate(
-    freq = (n/sum(n))
-  ) |> 
-  # Removes the level of aggregation set earlier by group_by()
-  ungroup() |> 
-  select(
-    -c(n)
-  ) |> 
-  dplyr::rename(
-    freq.split = freq
-  ) |> 
-  mutate(
-    ageCAT6 = as.factor(ageCAT6)
-  )
+# # Generating headship rates by RPA and 5-year age group for the ACS 2017-2022 PUMS
+# tenure_rates.split <- pums_data.adj |> 
+#   # Join the PUMA to RPA crosswalk to the PUMS data
+#   left_join(
+#     xw,
+#     by = c('PUMA')
+#   ) |>
+#   # Includes only observations for people in households (omits GQ)                       
+#   filter(SPORDER.adj == 1 & TYPEHUGQ == "1") |> 
+#   # Groups by variables in the dataframe necessary to getting the granularity of
+#   # data we're interested in.
+#   group_by(rpa_acr, ageCAT6) |> 
+#   # Computes the weighted sum of individuals in each HH type category by the groups
+#   # assigned above.
+#   count(var = TEN_Group, wt = WGTP)  |>
+#   ungroup() |> 
+#   group_by(rpa_acr, ageCAT6) |>
+#   # Converts numbers into frequencies.                       
+#   mutate(
+#     freq = (n/sum(n))
+#   ) |> 
+#   # Removes the level of aggregation set earlier by group_by()
+#   ungroup() |> 
+#   select(
+#     -c(n)
+#   ) |> 
+#   dplyr::rename(
+#     freq.split = freq
+#   ) |> 
+#   mutate(
+#     ageCAT6 = as.factor(ageCAT6)
+#   )
 
 # QC Check - determine if the frequencies in each RP, Age Group crosstab add to 1
 hr_check <- headship_rates.split |> 
@@ -939,19 +1039,19 @@ hr_check <- headship_rates.split |>
     flag = ifelse(freq_check != 1, 1, 0)
   )
 
-# QC Check - determine if the frequencies in each Tenure, Age Group crosstab add to 1
-ten_check <- tenure_rates.split |> 
-  group_by(
-    rpa_acr,
-    ageCAT6
-  ) |> 
-  summarise(
-    freq_check = sum(freq.split)
-  ) |> 
-  ungroup() |> 
-  mutate(
-    flag = ifelse(freq_check != 1, 1, 0)
-  )
+# # QC Check - determine if the frequencies in each Tenure, Age Group crosstab add to 1
+# ten_check <- tenure_rates.split |> 
+#   group_by(
+#     rpa_acr,
+#     ageCAT6
+#   ) |> 
+#   summarise(
+#     freq_check = sum(freq.split)
+#   ) |> 
+#   ungroup() |> 
+#   mutate(
+#     flag = ifelse(freq_check != 1, 1, 0)
+#   )
 
 # Print statement to verify w/in headhship groups that the numbers all add up accordingly.
 if (sum(hr_check$flag) > 0 | sum(ten_check$flag) > 0){
@@ -972,11 +1072,11 @@ write.csv(
   row.names = FALSE
 )
 
-# Export tenure rates
-write.csv(
-  tenure_rates.split,
-  paste0(rwt_path,"Headship_rates/tenure.rates.1721_household.split.csv"),
-  row.names = FALSE
-)
+# # Export tenure rates
+# write.csv(
+#   tenure_rates.split,
+#   paste0(rwt_path,"Headship_rates/tenure.rates.1721_household.split.csv"),
+#   row.names = FALSE
+# )
 
 ```

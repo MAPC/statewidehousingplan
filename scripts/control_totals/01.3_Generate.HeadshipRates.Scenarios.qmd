@@ -369,7 +369,7 @@ print(paste0("The housheold splitting process will generate ", sum(subset.1$new.
 
 ```{r}
 # Create a new SERIALNO variable that represents subfamilies and original households as distinct households.
-pums_data.adj <- pums_data |> 
+pums_data.distinct <- pums_data |> 
   mutate(
     SERIALNO.adj = case_when(
       # First Subset
@@ -420,11 +420,11 @@ pums_data.adj <- pums_data |>
 ```{r}
 # Reordering persons in the households to be split.
 # Subset of households that will not be split that do not need to be reordered
-pums_data.adj.og <- pums_data.adj |> 
+pums_data.og <- pums_data.distinct |> 
   filter(adj.flag.2 == "0")
 
 # Subset of households that WILL be split and need to be reordered within their new household.
-pums_data.adj.adj <- pums_data.adj |> 
+pums_data.adj <- pums_data.distinct |> 
   filter(adj.flag.2 == "1") |> 
   group_by(SERIALNO.adj) |> 
   dplyr::arrange(desc(AGEP), .by_group = TRUE) |> 
@@ -433,17 +433,17 @@ pums_data.adj.adj <- pums_data.adj |>
 # To redefine the person order within a household, we need to make sure the people in the households to be split are at least sort of logically ordered. I am assuming that the oldest person (as captured by AGEP) is the "head" (SPORDER == 1) of the household. We do not want children to head a household in which they have a parent, which they should because that is the definition of a subfamily when they have children.
 
 # Rebinding the pums data subsets with the people in the households to be split properly arranged by age.
-pums_data.adj <- rbind(pums_data.adj.og, pums_data.adj.adj)
+full.pums_data.adj <- rbind(pums_data.og, pums_data.adj)
 
 # Removing the interim subsets I no longer need.
-rm(pums_data.adj.og, pums_data.adj.adj)
+# rm(pums_data.adj.og, pums_data.adj.adj)
 ```
 
 # 3.2 Redefine SPORDER and Relationship Variables
 
 ```{r}
 # Redefine SPORDER and Relationship Variables in the pums_data.adj dataframe
-pums_data.adj <- pums_data.adj |>
+full.pums_data.adj <- full.pums_data.adj |>
   mutate(
     # Create a row ID number to loop through later.
     ID = row_number()
@@ -485,7 +485,7 @@ pums_data.adj <- pums_data.adj |>
 
 ```{r}
 # Re-create households variables for split households
-pums_data.adj <- pums_data.adj |> 
+full.pums_data.adj <- full.pums_data.adj |> 
   mutate(
     # Counts as Worker
     # NOTE: Categories are:
@@ -604,11 +604,11 @@ pums_data.adj <- pums_data.adj |>
 #===============================================================================
 # Analyze Subset #1
 # Filter for the subset of non-subfamily members from the split household (the "original" household).
-subset.1.og.test <- pums_data.adj |> 
+subset.1.og.test <- full.pums_data.adj |> 
   filter(SPORDER.adj == 1 & TYPEHUGQ == 1 & subset.flag.1 == 1 & adj.flag == 0)
 
 # Filter for the subset of subfamily members from the split household (the "original" household).
-subset.1.adj.test <- pums_data.adj |> 
+subset.1.adj.test <- full.pums_data.adj |> 
   filter(SPORDER.adj == 1 & TYPEHUGQ == 1 & subset.flag.1 == 1 & adj.flag == 1)
 
 # Print the number of household created by the household split code for Subset #1.
@@ -617,11 +617,11 @@ print(sum(subset.1.adj.test$WGTP))
 #===============================================================================
 # Analyze Subset #2
 # Filter for the subset of non-subfamily members from the split household (the "original" household).
-subset.2.og.test <- pums_data.adj |> 
+subset.2.og.test <- full.pums_data.adj |> 
   filter(SPORDER.adj == 1 & TYPEHUGQ == 1 & subset.flag.2 == 1 & adj.flag == 0)
 
 # Filter for the subset of subfamily members from the split household (the "original" household).
-subset.2.adj.test <- pums_data.adj |> 
+subset.2.adj.test <- full.pums_data.adj |> 
   filter(SPORDER.adj == 1 & TYPEHUGQ == 1 & subset.flag.2 == 1 & adj.flag == 2)
 
 # Print the number of households created by the household split code for Subset #2.
@@ -656,20 +656,31 @@ if(sum(sum(subset.1$new.hhds), sum(subset.2$new.hhds)) != sum(sum(subset.1.adj.t
 
 # 3.5 Create PUMS Extract for Reweighter
 ```{r}
-# Creating the PUMS data extract for Scenario 2
-pums_data.adj.rwt <- pums_data.adj |> 
-  left_join(
-    xw,
-    by = c("PUMA"),
-    relationship = "many-to-many"
-  )
+# Create a check to see if the file has already been written.
+file_check = paste0(rwt_path, '/PUMS_data/PUMS2021.Split_formatted.csv')
 
-# Write PUMS extract to reweighter input folder for Scenario 2
-write.csv(
-  pums_data.adj.rwt,
-  file = paste0(rwt_path, '/PUMS_data/PUMS2021.Split_formatted.csv'),
-  row.names = FALSE
-)
+if (!file.exists(file_check)){
+  
+  # Creating the PUMS data extract for Scenario 2
+  pums_data.adj.rwt <- pums_data.adj |>
+    left_join(
+      xw,
+      by = c("PUMA"),
+      relationship = "many-to-many"
+    )
+  
+  # Write PUMS extract to reweighter input folder for Scenario 2
+  write.csv(
+    pums_data.adj.rwt,
+    file = paste0(rwt_path, '/PUMS_data/PUMS2021.Split_formatted.csv'),
+    row.names = FALSE
+  )
+  
+} else if (file.exists(file_check)){
+  
+  print("File already exists!")
+  
+}
 
 ```
 

@@ -4,23 +4,345 @@ format: html
 editor: visual
 ---
 
-## Quarto
+# 0.1 - Set knitr path + root for inputs
 
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+```{r, setup, include=FALSE}
+library(tidyverse)
+options(scipen = 999)
+#Use when Rproject is open
+#root <- '../../../../Data/Working/Regional_Control_Totals/'
 
-## Running Code
+#General K drive filepath
+root <-"K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/"
 
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+#PUMS K drive filepath
+pums_path <- "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS/ipums_2021/"
 
-```{r}
-1 + 1
+rpa_path <- "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Reweighter/PUMS_data/"
+
+#Set output filepath
+output_path <- "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS/outputs/"
+
+#Set knitr path
+knitr::opts_knit$set(root.dir = pums_path)
 ```
 
-You can add options to executable code like this
+# 0.2 - Set package dependencies, set environment, set up data keys
 
 ```{r}
-#| echo: false
-2 * 2
+#Load Libraries for PUMS Analysis and PUMS API query functions
+#sets seed and removes scientific notation
+#source("C:/Project_Work/statewidehousingplan/PUMS_Analysis/PUMS_Helper_Functions.R")
+
+#Load PUMS variables
+pums <- read_csv(paste0(pums_path,"pums_unitsbuilt_2021_V_2024-10-09.csv")) |> 
+  mutate(
+    PUMA = as.character(str_pad(PUMA, width = 5, side = "left", pad = 0))
+  ) |> 
+  #create flag for units built 2010 or later
+  mutate(yrblt_flag = ifelse(YRBLT >= 2010, 1, 0))
+
+# Load PUMA to RPA Crosswalk
+rpa_xw <- read_csv(paste0(rpa_path, 'PUMA10_RPA_crosswalk.csv')) |> 
+  mutate(
+    # Change the data type and pad the string with a leading zero.
+    PUMA = as.character(PUMA),
+    PUMA = str_pad(PUMA, 5, side = "left", pad = "0")
+  )
+
+# Load PUMA to Community Type Crosswalk
+ct_xw <- read_csv("C:/GitHub/statewidehousingplan/PUMS_Analysis/new_puma_types_w_rural_2024.csv") |> 
+  mutate(
+    PUMA = as.character(PUMACE10),
+    PUMA = str_pad(PUMA, 5, side = "left", pad = "0")
+    ) |> 
+  select(PUMA, puma_type) |> 
+  distinct()
+
+#x <- read_csv("C:/GitHub/statewidehousingplan/PUMS_Analysis/new_puma_types_w_rural_2024.csv")
 ```
 
-The `echo: false` option disables the printing of code (only output is displayed).
+# Crosstab: Estimated Households by RPA
+
+```{r}
+# Join RPA xw to pums data
+pums_rpa <- left_join(
+  pums,
+  rpa_xw,
+  by = c("PUMA")
+)
+
+rpa_yrbuilt <- pums_rpa |> 
+  #creating field to identify order of people in household
+  mutate(SPORDER = str_sub(uniq_obs, -1)) |> 
+  #filtering to exclude group quarters and only include the first person in each hh and only untils 2010 later
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
+  #grouping by RPA and year built
+  group_by(rpa_acr, yrblt_flag) |> 
+  #summing hh weights to get estimate of households
+  summarise(hh_est = sum(WGTP)) |> 
+  ungroup() |> 
+  mutate(
+    hh_total = sum(hh_est), 
+    percent = round(hh_est/hh_total, digits = 3)
+  )
+
+write.csv(
+  rpa_yrbuilt,
+  paste0(output_path, "07_YearBuilt/rpa_yrblt.csv"),
+  row.names = FALSE
+)
+
+```
+
+# Crosstab: Estimated Households by Community Type
+
+```{r}
+# Join RPA xw to pums data
+pums_ct <- left_join(
+  pums,
+  ct_xw,
+  by = c("PUMA")
+)
+
+# pums_ct has 145,493 rows compares to the 20,650 in the pums table due to the many-to-many relationship
+
+ct_yrbuilt <- pums_ct |> 
+  #creating field to identify order of people in household
+  mutate(SPORDER = str_sub(uniq_obs, -1)) |> 
+  #filtering to exclude group quarters and only include the first person in each hh 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
+  #grouping by community type
+  group_by(puma_type, yrblt_flag) |> 
+  #summing hh weights to get estimate of households
+  summarise(hh_est = sum(WGTP)) |> 
+  ungroup() |> 
+  mutate(
+    hh_total = sum(hh_est), 
+    percent = round(hh_est/hh_total, digits = 3)
+  )
+
+
+write.csv(
+  ct_yrbuilt,
+  paste0(output_path, "07_YearBuilt/ct_yrblt.csv"),
+  row.names = FALSE
+)
+
+```
+
+# Crosstab: Estimated Households by Building Type
+
+```{r}
+
+build_typ <- pums_ct |> 
+  mutate(
+    #creating field to identify order of people in household
+    SPORDER = str_sub(uniq_obs, -1),
+    #creating field to identify single family vs multi-family
+    bld_typ = case_when(
+      BLD %in% c('02', '03') ~ 'single family',
+      BLD %in% c('04', '05', '06', '07', '08', '09') ~  'multi-family',
+      BLD %in% c('01', '10') ~ 'other' # mobile homes, trailers, boats, RVs, vans, etc.
+      )
+    ) |> 
+  #filtering to exclude group quarters and only include the first person in each hh 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
+  #grouping by building type
+  group_by(bld_typ, yrblt_flag) |> 
+  #summing hh weights to get estimate of households
+  summarise(hh_est = sum(WGTP)) |> 
+  ungroup() |> 
+  mutate(
+    hh_total = sum(hh_est), 
+    percent = round(hh_est/hh_total, digits = 3)
+  )
+
+
+write.csv(
+  build_typ,
+  paste0(output_path, "07_YearBuilt/build_typ.csv"),
+  row.names = FALSE
+)
+
+```
+
+# Crosstab: Estimated Households by Community Type and Building Type
+
+```{r}
+
+ct_build_typ <- pums_ct |> 
+  mutate(
+    #creating field to identify order of people in household
+    SPORDER = str_sub(uniq_obs, -1),
+    #creating field to identify single family vs multi-family
+    bld_typ = case_when(
+      BLD %in% c('02', '03') ~ 'single family',
+      BLD %in% c('04', '05', '06', '07', '08', '09') ~  'multi-family',
+      BLD %in% c('01', '10') ~ 'other' # mobile homes, trailers, boats, RVs, vans, etc.
+      )
+    ) |> 
+  #filtering to exclude group quarters and only include the first person in each hh 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
+  #grouping by community type and building type
+  group_by(puma_type, bld_typ, yrblt_flag) |> 
+  #summing hh weights to get estimate of households 
+  summarise(hh_est = sum(WGTP)) |> 
+  ungroup()|> 
+  mutate(
+    hh_total = sum(hh_est), 
+    percent = round(hh_est/hh_total, digits = 3)
+  )
+
+
+write.csv(
+  ct_build_typ,
+  paste0(output_path, "07_YearBuilt/ct_build_typ.csv"),
+  row.names = FALSE
+)
+
+```
+
+# Crosstab: Estimated Households by Community Type, Building Type, and Income
+
+```{r}
+
+ct_build_typ_inc <- pums_ct |> 
+  mutate(
+    #creating field to identify order of people in household
+    SPORDER = str_sub(uniq_obs, -1),
+    #creating field to identify single family vs multi-family
+    bld_typ = case_when(
+      BLD %in% c('02', '03') ~ 'single family',
+      BLD %in% c('04', '05', '06', '07', '08', '09') ~  'multi-family',
+      BLD %in% c('01', '10') ~ 'other' # mobile homes, trailers, boats, RVs, vans, etc.
+      ),
+    # Adjust Household income (HINCP) to constant dollars (USD2021)
+    HINCP_adj = HINCP*ADJINC,
+    # Household Income Groupings consistent with UrbanSim groupings
+    HH.Income.Grp = case_when(
+      HINCP_adj <= 35000 ~ "<=$35,000",
+      HINCP_adj > 35000 & HINCP_adj <= 75000 ~ "$35,001-$75,000",
+      HINCP_adj > 75000 & HINCP_adj <= 125000 ~ "$75,001-$125,000",
+      HINCP_adj > 125000 & HINCP_adj <= 225000 ~ "$125,001-$225,000",
+      HINCP_adj > 225000 ~ ">$225,000",
+      .default = "0"
+    )
+    ) |> 
+  #filtering to exclude group quarters and only include the first person in each hh 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
+  #grouping by community type and building type
+  group_by(puma_type, bld_typ, HH.Income.Grp, yrblt_flag) |> 
+  #summing hh weights to get estimate of households
+  summarise(hh_est = sum(WGTP)) |> 
+  ungroup() |> 
+  mutate(
+    hh_total = sum(hh_est), 
+    percent = round(hh_est/hh_total, digits = 3)
+  )
+
+
+write.csv(
+  ct_build_typ_inc,
+  paste0(output_path, "07_YearBuilt/ct_build_typ_inc.csv"),
+  row.names = FALSE
+)
+
+```
+
+# Crosstab: Estimated Households by Community Type, Building Type, and Race and Ethnicity
+
+?? do we want separate tables by race and ethnicity or one table for both?
+
+```{r}
+
+ct_build_typ_re <- pums_ct |> 
+  mutate(
+    #creating field to identify order of people in household
+    SPORDER = str_sub(uniq_obs, -1),
+    #creating field to identify single family vs multi-family
+    bld_typ = case_when(
+      BLD %in% c('02', '03') ~ 'single family',
+      BLD %in% c('04', '05', '06', '07', '08', '09') ~  'multi-family',
+      BLD %in% c('01', '10') ~ 'other' # mobile homes, trailers, boats, RVs, vans, etc.
+      ),
+ # Householder Race Groupings. 
+    HHLDER.RACE.Grp = case_when(
+      HHLDRRAC1P == "1" ~ "White Alone",
+      HHLDRRAC1P == "2" ~ "Black or African American Alone",
+      HHLDRRAC1P %in% c("3", "4", "5") ~ "AIAN Alone",
+      HHLDRRAC1P == "6" ~ "Asian Alone",
+      HHLDRRAC1P == "7" ~ "NHPI Alone",
+      HHLDRRAC1P == "8" ~ "SOR Alone",
+      HHLDRRAC1P == "9" ~ "Two or More Races Alone",
+      .default = "Unknown"
+    ),
+    # Householder Latinx Groupings
+    HHDER.HISP.Grp = case_when(
+      HHLDRHISP == "01" ~ "Non-Hispanic",
+      HHLDRHISP != "01" ~ "Hispanic",
+      .default = "Unknown"
+    )
+    ) |> 
+  #filtering to exclude group quarters and only include the first person in each hh 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
+  #grouping by community type, building type, and race and ethnicity
+  group_by(puma_type, bld_typ, HHLDER.RACE.Grp, HHDER.HISP.Grp, yrblt_flag) |> 
+  #summing hh weights to get estimate of households 
+  summarise(hh_est = sum(WGTP)) |> 
+  ungroup() |> 
+  mutate(
+    hh_total = sum(hh_est), 
+    percent = round(hh_est/hh_total, digits = 3)
+  )
+
+
+write.csv(
+  ct_build_typ_re,
+  paste0(output_path, "07_YearBuilt/ct_build_typ_re.csv"),
+  row.names = FALSE
+)
+
+```
+
+# Crosstab: Estimated Households by Community Type, Building Type, and Tenure
+
+```{r}
+
+ct_build_typ_ten <- pums_ct |> 
+  mutate(
+    #creating field to identify order of people in household
+    SPORDER = str_sub(uniq_obs, -1),
+    #creating field to identify single family vs multi-family
+    bld_typ = case_when(
+      BLD %in% c('02', '03') ~ 'single family',
+      BLD %in% c('04', '05', '06', '07', '08', '09') ~  'multi-family',
+      BLD %in% c('01', '10') ~ 'other' # mobile homes, trailers, boats, RVs, vans, etc.
+      ),
+    #creating a field for tenure codes
+    tenure = case_when(
+      TEN %in% c('1', '2') ~ 'owned',
+      TEN == '3' ~ 'rented',
+      TEN == '4' ~ 'occupied without payment of rent'
+      )
+    ) |> 
+  #filtering to exclude group quarters and only include the first person in each hh 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
+  #grouping by community type and building type
+  group_by(puma_type, bld_typ, tenure, yrblt_flag) |> 
+  #summing hh weights to get estimate of households 
+  summarise(hh_est = sum(WGTP)) |> 
+  ungroup() |> 
+  mutate(
+    hh_total = sum(hh_est), 
+    percent = round(hh_est/hh_total, digits = 3)
+  )
+
+
+write.csv(
+  ct_build_typ_ten,
+  paste0(output_path, "07_YearBuilt/ct_build_typ_ten.csv"),
+  row.names = FALSE
+)
+
+```

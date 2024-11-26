@@ -4,23 +4,421 @@ format: html
 editor: visual
 ---
 
-## Quarto
+# 0.0 Set-up, Define helper functions, set knitr path, load necessary packages, set muni data keys
 
 Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
 
-## Running Code
-
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
-
 ```{r}
-1 + 1
+library(tidycensus)
+library(tidyverse)
+library(survey)
+library(srvyr)
+library(data.table)
+library(janitor)
+library(dplyr)
+library(knitr)
+library(readxl)
+library(writexl)
+library(openxlsx)
+library(devtools)
 ```
 
 You can add options to executable code like this
 
+```{r, setup, include=FALSE}
+#Use when Rproject is open
+#root <- '../../../../Data/Working/Regional_Control_Totals/'
+
+#General K drive filepath
+root <-"K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/"
+
+#PUMS K drive filepath
+pums_path <- "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS/ipums_2021/"
+
+rpa_path <- "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Reweighter/PUMS_data/"
+
+#Set output filepath
+output_path <- "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS/outputs/"
+
+#Set knitr path
+knitr::opts_knit$set(root.dir = pums_path)
+```
+
+# 0.2 - Set package dependencies, set environment, set up data keys\*\*
+
 ```{r}
-#| echo: false
-2 * 2
+pums_raw <-read_csv("K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS/ipums_2021/pums_multiadult_2021_V_2024-11-22.csv")
+
+test <- pums_raw |>
+  filter(SPORDER %in% c(0,1)) |>
+  group_by(SERIALNO) |>
+  mutate(
+    weight.test = sum(WGTP)/n()
+  ) |>
+  ungroup() |>
+  mutate(
+    weight.check = WGTP - weight.test,
+    weight.check.flag = case_when(
+      weight.check > 0 ~ 1,
+      weight.check < 0 ~ 1,
+      weight.check == 0 ~ 0,
+      .default = 0
+    )
+  )
 ```
 
 The `echo: false` option disables the printing of code (only output is displayed).
+
+# 0.3 - PUMA to RPA Crosswalk
+
+```{r}
+
+# Load PUMA to RPA Crosswalk
+xw <- read_csv(paste0(rpa_path, 'PUMA10_RPA_crosswalk.csv')) |> 
+  mutate(
+    # Change the data type and pad the string with a leading zero.
+    PUMA = as.character(PUMA),
+    PUMA = str_pad(PUMA, 5, side = "left", pad = "0")
+  )
+
+```
+
+# 0.4 - PUMS Data Cleaning
+
+```{r}
+# General Data Cleaning
+pums <- pums_raw |> 
+  # Create a household flag for whether there is a child in a household.
+  mutate( 
+    Adult = case_when(
+      AGEP > 18 ~ 1,
+      AGEP <= 18 ~ 0,
+      .default = 0
+    ),
+    # Create a grouping variable for types of relationships to the householder.
+    RELSHIPP_Child = case_when(
+      # 1 indicates a person in a household that is related to the householder by being a biological, adopted, step child,foster child, or son/daughter in law.
+      RELSHIPP %in% c(25,26,27,32,35) ~ 1,
+      # 2 indicates a person in a household is related to the householder outside of being a child.
+      RELSHIPP %in% c(21,22,23,24,28,29,30,31,33,34,36,37,38) ~ 0,
+      # Set a default flag for householders.
+      .default = 0
+    ),
+    #  Create a grouping variable for types of relationships to the householder
+    RELSHIPP_PAR = case_when(
+    #1 indicates a person in a household that is a parent or parent in law.
+    RELSHIPP %in% c(29,31) ~ 1,
+    #2 indicates a person in a household is related to the householder outside of being a parent
+    RELSHIPP %in% c(21,22,23,24,25,26,27,28,30,32,33,34,36,37,38) ~ 0,
+    #Set a default flag for householders.
+    .default = 0
+    ),
+     HINCP_adj = HINCP*ADJINC,
+    # Household Income Groupings consistent with UrbanSim groupings
+    HH.Income.Grp = case_when(
+      HINCP_adj <= 35000 ~ "<=$35,000",
+      HINCP_adj > 35000 & HINCP_adj <= 75000 ~ "$35,001-$75,000",
+      HINCP_adj > 75000 & HINCP_adj <= 125000 ~ "$75,001-$125,000",
+      HINCP_adj > 125000 & HINCP_adj <= 225000 ~ "$125,001-$225,000",
+      HINCP_adj > 225000 ~ ">$225,000",
+      .default = "0"
+    ),
+      # Householder Race Groupings. 
+    HHLDER.RACE.Grp = case_when(
+      HHLDRRAC1P == "1" ~ "White Alone",
+      HHLDRRAC1P == "2" ~ "Black or African American Alone",
+      HHLDRRAC1P %in% c("3", "4", "5") ~ "AIAN Alone",
+      HHLDRRAC1P == "6" ~ "Asian Alone",
+      HHLDRRAC1P == "7" ~ "NHPI Alone",
+      HHLDRRAC1P == "8" ~ "SOR Alone",
+      HHLDRRAC1P == "9" ~ "Two or More Races Alone",
+      .default = "Unknown"
+    ),
+    # Householder Latinx Groupings
+    HHDER.HISP.Grp = case_when(
+      HHLDRHISP == "01" ~ "Non-Hispanic",
+      HHLDRHISP != "01" ~ "Hispanic",
+      .default = "Unknown"
+    ),
+    # Replace any NAs (for households that own and so dont have a GRPIP and vice versa)
+    GRPIP = replace_na(GRPIP, 0),
+    OCPIP = replace_na(OCPIP, 0),
+    # Define a "cost burdened" indicator.
+    # (1) A household paying more than 30% of its income in housing costs (GRPIP or OCPIP) is considered "cost burdened"
+    # (0) A household paying less than or equal to 30% of its income in housing costs is NOT considered "cost burdened"
+    CostBurdened = case_when(
+      GRPIP > 30 | OCPIP > 30 ~ "1",
+      GRPIP <= 30 | OCPIP <= 30 ~ "0",
+      .default = "0"
+    ),
+  # Create a variable indicating whether a person is an adult child in the household.
+    AdultChild = case_when(
+      Adult == 1 & RELSHIPP_Child == 1 ~ 1,
+      .default = 0
+    )
+  )|>
+  # Creating household flags for person variables.
+  group_by(SERIALNO) |> 
+  mutate(
+    # Create a variable which is the sum of the number of children above 18
+    Adult_count = sum(Adult),
+    # Create a variable which is the sum of the number of son & daughter relatives in the household
+    Child_count = sum(RELSHIPP_Child),
+    #  Create a variable which is the sum of the number of parent relatives in the household
+    Parent_count = sum(RELSHIPP_PAR),
+    # Create a variable that is a count of the number of adult children in a household
+    AdultChild_count = sum(AdultChild) 
+  )|> 
+  ungroup() |> 
+  mutate(
+      # Create a variable that is a household flag for whether or not a household has a adult children over 18.
+    AdultChild = case_when(
+      AdultChild_count > 0 ~ 1,
+      Adult_count == 0 ~ 0,
+      .default = 0
+    ),
+     # Create a variable that is a household flag for whether or not a household has a parent of the householder living in the unit.
+    ParentPresent = case_when(
+      Parent_count > 0 ~ 1,
+      Parent_count == 0 ~ 0,
+      .default = 0
+    )
+  )
+
+```
+
+# 0.5 - PUMS Analysis - State Level
+
+The number of households with adult children
+
+```{r}
+# Number of Households with Adult Children by State-Level
+householdata_adultchild <- pums |>
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |>
+  group_by(AdultChild) |>
+  summarise(hh_est = sum(WGTP)) |>
+  ungroup() |>
+  #Adding a column to show the total amount of households and percentage
+  mutate(
+    totalcount = sum(hh_est),
+    percent = hh_est / totalcount
+  )
+
+#Write the output to csv
+write.csv(
+  householdata_adultchild,
+  paste0(output_path,"05_MultiAdultHouseholds/Adult.Children.StateLevel.csv"),
+  row.names = FALSE
+)
+
+# Number of Households with Adult Parents Living with Adult Children by State-Level 
+householdata_parentpresent <- pums |>
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
+  group_by(ParentPresent) |> 
+  summarise(hh_est = sum(WGTP)) |>
+  ungroup() |> 
+#Adding a column to show the total amount of households and percentage
+   mutate(
+    totalcount = sum(hh_est),
+    percent = hh_est/totalcount
+  )
+
+#Write the output to csv
+write.csv(
+  householdata_parentpresent,
+  paste0(output_path,"05_MultiAdultHouseholds/Parents.Present.StateLevel.csv"),
+  row.names = FALSE
+)
+  
+#Number of Households with Adult Children by State Level filtered by Income 
+householdata_inc <- pums |>
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
+  group_by(AdultChild, HH.Income.Grp) |> 
+  summarise(hh_est = sum(WGTP)) |> 
+  ungroup() |> 
+#Adding a column to show the total amount of households and percentage
+  mutate(
+    totalcount = sum(hh_est),
+    percent = hh_est/totalcount
+  )
+   
+#Write the output to csv
+write.csv(
+  householdata_inc,
+  paste0(output_path,"05_MultiAdultHouseholds/Older.Child.Inc.StateLevel.csv"),
+  row.names = FALSE
+)
+
+#Number of Households with Adult Children by State Level filtered by Cost Burden
+householdata_costburden <- pums |>
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
+  group_by(AdultChild, CostBurdened) |> 
+  summarise(hh_est = sum(WGTP)) |> 
+  ungroup() |> 
+#Adding a column to show the total amount of households and percentage
+  mutate(
+    totalcount = sum(hh_est),
+    percent = hh_est/totalcount
+  )
+   
+#Write the output to csv
+write.csv(
+  householdata_inc,
+  paste0(output_path,"05_MultiAdultHouseholds/Older.Child.Costburden.StateLevel.csv"),
+  row.names = FALSE
+)
+  
+#Number of Households with Adult Children by State Level filtered by Race
+householdata_race <- pums |>
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
+  group_by(AdultChild, HHLDER.RACE.Grp) |> 
+  summarise(hh_est = sum(WGTP)) |> 
+  ungroup() |> 
+#Adding a column to show the total amount of households and percentage
+  mutate(
+    totalcount = sum(hh_est),
+    percent = hh_est/totalcount
+  )
+
+#Write the output to csv
+ write.csv(
+  householdata_race,
+  paste0(output_path,"05_MultiAdultHouseholds/Older.Child.Inc.Race.StateLevel.csv"),
+  row.names = FALSE
+)
+  
+```
+
+# 0.6 - PUMS Analysis - RPA Level
+
+```{r}
+#Joining the PUMA to RPA crosswalk to the PUMS data.
+pums_rpa <- left_join(
+  pums,
+  xw,
+  by = c("PUMA")
+)
+
+hh_rpa <- pums_rpa |>
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |>
+  group_by(rpa_acr) |> 
+  summarise(hh_est = sum(WGTP)) |>
+  ungroup()  
+
+# Number of Households with Adult Children by RPA
+householdata_rpa_adultchild <- pums_rpa |>
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |>
+  group_by(rpa_acr, AdultChild) |> 
+  summarise(hh_est = sum(WGTP)) |>
+  ungroup() |> 
+  group_by(rpa_acr) |> 
+#Adding a column to show the total amount of households and percentage
+  mutate(
+    totalcount = sum(hh_est),
+  ) |> 
+  ungroup() |> 
+  mutate(
+    percent = hh_est/totalcount
+  )
+
+#Write the output to csv
+write.csv(
+  householdata_rpa_adultchild,
+  paste0(output_path,"05_MultiAdultHouseholds/Adult.Children.RPA.csv"),
+  row.names = FALSE
+)
+
+# Number of Households with Adult Parents Living with Adult Children by RPA
+householdata_ParentPresent_rpa <- pums_rpa |>
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
+  group_by(rpa_acr, ParentPresent) |>
+  summarise(hh_est = sum(WGTP)) |>
+  ungroup()  |> 
+  group_by(rpa_acr) |> 
+#Adding a column to show the total amount of households and percentage
+  mutate(
+    totalcount = sum(hh_est),
+  ) |> 
+  ungroup() |> 
+  mutate(
+    percent = hh_est/totalcount
+  )
+
+#Write the output to csv
+write.csv(
+  householdata_ParentPresent_rpa,
+  paste0(output_path,"05_MultiAdultHouseholds/Parents.Present.StateLevel.csv"),
+  row.names = FALSE
+)
+
+#Number of Households with Adult Children by RPA filtered by Income 
+householdata_rpa_inc <- pums_rpa |>
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
+  group_by(rpa_acr, AdultChild, HH.Income.Grp) |> 
+  summarise(hh_est = sum(WGTP)) |> 
+  ungroup() |> 
+  group_by(rpa_acr) |> 
+#Adding a column to show the total amount of households and percentage
+  mutate(
+    totalcount = sum(hh_est),
+  ) |> 
+  ungroup() |> 
+  mutate(
+    percent = hh_est/totalcount
+  )
+
+#Write the output to csv
+write.csv(
+  householdata_rpa_inc,
+  paste0(output_path,"05_MultiAdultHouseholds/Older.Child.Inc.RPA.csv"),
+  row.names = FALSE
+)
+
+#Number of Households with Adult Children by RPA filtered by Race
+householdata_rpa_race <- pums_rpa |>
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
+  group_by(rpa_acr, AdultChild, HHLDER.RACE.Grp) |> 
+  summarise(hh_est = sum(WGTP)) |> 
+  ungroup() |> 
+  group_by(rpa_acr) |> 
+#Adding a column to show the total amount of households and percentage
+  mutate(
+    totalcount = sum(hh_est),
+  ) |> 
+  ungroup() |> 
+  mutate(
+    percent = hh_est/totalcount
+  )
+   
+#Write the output to csv
+write.csv(
+  householdata_rpa_race,
+  paste0(output_path,"05_MultiAdultHouseholds/Older.Child.Inc.Race.RPA.csv"),
+  row.names = FALSE
+)
+
+#Number of Households with Adult Children by RPA filtered by Cost Burden
+householdata_rpa_costburden <- pums_rpa |>
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
+  group_by(rpa_acr, AdultChild, CostBurdened) |> 
+  summarise(hh_est = sum(WGTP)) |> 
+  ungroup() |> 
+  group_by(rpa_acr) |> 
+#Adding a column to show the total amount of households and percentage
+  mutate(
+    totalcount = sum(hh_est),
+  ) |> 
+  ungroup() |> 
+  mutate(
+    percent = hh_est/totalcount
+  )
+   
+#Write the output to csv
+write.csv(
+  householdata_rpa_costburden,
+  paste0(output_path,"05_MultiAdultHouseholds/Older.Child.Inc.Costburden.RPA.csv"),
+  row.names = FALSE
+)
+ 
+  
+```

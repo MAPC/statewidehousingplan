@@ -1,0 +1,57 @@
+---
+title: "home-sale-affordability"
+format: html
+editor: visual
+---
+
+# Load necessary packages and scripts
+
+```{r, include = FALSE}
+source("libraries.R")
+source("functions.R")
+```
+
+# Load home sale data
+
+```{r, include = FALSE}
+warren_res <- read_csv("K:/DataServices/Datasets/Housing/Warren Group - Home Sales/Data/Tabular/Modified/20240314_warren_group_2000_2023_residential_final.csv")
+```
+
+# Run the mortgage calculator
+
+```{r}
+warren_res_monthly <- mortgage_calculator(
+  df = warren_res, # running on warren property sales data
+  down_payment = .2, # 20% down payment
+  loan_term = 30, # 30 year loan term
+  ho_insurance = 1000, # $1,000 a year for homeowners insurance
+  condo_fee = 300 # $300 per month condo fee
+  )
+```
+
+# Run the affordability summary function
+
+```{r, include = FALSE}
+affordable_counts <- affordable_sales(warren_res_monthly, 'count')
+  
+affordable_percents <- affordable_sales(warren_res_monthly, 'percent')
+```
+
+# Write summary tables to project folder
+
+```{r}
+output_path <- "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/sales affordable to middle income buyers/"
+
+write.csv(
+  affordable_counts,
+  paste0(output_path, "affordable_counts.csv"),
+  row.names = FALSE
+)
+
+write.csv(
+  affordable_percents,
+  paste0(output_path, "affordable_percents.csv"),
+  row.names = FALSE
+)
+
+```

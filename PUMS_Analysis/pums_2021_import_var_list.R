@@ -454,7 +454,9 @@ over_list <- c('RT',
                'OC',
                'SFN',
                'SFR',
-               'TEN')
+               'TEN',
+               'OCPIP',
+               'GRPIP')
   
 over_vars <- uniq_vars %>%
   filter(var_code %in% over_list)
@@ -468,7 +470,7 @@ write_csv(over_vars, paste0(exp_path,"/pums_overcrowding_variables_2021.csv"))
 # 3 Oct added ADJINC, HHLDRAGEP, HHLDRRAC1P, HHLDRHISP, HINCP, RAC1P
 
 pums_multiadult_2021 <- pums_all_2021 %>% 
-  select(c(uniq_obs, SPORDER, SERIALNO, ST, WGTP, PWGTP, RT, PUMA, ADJHSG, ADJINC, NP, TYPEHUGQ, CPLT, HHLDRAGEP, HHLDRRAC1P, HHLDRHISP, HINCP, HISP, HHT, HHT2, HUGCL, HUPAC, HUPAOC, HUPARC, MULTG, NPF, NPP, NR, NRC, PARTNER, PSF, R18, AGEP, RAC1P, RELSHIPP, RAC1P, OC, SFN, SFR,TEN))
+  select(c(uniq_obs, SPORDER, SERIALNO, ST, WGTP, PWGTP, RT, PUMA, ADJHSG, ADJINC, NP, TYPEHUGQ, CPLT, HHLDRAGEP, HHLDRRAC1P, HHLDRHISP, HINCP, HISP, HHT, HHT2, HUGCL, HUPAC, HUPAOC, HUPARC, MULTG, NPF, NPP, NR, NRC, PARTNER, PSF, R18, AGEP, RAC1P, RELSHIPP, RAC1P, OC, SFN, SFR,TEN, GRPIP, OCPIP))
 
 # 15.2 export VARS for MULTIPLE ADULT HOUSING
 multiadult_list <- c('RT',
@@ -503,7 +505,9 @@ multiadult_list <- c('RT',
                'OC',
                'SFN',
                'SFR',
-               'TEN')
+               'TEN',
+               'GRPIP',
+               'OCPIP')
 
 # 15.1 export MULTIADULT
 write_csv(pums_multiadult_2021, paste0(exp_path,"/pums_multiadult_2021_V_",dateAsText,".csv"))
@@ -570,7 +574,9 @@ familysize_list <- c('uniq_obs',
                      'GRPIP',
                      'MV',
                      'SRNTSVAL',
-                     'YRBLT') # added 3 oct
+                     'YRBLT',
+                     'GRPIP',
+                     'OCPIP') # added 3 oct
 
 # 16.2 export familysize
 write_csv(pums_familysize_2021, paste0(exp_path,"/pums_familysize_2021_V_",dateAsText,".csv"))

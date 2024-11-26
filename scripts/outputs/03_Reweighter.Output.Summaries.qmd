@@ -12,10 +12,10 @@ editor: visual
 #===============================================================================
 #TODO: 
 # 1. Create a way to loop through:
-# - Scenarios
-# - Headship rates
 # - MAPC vintages (101 or 97)
-# 2. QA/QC of Tables based on reweighter inputs
+# 2. Create output table function 
+# 3. Create way to loop through Scenarios for Output tables
+# 4. QA/QC of Tables based on reweighter inputs
 # 3. Writing to workbook
 # 4. Data Visualizations
 #===============================================================================
@@ -46,7 +46,7 @@ rwt_path <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/
 knitr::opts_knit$set(root.dir = root)
 ```
 
-# 0.2 Set Package Dependencies + Set Environment Variables, Set up data keys
+# 0.2 Set Package Dependencies + Set Environment Variables
 
 ```{r}
 library(tidycensus)
@@ -62,119 +62,134 @@ options(scipen = 999)
 #Set random seed
 set.seed(351)
 
-#Set up muni data keys
-#MPO Data Keys
-keys.mpo <- mapcdatakeys::all_muni_data_keys |> 
-  select(
-    muni_id, muni_name, mpo
-  ) |> 
-  mutate(
-    muni_id = as.character(muni_id),
-    muni_name = ifelse(muni_name == "Manchester-by-the-Sea", "Manchester", muni_name)
-  )
-
-#RPA Data Keys
-keys.rpa <- mapcdatakeys::all_muni_data_keys |> 
-  select(
-    muni_id, muni_name, rpa_acr
-  ) |> 
-  mutate(
-    muni_id = as.character(muni_id),
-    muni_name = ifelse(muni_name == "Manchester-by-the-Sea", "Manchester", muni_name)
-  )
 ```
 
 # 1.0 Load Reweighter Output Data
 
 ```{r}
-# Set a column of years corresponding to the projection years considered
-years <- c(2020,2030,2035,2040,2045,2050)
+# Set a list of years corresponding to the projection years considered
+years <- c(2020,2025,2030,2035,2040,2045,2050)
+
+#Set a list of Scenarios to be processed
+scen <- c("Scenario_1")
 
 # Create null objects for each scenario's full reweighted PUMS dataset. 
 # One will be used per script run depending on the value given to "scen" at the outset of the script.
-s1.df <- NULL
-
-s2.sf <- NULL
-
-s3.sf <- NULL
-
-s4.df <- NULL
+rwt.pums.df <- NULL
 
 # Standardized function for reading reweighted PUMS data for each scenario and projection year.
 # - scenario: data that is generated to reflect population and headship rate scenarios. See xx for further detail
 # - year: a year in a list of years created earlier in this code block. Typically in 5-year or 10-year intervals.
 read_rwt.files <- function(scenario, year){
-  read.csv(
-      paste0(rwt_path, "reweighted_PUMS_",scen,"_MAPC101_",hdshp,"_",i,".csv")
+  read_csv(
+      paste0(rwt_path, "reweighted_PUMS_",scenario,"_MAPC101_",hdshp,"_",year,".csv")
     )
 }
 
 # Loads in reweighted PUMS data for each year and scenario.
 # Compiles data into a single dataframe which is generated earlier.
-for (i in years) {
-  for (j in scen){
+for (i in scen) {
+  for (j in years){
     
-    if (scen == "Scenario_1"){
-    
-      # Reads in the reweighted PUMS data by year.
-      tmp <- read_rwt.files(scenario = scen, year = i)
+    # Reads in the reweighted PUMS data by year.
+      tmp <- read_rwt.files(scenario = i, year = j)
     
       # Appends to dataframe.
-      s1.df <- bind_rows(s1.df, tmp)
+      rwt.pums.df <- bind_rows(rwt.pums.df, tmp)
     
       # Removes the temporary file.
       rm(tmp)
     
       # Print statement when loop has completed running.
-      print(paste0("Finished Reading and Appending Scenario: ", scen, " for Year: ", i))
+      print(paste0("Finished Reading and Appending ", i," ", j,"."))
+    
+  }
   
-  }
-    else if (scen == "Scenario_2"){
+  # Cleans up names of variables in the dataframe for output tables generated in subsequent sections.
+  rwt.pums.df <- rwt.pums.df |>
+    mutate(
+      # Creates a group designation based on the number of children in a household.
+      CHILDHH_Group = case_when(
+        Child_Total == 0 ~ "No Children",
+        Child_Total == 1 ~ "One Child",
+        Child_Total == 2 ~ "Two Children",
+        Child_Total == 3 ~ "Three Children",
+        Child_Total >= 4 ~ "Four or More Children",
+        .default = "Unknown"
+      ),
+      # Creates a group designation based on household income.
+      Income_Group = case_when(
+        WAGPALLC_US == 1 ~ "<=$35,000",
+        WAGPALLC_US == 2 ~ "$35,001 - $75,000",
+        WAGPALLC_US == 3 ~ "$75,001 - $125,000",
+        WAGPALLC_US == 4 ~ "$125,001 - $225,000",
+        WAGPALLC_US == 5 ~ ">$225,000",
+        .default = "Unknown"
+      ),
+      # Creates a group designation based on the age of householder.
+      Age_Group = case_when(
+        ageCAT6 == 1 ~ "00-04",
+        ageCAT6 == 2 ~ "05-09",
+        ageCAT6 == 3 ~ "10-14",
+        ageCAT6 == 4 ~ "15-19",
+        ageCAT6 == 5 ~ "20-24",
+        ageCAT6 == 6 ~ "25-29",
+        ageCAT6 == 7 ~ "30-34",
+        ageCAT6 == 8 ~ "35-39",
+        ageCAT6 == 9 ~ "40-44",
+        ageCAT6 == 10 ~ "45-49",
+        ageCAT6 == 11 ~ "50-54",
+        ageCAT6 == 12 ~ "55-59",
+        ageCAT6 == 13 ~ "60-64",
+        ageCAT6 == 14 ~ "65-69",
+        ageCAT6 == 15 ~ "70-74",
+        ageCAT6 == 16 ~ "75-79",
+        ageCAT6 == 17 ~ "80-84",
+        ageCAT6 == 18 ~ "85 plus",
+        .default = "Unknown"
+      ),
+      # Creates a group designation based on the type of household.
+      HHtype_Group = case_when(
+        HHtype == 1 ~ "Household w Children",
+        HHtype == 3 ~ "Household w 2 plus Adults wo Children",
+        HHtype == 5 ~ "Single Person Household",
+        .default = "Unknown"
+      ),
+      # Creates a group designation based on the number of people in a household.
+      Size_Group = case_when(
+        size == 1 ~ "One Person",
+        size == 2 ~ "Two person",
+        size == 3 ~ "Three Person",
+        size == 4 ~ "Four Person",
+        size == 5 ~ "Five Person",
+        size == 6 ~ "Six Person",
+        size >= 7 ~ "Seven or More Persons",
+        .default = "Unknown"
+      ),
+      # Creates a group designation based on the tenure of the household.
+      TEN_Group = case_when(
+        tenure == 1 ~ "Own",
+        tenure == 2 ~ "Rent",
+        .default = "Unknown"
+      ),
+      # Creates a group designation based on the number of workers in a household.
+      WRKHH_Group = case_when(
+        WRKHH == 0 ~ "No Workers",
+        WRKHH == 1 ~ "One Worker",
+        WRKHH == 2 ~ "Two Workers",
+        WRKHH >= 3 ~ "Three or More Workers",
+        .default = "Unknown"
+      )
+    )
     
-      # Reads in the reweighted PUMS data by year.
-      tmp <- read_rwt.files(scenario = scen, year = i)
-    
-      # Appends to dataframe.
-      s2.df <- bind_rows(s2.df, tmp)
-    
-      # Removes the temporary file.
-      rm(tmp)
-    
-      # Print statement when loop has completed running.
-      print(paste0("Finished Reading and Appending Scenario: ", scen, " for Year: ", i))
-    
-  }
-    else if (scen == "Scenario_3"){
-    
-      # Reads in the reweighted PUMS data by year.
-      tmp <- read_rwt.files(scenario = scen, year = i)
-    
-      # Appends to dataframe.
-      s3.df <- bind_rows(s3.df, tmp)
-    
-      # Removes the temporary file.
-      rm(tmp)
-    
-      # Print statement when loop has completed running.
-      print(paste0("Finished Reading and Appending Scenario: ", scen, " for Year: ", i))
-    
-  }
-   else{
-    
-      # Reads in the reweighted PUMS data by year.
-      tmp <- read_rwt.files(scenario = scen, year = i)
-    
-      # Appends to dataframe.
-      s4.df <- bind_rows(s4.df, tmp)
-    
-      # Removes the temporary file.
-      rm(tmp)
-    
-      # Print statement when loop has completed running.
-      print(paste0("Finished Reading and Appending Scenario: ", scen, " for Year: ", i))
-    
-  }
- }
+  # Assigns a unique scenario id to the dataframe.
+  assign(paste0("rwt.pums.df_",i), rwt.pums.df)
+  
+  # Removes intermediate dataframe.
+  rm(rwt.pums.df)
+  
+  # Print statement when loop finishes running.
+  print(paste0("Finished Loading ", i))
 }
 
 ```
@@ -223,33 +238,17 @@ print(sum(test$new_WGTP))
 ```{r}
 #===============================================================================
 # .1 UrbanSim Household Income Groupings
-tbl.1 <- s1.df |> 
+tbl.1 <- rwt.pums.df_Scenario_1 |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   group_by(
     rpa_acr,
     year,
-    WAGPALLC_US
+    Income_Group
   ) |> 
   summarise(
     hhds = round(sum(new_WGTP), 0)
   ) |> 
-  ungroup() |> 
-  mutate(
-    Income_Group = case_when(
-      WAGPALLC_US == 1 ~ "<=$35,000",
-      WAGPALLC_US == 2 ~ "$35,001 - $75,000",
-      WAGPALLC_US == 3 ~ "$75,001 - $125,000",
-      WAGPALLC_US == 4 ~ "$125,001 - $225,000",
-      WAGPALLC_US == 5 ~ ">$225,000",
-      .default = "Unknown"
-    )
-  ) |> 
-  select(
-    -c(WAGPALLC_US)
-  ) |> relocate(
-    Income_Group,
-    .before = hhds
-  )
+  ungroup()
 
 #Write Output tables to K Drive
 write.csv(
@@ -260,46 +259,17 @@ write.csv(
 
 #===============================================================================
 # .2 5-year Age Groupings (ageCAT6)
-tbl.2 <- s1.df |> 
+tbl.2 <- rwt.pums.df_Scenario_1 |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   group_by(
     rpa_acr,
     year,
-    ageCAT6
+    Age_Group
   ) |> 
   summarise(
     hhds = round(sum(new_WGTP),0)
   ) |> 
-  ungroup() |> 
-  mutate(
-    Age_Group = case_when(
-      ageCAT6 == 1 ~ "00-04",
-      ageCAT6 == 2 ~ "05-09",
-      ageCAT6 == 3 ~ "10-14",
-      ageCAT6 == 4 ~ "15-19",
-      ageCAT6 == 5 ~ "20-24",
-      ageCAT6 == 6 ~ "25-29",
-      ageCAT6 == 7 ~ "30-34",
-      ageCAT6 == 8 ~ "35-39",
-      ageCAT6 == 9 ~ "40-44",
-      ageCAT6 == 10 ~ "45-49",
-      ageCAT6 == 11 ~ "50-54",
-      ageCAT6 == 12 ~ "55-59",
-      ageCAT6 == 13 ~ "60-64",
-      ageCAT6 == 14 ~ "65-69",
-      ageCAT6 == 15 ~ "70-74",
-      ageCAT6 == 16 ~ "75-79",
-      ageCAT6 == 17 ~ "80-84",
-      ageCAT6 == 18 ~ "85 plus",
-      .default = "Unknown"
-    )
-  ) |> 
-  select(
-    -c(ageCAT6)
-  ) |> relocate(
-    Age_Group,
-    .before = hhds
-  )
+  ungroup()
 
 #Write Output Tables ot K Drive
 write.csv(
@@ -310,31 +280,17 @@ write.csv(
 
 #===============================================================================
 # .3 Household Type
-tbl.3 <- s1.df |> 
+tbl.3 <- rwt.pums.df_Scenario_1  |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   group_by(
     rpa_acr,
     year,
-    HHtype
+    HHtype_Group
   ) |> 
   summarise(
     hhds = round(sum(new_WGTP), 0)
   ) |> 
-  ungroup() |> 
-  mutate(
-    HHtype_Group = case_when(
-      HHtype == 1 ~ "Household w Children",
-      HHtype == 3 ~ "Household w 2 plus Adults wo Children",
-      HHtype == 5 ~ "Single Person Household",
-      .default = "Unknown"
-    )
-  ) |> 
-  select(
-    -c(HHtype)
-  ) |> relocate(
-    HHtype_Group,
-    .before = hhds
-  )
+  ungroup()
 
 # Write output tables to K drive
 write.csv(
@@ -354,18 +310,8 @@ write.csv(
 ```{r}
 #===============================================================================
 # .4 Number of Children in a Household
-tbl.4 <- s1.df |>
-  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
-  mutate(
-    CHILDHH_Group = case_when(
-      Child_Total == 0 ~ "No Children",
-      Child_Total == 1 ~ "One Child",
-      Child_Total == 2 ~ "Two Children",
-      Child_Total == 3 ~ "Three Children",
-      Child_Total >= 4 ~ "Four or More Children",
-      .default = "Unknown"
-    )
-  ) |> 
+tbl.4 <- rwt.pums.df_Scenario_1  |>
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
     rpa_acr,
     year,
@@ -385,35 +331,17 @@ write.csv(
 
 #===============================================================================
 # .5 Size of Household
-tbl.5 <- s1.df |> 
+tbl.5 <- rwt.pums.df_Scenario_1  |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   group_by(
     rpa_acr,
     year,
-    size
+    Size_Group
   ) |> 
   summarise(
     hhds = round(sum(new_WGTP), 0)
   ) |> 
-  ungroup() |> 
-  mutate(
-    Size_Group = case_when(
-      size == 1 ~ "One Person",
-      size == 2 ~ "Two person",
-      size == 3 ~ "Three Person",
-      size == 4 ~ "Four Person",
-      size == 5 ~ "Five Person",
-      size == 6 ~ "Six Person",
-      size >= 7 ~ "Seven or More Persons",
-      .default = "Unknown"
-    )
-  ) |> 
-  select(
-    -c(size)
-  ) |> relocate(
-    Size_Group,
-    .before = hhds
-  )
+  ungroup()
 
 # Write output tables to K drive
 write.csv(
@@ -424,32 +352,17 @@ write.csv(
 
 #===============================================================================
 # .6 Tenure
-tbl.6 <- s1.df |> 
+tbl.6 <- rwt.pums.df_Scenario_1  |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   group_by(
     rpa_acr,
     year,
-    TEN
+    TEN_Group
   ) |> 
   summarise(
     hhds = round(sum(new_WGTP), 0)
   ) |> 
-  ungroup() |> 
-  mutate(
-    TEN_Group = case_when(
-      TEN == 1 ~ "Owned with mortgage or loan (include home equity loans)",
-      TEN == 2 ~ "Owned free and clear",
-      TEN == 3 ~ "Rented",
-      TEN == 4 ~ "Occupied without payment of rent",
-      .default = "Unknown"
-    )
-  ) |> 
-  select(
-    -c(TEN)
-  ) |> relocate(
-    TEN_Group,
-    .before = hhds
-  )
+  ungroup()
 
 # Write output tables to K drive
 write.csv(
@@ -460,32 +373,17 @@ write.csv(
 
 #===============================================================================
 # .7 Number of Workers in a Household
-tbl.7 <- s1.df |> 
+tbl.7 <- rwt.pums.df_Scenario_1  |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   group_by(
     rpa_acr,
     year,
-    WRKHH
+    WRKHH_Group
   ) |> 
   summarise(
     hhds = round(sum(new_WGTP), 0)
   ) |> 
-  ungroup() |> 
-  mutate(
-    WRKHH_Group = case_when(
-      WRKHH == 0 ~ "No Workers",
-      WRKHH == 1 ~ "One Worker",
-      WRKHH == 2 ~ "Two Workers",
-      WRKHH >= 3 ~ "Three or More Workers",
-      .default = "Unknown"
-    )
-  ) |> 
-  select(
-    -c(WRKHH)
-  ) |> relocate(
-    WRKHH_Group,
-    .before = hhds
-  )
+  ungroup()
 
 # Write output tables to K drive
 write.csv(
@@ -505,4 +403,32 @@ write.csv(
 # 6.0 Multivariate Output Tables for Statewide Housing Plan
 ```{r}
 
+```
+
+# 7.0 Full Crosstab
+```{r}
+full.crosstab <- rwt.pums.df_Scenario_1  |> 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |>
+  group_by(
+    rpa_acr,
+    year,
+    Income_Group,
+    Age_Group,
+    HHtype_Group,
+    CHILDHH_Group,
+    Size_Group,
+    TEN_Group,
+    WRKHH_Group
+  ) |> 
+  summarise(
+    hhds = sum(new_WGTP)
+  ) |> 
+  ungroup()
+
+#Write Output tables to K Drive
+write.csv(
+  full.crosstab,
+  paste0(output_path,"/output.tbl_",scen,"_full.crosstab.csv"),
+  row.names = FALSE
+)
 ```

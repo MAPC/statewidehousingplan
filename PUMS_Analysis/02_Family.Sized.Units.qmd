@@ -281,14 +281,74 @@ pums_cleaned <- pums |>
   )
 ```
 
-# 2.0 Join PUMS Community Types to PUMS Data
+# 2.0 Join PUMS Data to Other Data Indicators
+# 2.1 Joing PUMS Community Type Data
 ```{r}
 # Join PUMS Community Types to PUMS Data
 pums_cleaned.ct <- left_join(pums_cleaned, ct_xw, by = c("PUMA"))
+```
 
+# 2.2 Joing RPA Data
+```{r}
+#Joins PUMA RPA crosswalk to PUMS data
+pums_cleaned.rpa <- left_join(pums_cleaned, xw, by = c("PUMA"))
 ```
 
 # 3.0 Tables
+# 3.1 Prevalence of Family Sized Units
+```{r}
+#===============================================================================
+# Number of Family Sized Units State Level
+tbl.FSU.State <- pums_cleaned |> 
+  filter(SPORDER == 1 & TYPEHUGQ == 1) |> 
+  group_by(Family.Size_Unit) |> 
+  summarise(hh = sum(WGTP)) |> 
+  ungroup() |> 
+  mutate(
+    total_hh = sum(hh),
+    pct = round(hh/total_hh, digits = 3)
+  )
+#===============================================================================
+# Number of Family Sized Units by RPA
+tbl.FSU.RPA <- pums_cleaned.rpa |> 
+  filter(SPORDER == 1 & TYPEHUGQ == 1) |> 
+  group_by(rpa_acr, Family.Size_Unit) |> 
+  summarise(hh = sum(WGTP)) |> 
+  ungroup() |> 
+  group_by(rpa_acr) |> 
+  mutate(
+    total_hh = sum(hh)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    pct = round(hh/total_hh, digits = 3)
+  )
+#===============================================================================
+# Number of Households Living in Family Sized Units by Community Type
+tbl.FSU.ct <- pums_cleaned.ct |> 
+  filter(SPORDER == 1 & TYPEHUGQ == 1) |> 
+  group_by(puma_type, Family.Size_Unit) |> 
+  summarise(hh = sum(WGTP)) |> 
+  ungroup() |> 
+  group_by(puma_type) |> 
+  mutate(
+    total_hh = sum(hh)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    pct = round(hh/total_hh, digits = 3)
+  )
+```
+
+# 3.2 Household Type by Family Sized Units
+```{r}
+```
+
+# 3.3 Tenure by Family Sized Units
+```{r}
+```
+
+# 3.4 Age of Householder by Family Sized Units
 ```{r}
 ```
 

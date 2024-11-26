@@ -1048,17 +1048,15 @@ hhld_owner_cost_burden__dis_summary_table <- rbind(household_cost_burden_owner_d
 household_size_dis <- people_with_disability %>%
  select(uniq_obs, SERIALNO, WGTP, DIS, NP) %>% 
  group_by(SERIALNO) %>% 
- summarise(
-    household_size = first(NP, na.rm = TRUE),              # get the number of people in hhld for first person
-    first_weight = first(WGTP, na.rm = TRUE),              # get the weight for the first person (householder)
+ summarise(household_size = first(NP, na.rm = TRUE),      # get the number of people in hhld for first person
+    first_weight = first(WGTP, na.rm = TRUE),             # get the weight for the first person
     .groups = "drop") %>%
   mutate(household_size_category = case_when(              # create household size categories
     household_size >= 10 ~ "10 or more",
     household_size < 10 ~ as.character(household_size),    # sizes less than 10 as strings to categorize them
     TRUE ~ "Unknown")) %>%
-  group_by(household_size_category) %>%  # group by  size
-  summarise(
-    total_weight = sum(first_weight, na.rm = TRUE),            # sum total weights for each nativity and size
+  group_by(household_size_category) %>%  # group by size category
+  summarise(total_weight = sum(first_weight, na.rm = TRUE),            # sum total weights for each size
     .groups = "drop") %>%
     mutate(percentage_of_total = (total_weight / total_households_with_disability) * 100) %>%
     mutate (household_size_category = factor(household_size_category, levels = c(      # order groups in correct order
@@ -1080,8 +1078,7 @@ household_size_dis <- people_with_disability %>%
 hhld_size_dis_state <- pums %>%
   filter(NP > 0) %>%  
   group_by(SERIALNO) %>%  
-  summarise(
-    household_size = first(NP, na.rm = TRUE),  # first person's hhld size
+  summarise(household_size = first(NP, na.rm = TRUE),  # first person's hhld size
     first_weight = first(WGTP, na.rm = TRUE),  # First person's weight for the household
     .groups = "drop") %>%
   mutate(household_size_category = case_when(  # create household size categories
@@ -1093,8 +1090,7 @@ hhld_size_dis_state <- pums %>%
     total_weight = sum(first_weight, na.rm = TRUE),  # sum weights 
     .groups = "drop"
   ) %>%
-  mutate(
-    percentage_of_total = (total_weight / sum(total_weight, na.rm = TRUE)) * 100,  # calculate percentage
+  mutate(percentage_of_total = (total_weight / sum(total_weight, na.rm = TRUE)) * 100,  # calculate percentage
     description = "All MA households") %>%
   mutate(household_size_category = factor(household_size_category, levels = c(  
       "1", "2", "3", "4", "5", "6", "7", "8", "9", "10 or more"))) %>%

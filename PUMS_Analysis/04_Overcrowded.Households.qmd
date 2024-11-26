@@ -221,6 +221,9 @@ rpa.ami_table <- get_mapc_database(
   distinct(rpa_acr, .keep_all = TRUE) |> 
   relocate(rpa_acr)
 
+#===============================================================================
+# PUMA-based AMI Tables
+
 full.pums_ami.subsets <- NULL
 
 for (i in 1:8) {
@@ -274,6 +277,54 @@ ami_summary <- full.pums_ami.subsets |>
     total_hh.2nd.xtab = sum(hh),
     pct.2nd.xtab = round(hh/total_hh.2nd.xtab, digits = 3)
   )
+
+#===============================================================================
+# RPA-based AMI Tables
+pums_rpa <- left_join(pums, xw, by = c("PUMA"), relationship = "many-to-many")
+
+rpa_list <- xw |> distinct(rpa_acr) |> pull(rpa_acr)
+
+full.pums_ami.subsets <- NULL
+
+for (j in rpa_list) {
+  for (i in 1:8) {
+    ami_table_filtered <- rpa.ami_table |>
+      select(rpa_acr, ends_with(as.character(i))) |> #change to puma id
+      filter(rpa_acr == j) |> 
+      # this example below is the correct syntax - also noting that if you don't reorder the table 50 comes before 30
+      `colnames<-`(c("rpa_acr","il30","il50","il80","il100", "il40", "il60", "il70"))
+    
+    pums_ami.subset <- pums_rpa |>
+      #account for households larger than 8, will be treated as 8 person
+      mutate(size_group = ifelse(NP > 8, 8, NP)) |>
+      #run the analysis on just the size household we have the filtered ami table to
+      filter(rpa_acr == j & size_group == i) |>
+      #join in the ami table of income limits
+      left_join(ami_table_filtered, by = "rpa_acr") |>
+      #create a column called ami_group that will assign an ami % to an income based on the PUMA
+      mutate(
+        ami_group = case_when(
+          HINCP <= il30 ~ "u30",
+          HINCP <= il40 ~ "e40",
+          HINCP <= il50 ~ "e50",
+          HINCP <= il60 ~ "e60",
+          HINCP <= il70 ~ "e70",
+          HINCP <= il80 ~ "e80",
+          .default = "o80"
+        )
+      )
+    
+    full.pums_ami.subsets <-bind_rows(full.pums_ami.subsets, pums_ami.subset)
+    
+    rm(ami_table_filtered, pums_ami.subset)
+    
+    print(paste0("Finished creating a subset of PUMS records with a household size of ",i,"!"))
+    
+  }
+  
+  print(paste0("Finished creating subset of PUMS records in ", j, "!"))
+  
+}
 
 ```
 

@@ -93,8 +93,6 @@ pums <- pums_query(var.list = variable_list, yr = vintage, srvy = "acs5") |>
     puma_id = PUMA
   )
 
-
-
 ```
 # 0.3 WORK IN PROGRESS - Less Than Elegant Create AMI Tables for PUMA and RPA Groups
 ```{r}
@@ -117,32 +115,32 @@ puma.ami_table <- get_mapc_database(
     il_100_7 = il_50_7 * 2,
     il_100_8 = il_50_8 * 2,
     # 40 % AMI
-    il40_1 = il_100_1 * 0.4,
-    il40_2 = il_100_2 * 0.4,
-    il40_3 = il_100_3 * 0.4,
-    il40_4 = il_100_4 * 0.4,
-    il40_5 = il_100_5 * 0.4,
-    il40_6 = il_100_6 * 0.4,
-    il40_7 = il_100_7 * 0.4,
-    il40_8 = il_100_8 * 0.4,
+    il_40_1 = il_100_1 * 0.4,
+    il_40_2 = il_100_2 * 0.4,
+    il_40_3 = il_100_3 * 0.4,
+    il_40_4 = il_100_4 * 0.4,
+    il_40_5 = il_100_5 * 0.4,
+    il_40_6 = il_100_6 * 0.4,
+    il_40_7 = il_100_7 * 0.4,
+    il_40_8 = il_100_8 * 0.4,
     # 60 % AMI
-    il60_1 = il_100_1 * 0.6,
-    il60_2 = il_100_2 * 0.6,
-    il60_3 = il_100_3 * 0.6,
-    il60_4 = il_100_4 * 0.6,
-    il60_5 = il_100_5 * 0.6,
-    il60_6 = il_100_6 * 0.6,
-    il60_7 = il_100_7 * 0.6,
-    il60_8 = il_100_8 * 0.6,
+    il_60_1 = il_100_1 * 0.6,
+    il_60_2 = il_100_2 * 0.6,
+    il_60_3 = il_100_3 * 0.6,
+    il_60_4 = il_100_4 * 0.6,
+    il_60_5 = il_100_5 * 0.6,
+    il_60_6 = il_100_6 * 0.6,
+    il_60_7 = il_100_7 * 0.6,
+    il_60_8 = il_100_8 * 0.6,
     # 70 % AMI
-    il70_1 = il_100_1 * 0.7,
-    il70_2 = il_100_2 * 0.7,
-    il70_3 = il_100_3 * 0.7,
-    il70_4 = il_100_4 * 0.7,
-    il70_5 = il_100_5 * 0.7,
-    il70_6 = il_100_6 * 0.7,
-    il70_7 = il_100_7 * 0.7,
-    il70_8 = il_100_8 * 0.7
+    il_70_1 = il_100_1 * 0.7,
+    il_70_2 = il_100_2 * 0.7,
+    il_70_3 = il_100_3 * 0.7,
+    il_70_4 = il_100_4 * 0.7,
+    il_70_5 = il_100_5 * 0.7,
+    il_70_6 = il_100_6 * 0.7,
+    il_70_7 = il_100_7 * 0.7,
+    il_70_8 = il_100_8 * 0.7
   ) |>
   left_join(muni2puma,
             by = c("muni_id")) |>
@@ -181,32 +179,32 @@ rpa.ami_table <- get_mapc_database(
     il_100_7 = il_50_7 * 2,
     il_100_8 = il_50_8 * 2,
     # 40 % AMI
-    il40_1 = il_100_1 * 0.4,
-    il40_2 = il_100_2 * 0.4,
-    il40_3 = il_100_3 * 0.4,
-    il40_4 = il_100_4 * 0.4,
-    il40_5 = il_100_5 * 0.4,
-    il40_6 = il_100_6 * 0.4,
-    il40_7 = il_100_7 * 0.4,
-    il40_8 = il_100_8 * 0.4,
+    il_40_1 = il_100_1 * 0.4,
+    il_40_2 = il_100_2 * 0.4,
+    il_40_3 = il_100_3 * 0.4,
+    il_40_4 = il_100_4 * 0.4,
+    il_40_5 = il_100_5 * 0.4,
+    il_40_6 = il_100_6 * 0.4,
+    il_40_7 = il_100_7 * 0.4,
+    il_40_8 = il_100_8 * 0.4,
     # 60 % AMI
-    il60_1 = il_100_1 * 0.6,
-    il60_2 = il_100_2 * 0.6,
-    il60_3 = il_100_3 * 0.6,
-    il60_4 = il_100_4 * 0.6,
-    il60_5 = il_100_5 * 0.6,
-    il60_6 = il_100_6 * 0.6,
-    il60_7 = il_100_7 * 0.6,
-    il60_8 = il_100_8 * 0.6,
+    il_60_1 = il_100_1 * 0.6,
+    il_60_2 = il_100_2 * 0.6,
+    il_60_3 = il_100_3 * 0.6,
+    il_60_4 = il_100_4 * 0.6,
+    il_60_5 = il_100_5 * 0.6,
+    il_60_6 = il_100_6 * 0.6,
+    il_60_7 = il_100_7 * 0.6,
+    il_60_8 = il_100_8 * 0.6,
     # 70 % AMI
-    il70_1 = il_100_1 * 0.7,
-    il70_2 = il_100_2 * 0.7,
-    il70_3 = il_100_3 * 0.7,
-    il70_4 = il_100_4 * 0.7,
-    il70_5 = il_100_5 * 0.7,
-    il70_6 = il_100_6 * 0.7,
-    il70_7 = il_100_7 * 0.7,
-    il70_8 = il_100_8 * 0.7
+    il_70_1 = il_100_1 * 0.7,
+    il_70_2 = il_100_2 * 0.7,
+    il_70_3 = il_100_3 * 0.7,
+    il_70_4 = il_100_4 * 0.7,
+    il_70_5 = il_100_5 * 0.7,
+    il_70_6 = il_100_6 * 0.7,
+    il_70_7 = il_100_7 * 0.7,
+    il_70_8 = il_100_8 * 0.7
   ) |>
   left_join(muni2rpa,
             by = c("muni_id")) |>
@@ -2108,7 +2106,7 @@ for (i in 1:8) {
     # this example below is the correct syntax - also noting that if you don't reorder the table 50 comes before 30
     `colnames<-`(c("puma_id","il30","il50","il80","il100", "il40", "il60", "il70"))
   
-  pums_ami.subset <- pums |>
+  pums_ami.subset <- pums_cleaned |>
     #account for households larger than 8, will be treated as 8 person
     mutate(size_group = ifelse(NP > 8, 8, NP)) |>
     #run the analysis on just the size household we have the filtered ami table to
@@ -2156,7 +2154,7 @@ ami_summary <- full.pums_ami.subsets |>
 
 #===============================================================================
 # RPA-based AMI Tables
-pums_rpa <- left_join(pums, xw, by = c("PUMA"), relationship = "many-to-many")
+pums_rpa <- left_join(pums_cleaned, xw, by = c("PUMA"), relationship = "many-to-many")
 
 rpa_list <- xw |> distinct(rpa_acr) |> pull(rpa_acr)
 
@@ -2168,7 +2166,7 @@ for (j in rpa_list) {
       select(rpa_acr, ends_with(as.character(i))) |> #change to puma id
       filter(rpa_acr == j) |> 
       # this example below is the correct syntax - also noting that if you don't reorder the table 50 comes before 30
-      `colnames<-`(c("rpa_acr","il30","il50","il80","il100", "il40", "il60", "il70"))
+      `colnames<-`(c("rpa_acr","il50","il30","il80","il100", "il40", "il60", "il70"))
     
     pums_ami.subset <- pums_rpa |>
       #account for households larger than 8, will be treated as 8 person
@@ -2180,12 +2178,12 @@ for (j in rpa_list) {
       #create a column called ami_group that will assign an ami % to an income based on the PUMA
       mutate(
         ami_group = case_when(
-          HINCP <= il30 ~ "u30",
-          HINCP <= il40 ~ "e40",
-          HINCP <= il50 ~ "e50",
-          HINCP <= il60 ~ "e60",
-          HINCP <= il70 ~ "e70",
-          HINCP <= il80 ~ "e80",
+          HINCP_adj <= il30 ~ "u30",
+          HINCP_adj <= il40 & HINCP_adj > il30 ~ "e40",
+          HINCP_adj <= il50 & HINCP_adj > il40 ~ "e50",
+          HINCP_adj <= il60 & HINCP_adj > il50 ~ "e60",
+          HINCP_adj <= il70 & HINCP_adj > il60 ~ "e70",
+          HINCP_adj <= il80 & HINCP_adj > il70 ~ "e80",
           .default = "o80"
         )
       )
@@ -2204,7 +2202,7 @@ for (j in rpa_list) {
 
 ami_summary <- full.pums_ami.subsets |> 
   filter(SPORDER == 1 & TYPEHUGQ == 1) |> 
-  group_by(rpa_acr, size_group, ami_group) |> 
+  group_by(rpa_acr, size_group, ami_group, ageCAT2, TEN_Group) |> 
   summarise(hh = sum(WGTP)) |> 
   ungroup() |>
   # Percent Calculation for the Crosstab
@@ -2225,4 +2223,10 @@ ami_summary <- full.pums_ami.subsets |>
   mutate(
     pct.geo = round(hh/total_hh.geo, digits = 3)
   )
+
+write.csv(
+  ami_summary,
+  paste0(output_path,"04_Overcrowding/ami_summary.tbl.csv"),
+  row.names = FALSE
+)
 ```

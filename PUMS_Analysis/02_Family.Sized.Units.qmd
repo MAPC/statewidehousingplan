@@ -155,13 +155,13 @@ pums_cleaned <- pums |>
     #   PPB <= 2.0 ~ "0"
     # ),
     # Categorize the size of a housing unit by "Family" and "Not Family"
-    # Family sized units have three or more rooms in the unit.
+    # Family sized units have three or more bedrooms in the unit.
     # This category has two possible values:
-    # (1) Indicates a household's housing unit is "Family" sized - has three or more rooms
-    # (0) Indicates a household's housing unit is *not* "Family" sized - has fewer than three rooms
+    # (1) Indicates a household's housing unit is "Family" sized - has three or more bedrooms
+    # (0) Indicates a household's housing unit is *not* "Family" sized - has fewer than three bedrooms
     Family.Size_Unit = case_when(
-      RMSP >= 3 ~ 1,
-      RMSP < 3 ~ 0,
+      BDSP >= 3 ~ 1,
+      BDSP < 3 ~ 0,
       .default = 0
     ),
     # # Convert SFN into a numeric column. Introduces NAs for people not in subfamilies
@@ -291,7 +291,7 @@ pums_cleaned.ct <- left_join(pums_cleaned, ct_xw, by = c("PUMA"))
 # 2.2 Joing RPA Data
 ```{r}
 #Joins PUMA RPA crosswalk to PUMS data
-pums_cleaned.rpa <- left_join(pums_cleaned, xw, by = c("PUMA"))
+pums_cleaned.rpa <- left_join(pums_cleaned, xw, by = c("PUMA"), relationship = "many-to-many")
 ```
 
 # 3.0 Tables
@@ -303,52 +303,365 @@ tbl.FSU.State <- pums_cleaned |>
   filter(SPORDER == 1 & TYPEHUGQ == 1) |> 
   group_by(Family.Size_Unit) |> 
   summarise(hh = sum(WGTP)) |> 
+  ungroup() |>
+  # Percent Calculation for the Crosstab
+  group_by(Family.Size_Unit) |> 
+  mutate(
+    total_hh.xtab = sum(hh)
+  ) |> 
   ungroup() |> 
   mutate(
-    total_hh = sum(hh),
-    pct = round(hh/total_hh, digits = 3)
+    pct.xtab = round(hh/total_hh.xtab, digits = 3),
+    total_hh.geo = sum(hh),
+    pct.geo = round(hh/total_hh.geo, digits = 3)
   )
+
+# Write table to K drive
+write.csv(
+  tbl.FSU.State,
+  paste0(output_path,"02_FamilySizedUnits/tbl.FSU.State.csv"),
+  row.names = FALSE
+)
 #===============================================================================
 # Number of Family Sized Units by RPA
 tbl.FSU.RPA <- pums_cleaned.rpa |> 
   filter(SPORDER == 1 & TYPEHUGQ == 1) |> 
   group_by(rpa_acr, Family.Size_Unit) |> 
   summarise(hh = sum(WGTP)) |> 
-  ungroup() |> 
-  group_by(rpa_acr) |> 
+  ungroup() |>
+  # Percent Calculation for the Crosstab
+  group_by(rpa_acr, Family.Size_Unit) |> 
   mutate(
-    total_hh = sum(hh)
+    total_hh.xtab = sum(hh)
   ) |> 
   ungroup() |> 
   mutate(
-    pct = round(hh/total_hh, digits = 3)
+    pct.xtab = round(hh/total_hh.xtab, digits = 3)
+  ) |> 
+  # Percent Calculation for the Geography
+  group_by(rpa_acr) |> 
+  mutate(
+    total_hh.geo = sum(hh)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    pct.geo = round(hh/total_hh.geo, digits = 3)
   )
+
+# Write table to K drive
+write.csv(
+  tbl.FSU.RPA,
+  paste0(output_path,"02_FamilySizedUnits/tbl.FSU.RPA.csv"),
+  row.names = FALSE
+)
 #===============================================================================
 # Number of Households Living in Family Sized Units by Community Type
 tbl.FSU.ct <- pums_cleaned.ct |> 
   filter(SPORDER == 1 & TYPEHUGQ == 1) |> 
   group_by(puma_type, Family.Size_Unit) |> 
   summarise(hh = sum(WGTP)) |> 
-  ungroup() |> 
-  group_by(puma_type) |> 
+  ungroup()|>
+  # Percent Calculation for the Crosstab
+  group_by(puma_type, Family.Size_Unit) |> 
   mutate(
-    total_hh = sum(hh)
+    total_hh.xtab = sum(hh)
   ) |> 
   ungroup() |> 
   mutate(
-    pct = round(hh/total_hh, digits = 3)
+    pct.xtab = round(hh/total_hh.xtab, digits = 3)
+  ) |> 
+  # Percent Calculation for the Geography
+  group_by(puma_type) |> 
+  mutate(
+    total_hh.geo = sum(hh)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    pct.geo = round(hh/total_hh.geo, digits = 3)
   )
+
+# Write table to K drive
+write.csv(
+  tbl.FSU.ct,
+  paste0(output_path,"02_FamilySizedUnits/tbl.FSU.ct.csv"),
+  row.names = FALSE
+)
 ```
 
 # 3.2 Household Type by Family Sized Units
 ```{r}
+#===============================================================================
+# Number of Family Sized Units by Household Type at the State Level
+tbl.HHtype.FSU.State <- pums_cleaned |> 
+  filter(SPORDER == 1 & TYPEHUGQ == 1) |> 
+  group_by(HHtype, Family.Size_Unit) |> 
+  summarise(hh = sum(WGTP)) |> 
+  ungroup() |>
+  # Percent Calculation for the Crosstab
+  group_by(HHtype) |> 
+  mutate(
+    total_hh.xtab = sum(hh)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    pct.xtab = round(hh/total_hh.xtab, digits = 3),
+    total_hh.geo = sum(hh),
+    pct.geo = round(hh/total_hh.geo, digits = 3)
+  )
+
+# Write table to K drive
+write.csv(
+  tbl.HHtype.FSU.State,
+  paste0(output_path,"02_FamilySizedUnits/tbl.HHtype.FSU.State.csv"),
+  row.names = FALSE
+)
+#===============================================================================
+# Number of Family Sized Units by Household type by RPA
+tbl.HHtype.FSU.RPA <- pums_cleaned.rpa |> 
+  filter(SPORDER == 1 & TYPEHUGQ == 1) |> 
+  group_by(rpa_acr, HHtype, Family.Size_Unit) |> 
+  summarise(hh = sum(WGTP)) |> 
+  ungroup() |>
+  # Percent Calculation for the Crosstab
+  group_by(rpa_acr, HHtype) |> 
+  mutate(
+    total_hh.xtab = sum(hh)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    pct.xtab = round(hh/total_hh.xtab, digits = 3)
+  ) |> 
+  # Percent Calculation for the Geography
+  group_by(rpa_acr) |> 
+  mutate(
+    total_hh.geo = sum(hh)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    pct.geo = round(hh/total_hh.geo, digits = 3)
+  )
+
+# Write table to K drive
+write.csv(
+  tbl.HHtype.FSU.RPA,
+  paste0(output_path,"02_FamilySizedUnits/tbl.HHtype.FSU.RPA.csv"),
+  row.names = FALSE
+)
+#===============================================================================
+# Number of Households Living in Family Sized Units by Household Type by Community Type
+tbl.HHtype.FSU.ct <- pums_cleaned.ct |> 
+  filter(SPORDER == 1 & TYPEHUGQ == 1) |> 
+  group_by(puma_type, HHtype, Family.Size_Unit) |> 
+  summarise(hh = sum(WGTP)) |> 
+  ungroup() |>
+  # Percent Calculation for the Crosstab
+  group_by(puma_type, HHtype) |> 
+  mutate(
+    total_hh.xtab = sum(hh)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    pct.xtab = round(hh/total_hh.xtab, digits = 3)
+  ) |> 
+  # Percent Calculation for the Geography
+  group_by(puma_type) |> 
+  mutate(
+    total_hh.geo = sum(hh)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    pct.geo = round(hh/total_hh.geo, digits = 3)
+  )
+
+# Write table to K drive
+write.csv(
+  tbl.HHtype.FSU.ct,
+  paste0(output_path,"02_FamilySizedUnits/tbl.HHtype.FSU.ct.csv"),
+  row.names = FALSE
+)
 ```
 
 # 3.3 Tenure by Family Sized Units
 ```{r}
+#===============================================================================
+# Number of Family Sized Units by Tenure at the State Level
+tbl.TEN.FSU.State <- pums_cleaned |> 
+  filter(SPORDER == 1 & TYPEHUGQ == 1) |> 
+  group_by(TEN_Group, Family.Size_Unit) |> 
+  summarise(hh = sum(WGTP)) |> 
+  ungroup()  |>
+  # Percent Calculation for the Crosstab
+  group_by(TEN_Group) |> 
+  mutate(
+    total_hh.xtab = sum(hh)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    pct.xtab = round(hh/total_hh.xtab, digits = 3),
+    total_hh.geo = sum(hh),
+    pct.geo = round(hh/total_hh.geo, digits = 3)
+  )
+
+# Write table to K drive
+write.csv(
+  tbl.TEN.FSU.State,
+  paste0(output_path,"02_FamilySizedUnits/tbl.TEN.FSU.State.csv"),
+  row.names = FALSE
+)
+#===============================================================================
+# Number of Family Sized Units by Tenure by RPA
+tbl.TEN.FSU.RPA <- pums_cleaned.rpa |> 
+  filter(SPORDER == 1 & TYPEHUGQ == 1) |> 
+  group_by(rpa_acr, TEN_Group, Family.Size_Unit) |> 
+  summarise(hh = sum(WGTP)) |> 
+  ungroup()  |>
+  # Percent Calculation for the Crosstab
+  group_by(rpa_acr, TEN_Group) |> 
+  mutate(
+    total_hh.xtab = sum(hh)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    pct.xtab = round(hh/total_hh.xtab, digits = 3)
+  ) |> 
+  # Percent Calculation for the Geography
+  group_by(rpa_acr) |> 
+  mutate(
+    total_hh.geo = sum(hh)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    pct.geo = round(hh/total_hh.geo, digits = 3)
+  )
+
+# Write table to K drive
+write.csv(
+  tbl.TEN.FSU.RPA,
+  paste0(output_path,"02_FamilySizedUnits/tbl.TEN.FSU.RPA.csv"),
+  row.names = FALSE
+)
+#===============================================================================
+# Number of Households Living in Family Sized Units by Tenure by Community Type
+tbl.TEN.FSU.ct <- pums_cleaned.ct |> 
+  filter(SPORDER == 1 & TYPEHUGQ == 1) |> 
+  group_by(puma_type, TEN_Group, Family.Size_Unit) |> 
+  summarise(hh = sum(WGTP)) |> 
+  ungroup() |>
+  # Percent Calculation for the Crosstab
+  group_by(puma_type, TEN_Group) |> 
+  mutate(
+    total_hh.xtab = sum(hh)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    pct.xtab = round(hh/total_hh.xtab, digits = 3)
+  ) |> 
+  # Percent Calculation for the Geography
+  group_by(puma_type) |> 
+  mutate(
+    total_hh.geo = sum(hh)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    pct.geo = round(hh/total_hh.geo, digits = 3)
+  )
+
+# Write table to K drive
+write.csv(
+  tbl.TEN.FSU.ct,
+  paste0(output_path,"02_FamilySizedUnits/tbl.TEN.FSU.ct.csv"),
+  row.names = FALSE
+)
 ```
 
 # 3.4 Age of Householder by Family Sized Units
 ```{r}
+#===============================================================================
+# Number of Family Sized Units by Age of Householder at the State Level
+tbl.Age.FSU.State <- pums_cleaned |> 
+  filter(SPORDER == 1 & TYPEHUGQ == 1) |> 
+  group_by(ageCAT6, Family.Size_Unit) |> 
+  summarise(hh = sum(WGTP)) |> 
+  ungroup()  |>
+  # Percent Calculation for the Crosstab
+  group_by(ageCAT6) |> 
+  mutate(
+    total_hh.xtab = sum(hh)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    pct.xtab = round(hh/total_hh.xtab, digits = 3),
+    total_hh.geo = sum(hh),
+    pct.geo = round(hh/total_hh.geo, digits = 3)
+  )
+
+# Write table to K drive
+write.csv(
+  tbl.Age.FSU.State,
+  paste0(output_path,"02_FamilySizedUnits/tbl.Age.FSU.State.csv"),
+  row.names = FALSE
+)
+#===============================================================================
+# Number of Family Sized Unitsby Age of Householder by RPA
+tbl.Age.FSU.RPA <- pums_cleaned.rpa |> 
+  filter(SPORDER == 1 & TYPEHUGQ == 1) |> 
+  group_by(rpa_acr, ageCAT6, Family.Size_Unit) |> 
+  summarise(hh = sum(WGTP)) |> 
+  ungroup()  |>
+  # Percent Calculation for the Crosstab
+  group_by(rpa_acr, ageCAT6) |> 
+  mutate(
+    total_hh.xtab = sum(hh)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    pct.xtab = round(hh/total_hh.xtab, digits = 3)
+  ) |> 
+  # Percent Calculation for the Geography
+  group_by(rpa_acr) |> 
+  mutate(
+    total_hh.geo = sum(hh)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    pct.geo = round(hh/total_hh.geo, digits = 3)
+  )
+
+# Write table to K drive
+write.csv(
+  tbl.Age.FSU.RPA,
+  paste0(output_path,"02_FamilySizedUnits/tbl.Age.FSU.RPA.csv"),
+  row.names = FALSE
+)
+#===============================================================================
+# Number of Households Living in Family Sized Units by Age of Householder by Community Type
+tbl.Age.FSU.ct <- pums_cleaned.ct |> 
+  filter(SPORDER == 1 & TYPEHUGQ == 1) |> 
+  group_by(puma_type, ageCAT6, Family.Size_Unit) |> 
+  summarise(hh = sum(WGTP)) |> 
+  ungroup() |>
+  group_by(puma_type, ageCAT6) |> 
+  mutate(
+    total_hh.xtab = sum(hh)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    pct.xtab = round(hh/total_hh.xtab, digits = 3)
+  ) |> 
+  group_by(puma_type) |> 
+  mutate(
+    total_hh.geo = sum(hh)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    pct.geo = round(hh/total_hh.geo, digits = 3)
+  )
+
+# Write table to K drive
+write.csv(
+  tbl.Age.FSU.ct,
+  paste0(output_path,"02_FamilySizedUnits/tbl.Age.FSU.ct.csv"),
+  row.names = FALSE
+)
 ```
 

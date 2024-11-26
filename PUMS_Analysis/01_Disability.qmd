@@ -399,7 +399,7 @@ disability_by_age_table <- age_people_with_disability %>%
   arrange(age_range)
 ```
 
-The majority of people with disabilities are adults, especially older adults. One in four of people with a disability in the state are age 75 and older. 
+The majority of people with disabilities are adults, especially older adults. One in four of people with a disability in the state are age 75 and older.
 
 A little over a third of people with a disability are in the age range of 35 to 64. Only 14% are in the 18-34 age range and only 8% in the 5-17 category.
 
@@ -1029,6 +1029,8 @@ hhld_owner_cost_burden__dis_summary_table <- rbind(household_cost_burden_owner_d
 
 ```
 
+
+
 ```{r}
 #Export other household data 
  write.xlsx(list('Income' = hhld_income_dis_summary_table, 
@@ -1039,6 +1041,75 @@ hhld_owner_cost_burden__dis_summary_table <- rbind(household_cost_burden_owner_d
            file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/dis_hhld_addtl_variables.xlsx") 
 
 ```
+
+```{r}
+#Size of hhld - NP is number of persons associated with housing record
+#Size of household of hhlds with a member who has a disability
+household_size_dis <- people_with_disability %>%
+ select(uniq_obs, SERIALNO, WGTP, DIS, NP) %>% 
+ group_by(SERIALNO) %>% 
+ summarise(
+    household_size = first(NP, na.rm = TRUE),              # get the number of people in hhld for first person
+    first_weight = first(WGTP, na.rm = TRUE),              # get the weight for the first person (householder)
+    .groups = "drop") %>%
+  mutate(household_size_category = case_when(              # create household size categories
+    household_size >= 10 ~ "10 or more",
+    household_size < 10 ~ as.character(household_size),    # sizes less than 10 as strings to categorize them
+    TRUE ~ "Unknown")) %>%
+  group_by(household_size_category) %>%  # group by  size
+  summarise(
+    total_weight = sum(first_weight, na.rm = TRUE),            # sum total weights for each nativity and size
+    .groups = "drop") %>%
+    mutate(percentage_of_total = (total_weight / total_households_with_disability) * 100) %>%
+    mutate (household_size_category = factor(household_size_category, levels = c(      # order groups in correct order
+     "1",
+     "2",
+     "3",
+     "4",
+     "5",
+     "6",
+     "7",
+     "8",
+     "9",
+     "10 or more"))) %>%
+  arrange(household_size_category) %>%
+  mutate(description = "MA households with disability") %>%
+  select(description, everything()) 
+
+#Calculate for whole state for comparison in the same housing age groups
+hhld_size_dis_state <- pums %>%
+  filter(NP > 0) %>%  
+  group_by(SERIALNO) %>%  
+  summarise(
+    household_size = first(NP, na.rm = TRUE),  # first person's hhld size
+    first_weight = first(WGTP, na.rm = TRUE),  # First person's weight for the household
+    .groups = "drop") %>%
+  mutate(household_size_category = case_when(  # create household size categories
+      household_size >= 10 ~ "10 or more",
+      household_size < 10 ~ as.character(household_size),  # Sizes less than 10 as strings
+      TRUE ~ "Unknown")) %>%
+  group_by(household_size_category) %>%  # group by size category
+  summarise(
+    total_weight = sum(first_weight, na.rm = TRUE),  # sum weights 
+    .groups = "drop"
+  ) %>%
+  mutate(
+    percentage_of_total = (total_weight / sum(total_weight, na.rm = TRUE)) * 100,  # calculate percentage
+    description = "All MA households") %>%
+  mutate(household_size_category = factor(household_size_category, levels = c(  
+      "1", "2", "3", "4", "5", "6", "7", "8", "9", "10 or more"))) %>%
+  arrange(household_size_category) %>%
+  select(description, everything()) 
+
+hhld_size_dis_summary_table <- rbind(household_size_dis, hhld_size_dis_state) 
+```
+
+```{r}
+#Export size of hhld 
+ write.xlsx(list('Hhld size' = hhld_size_dis_summary_table),
+           file = "J:/EPPR/Active Studies/EOHLC Statewide Hsg Plan_FY24/Data/pums_UMDI/Output/dis_hhld_size.xlsx") 
+```
+
 
 # Analysis by RPA
 

@@ -13,8 +13,8 @@ editor: visual
 #root <- '../../../../Data/Working/Regional_Control_Totals/'
 
 # Base root. Toggle between S: and K: drive depending on mapped paths on your computer
-base <- "K:/DataServices/Projects/Current_Projects/"
-# base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
+# base <- "K:/DataServices/Projects/Current_Projects/"
+base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
 
 #General K drive filepath
 root <- paste0(base, "/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/")
@@ -55,19 +55,19 @@ set.seed(351)
 # Load Libraries for PUMS Analysis and PUMS API query functions
 # Sets seed and removes scientific notation
 source(here("PUMS_Analysis/PUMS_Helper_Functions.R"))
-# source(file = "C:/Project_Work/Local_Data/General/census.data_connection.R")
-# source(file = "C:/Project_Work/housing/dbConnections.R")
+source(file = "C:/Project_Work/Local_Data/General/census.data_connection.R")
+source(file = "C:/Project_Work/housing/dbConnections.R")
 
 # Load PUMA x RPA Crosswalk
 xw <- read.csv(paste0(rwt_path, "PUMS_data/PUMA10_RPA_crosswalk.csv")) |> 
   mutate(PUMA = str_pad(PUMA, 5, "left", pad = 0))
 
-# # Pull AMI Table for 2021
-# ami_table <- get_mapc_database(
-#   db.table_name = "hous_section8_income_limits_by_year_m",
-#   year = 2021,
-#   vars = "*"
-# )
+# Pull AMI Table for 2021
+ami_table <- get_mapc_database(
+  db.table_name = "hous_section8_income_limits_by_year_m",
+  year = 2021,
+  vars = "*"
+)
 
 ```
 
@@ -116,7 +116,7 @@ pums_data <- pums_query(var.list = variable_list, yr = vintage, srvy = "acs5") |
       TEN %in% c('1', '2') ~ 1,
       # Rented or occupied without payment of rent -> "2"
       TEN %in% c('3', '4') ~ 2,
-      .default = 999
+      .default = NA
     ), 
     # Creates a tenure grouping for:
     TEN_Group = case_when(# Owned with a mortgage or free and clear -> "Own"
@@ -655,6 +655,7 @@ if(sum(sum(subset.1$new.hhds), sum(subset.2$new.hhds)) != sum(sum(subset.1.adj.t
 ```
 
 # 3.5 Create PUMS Extract for Reweighter
+
 ```{r}
 # Create a check to see if the file has already been written.
 file_check = paste0(rwt_path, '/PUMS_data/PUMS2021.Split_formatted.csv')
@@ -849,6 +850,7 @@ tbl.12 <- subset.adj.test |>
 write.csv(tbl.12, file = paste0(root,scen,"/Analysis/tbl.12_persons.by.eduattainment.csv"), row.names = F)
 
 ```
+
 # 4.0 Create Sampling Subsets
 
 ```{r}
@@ -865,6 +867,7 @@ partial.pums_data.subset2 <- full.pums_data.adj |>
   filter(SPORDER.adj == 1 & TYPEHUGQ == 1 & subset.flag.2 == 1 & adj.flag == 2)
 
 ```
+
 ```{r}
 years <- c(2020,2025,2030,2035,2040,2045,2050)
 
@@ -906,6 +909,7 @@ for (i in years){
 ```
 
 # 5.0 Create Headship Rate Generation function
+
 ```{r}
 create_hdsp.r <- function(df){
   # Generating headship rates by RPA and 5-year age group for the ACS 2017-2021 PUMS
@@ -948,7 +952,6 @@ create_hdsp.r <- function(df){
   
 }
 ```
-
 
 # 4.0 Calculate Headship Rates for Split Households PUMS
 

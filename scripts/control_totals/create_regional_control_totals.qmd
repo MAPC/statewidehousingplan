@@ -14,15 +14,15 @@ editor: visual
 # Population Scenario
 scen <- 'Scenario_2'
 # Headship rate Scenario
-hdshp <- 'acs1721'
+# hdshp <- 'acs1721'
 hdshp <- 'scen2'
 
 # Use when Rproject is open
 # root <- '../../../../Data/Working/Regional_Control_Totals/'
 
 # Base root. Toggle between S: and K: drive depedning on mapped paths on your computer
-base <- "K:/DataServices/Projects/Current_Projects/"
-#base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
+# base <- "K:/DataServices/Projects/Current_Projects/"
+base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
 
 # General K drive filepath
 root <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/")
@@ -967,6 +967,7 @@ if(sum(qc.population.df$gq.check.20 > 0)){
 ```
 
 # 5.0 Determine the Percentage of People in Households and Project the NUMBER of People in Households for the MPO and RPA
+
 # 5.1 Calculate the PERCENTAGE of People in Households by RPA and MPO
 
 ```{r}
@@ -1420,6 +1421,7 @@ if (scen == "Scenario_1"){
 ```
 
 # 6.3 Create Headship rates from this PUMS vintage
+
 ```{r}
 # Generating headship rates by RPA, 5-year Age Group, and Household Type for the ACS 2017-2021 PUMS
 headship_rates <- pums_data |> 
@@ -1451,7 +1453,7 @@ headship_rates <- pums_data |>
 # Generating headship rates by RPA, 5-year age group, and Tenure for the ACS 2017-2022 PUMS
 tenure_rates <- pums_data |> 
   # Inclues only observations for people in households (omits GQ)                
-  filter(TYPEHUGQ == "1" & SPORDER == 1 & !ageCAT6 %in% c("1","2")) |>                     
+  filter(TYPEHUGQ == "1" & SPORDER == 1 & !ageCAT6 %in% c("1","2","3")) |>                     
   #Groups by variables in the dataframe necessary to getting the granularity of
   #data we're interested in.
   group_by(rpa_acr, ageCAT6) |> 
@@ -1510,14 +1512,14 @@ if (sum(hr_check$flag) > 0 | sum(ten_check$flag) > 0){
 # Write an intermediate file for the headship rates from this PUMS vintage
 write.csv(
   headship_rates,
-  paste0(output_path, "headship_rates.pums",hdshp,".csv"),
+  paste0(output_path, "headship_rates.pums.",hdshp,".csv"),
   row.names = FALSE
 )
 
 # Write an intermediate file for the tenure rates from this PUMS vintage
 write.csv(
   tenure_rates,
-  paste0(output_path, "tenure_rates.pums",hdshp,".csv"),
+  paste0(output_path, "tenure_rates.pums.",hdshp,".csv"),
   row.names = FALSE
 )
 
@@ -1528,6 +1530,7 @@ write.csv(
 ```
 
 # 6.4 Create Laborforce Participation rates for ACS 2017-2021 PUMS
+
 ```{r}
 # Create laborforce participation rates for the ACS 2017-2021 PUMS
 lfpr <- pums_data |> 
@@ -1599,10 +1602,7 @@ if (scen == "Scenario_1"){
 hhpop_baseline <- pums_data |>  
   # Filter for households.
   filter(TYPEHUGQ == "1") |>  
-  mutate(
-    AgeCat = as.factor(ageCAT6),
-    RPA = as.factor(rpa_acr)
-  ) |> 
+  mutate(RPA=rpa_acr) |> 
   group_by(
     RPA
   ) |>  
@@ -1624,12 +1624,8 @@ hhpop_baseline <- pums_data |>
 # 7.1.2 - Baseline of Households by Household Type by Tenure
 hhtype_baseline <- pums_data |> 
   # Filter for households and the head of household for each SERIALNO
-  filter(TYPEHUGQ == "1" & SPORDER == "1") |>   
-  mutate(
-    AgeCat = as.factor(ageCAT6),
-    RPA = as.factor(rpa_acr),
-    HHtype = as.factor(HHtype)
-  ) |>  
+  filter(TYPEHUGQ == "1" & SPORDER == "1") |>  
+  mutate(RPA=rpa_acr) |> 
   group_by(
     RPA,
     AgeCat
@@ -1661,10 +1657,7 @@ hhtype_baseline <- pums_data |>
 tenure_baseline <- pums_data |> 
   # Filter for households and the head of household for each SERIALNO
   filter(TYPEHUGQ == "1" & SPORDER == "1" & ageCAT6 > 3) |>   
-  mutate(
-    RPA = as.factor(rpa_acr),
-    AgeCat = as.factor(ageCAT6),
-  ) |>  
+  mutate(RPA=rpa_acr) |> 
   group_by(
     RPA,
     AgeCat

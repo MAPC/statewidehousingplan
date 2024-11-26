@@ -1,0 +1,129 @@
+---
+title: "MCR-FRM Housing Analysis"
+author: "Zoe Iacovino"
+date: "2024-10-25"
+output: html_document
+---
+
+## Libraries and Functions and necessary variables
+
+```{r}
+
+
+output_path<- paste0("C:/Users/",Sys.info()["user"],"/OneDrive - Metropolitan Area Planning Council/Documents - Data Services/_Current Projects/_Housing/Statewide Housing Plan - EOHLC/04_Data")
+
+arc_pro_gdb<- "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/SHP-MCFRM-InundatedUnits/SHP-MCFRM-InundatedUnits.gdb"
+
+
+
+source("libraries.R")
+source("functions.R")
+# This will take many hours--loads 98 parcel feature layers
+source("make-data.R")
+
+```
+
+
+
+## Analysis
+
+
+```{r}
+
+
+
+output_table<-NULL
+
+for (z in 1:length(full_parcels)){
+
+
+#make sure all parcels have the right crs  
+all_parcels_int <-st_make_valid(full_parcels[[z]])%>%
+  st_transform(crs = st_crs(ma_munis))
+#filter parcels to the MC-FRM 2030 
+units_in_mcfrm30<- all_parcels_int%>%
+ st_filter(st_make_valid(psep_2030_shp))
+
+#summarize by use code (so later we can make sure only residential units are counted)
+mcfrm30_sum<-units_in_mcfrm30 %>%
+  group_by(CITY, USE_CODE_SYMB)%>%
+  summarize(units_2030 = sum(imputed_units),
+            value_2030 = sum(TOTAL_VAL))%>%
+  st_drop_geometry()
+
+#Repeat for 2050 scenario
+units_in_mcfrm50<- all_parcels_int%>%
+  st_filter(st_make_valid(psep_2050_shp))
+
+mcfrm50_sum<-units_in_mcfrm50 %>%
+  group_by(CITY, USE_CODE_SYMB)%>%
+  summarize(units_2050 = sum(imputed_units),
+            value_2050 = sum(TOTAL_VAL))%>%
+  st_drop_geometry()
+
+#Repeat for 2070 scenario
+units_in_mcfrm70 <-all_parcels_int%>%
+  st_filter(st_make_valid(psep_2070_shp))
+
+mcfrm70_sum<-units_in_mcfrm70 %>%
+  group_by(CITY, USE_CODE_SYMB)%>%
+  summarize(units_2070 = sum(imputed_units),
+            value_2070 = sum(TOTAL_VAL))%>%
+  st_drop_geometry()
+
+#joins the summarized tables to one table
+output_table[[z]]<- full_join(mcfrm30_sum, mcfrm50_sum, by = c("CITY", "USE_CODE_SYMB"))%>%
+  full_join(., mcfrm70_sum, by = c("CITY", "USE_CODE_SYMB"))
+
+}
+
+# Bring in all the csvs and summarize total imputed units 
+
+
+
+
+# One big table with all the summarized outputs
+obt<-rbindlist(output_table)%>%
+  #some parcels do not have the city populated, there is no data for these parcels
+  filter(!is.na(CITY))
+
+
+
+```
+
+```{r}
+#exports to sharepint
+write.csv(obt, paste0(output_path, "/town_mcfrm_units_results.csv"))
+
+```
+
+# Example of One Town
+
+```{r}
+
+example_parcels<- get_full_parcel_data(muni_name = "Chelsea")
+
+
+analysis_sample<-get_inundated_units(example_parcels)
+
+#maps the last city run through the loop
+ggplot(example_parcels)+
+  geom_sf(data = analysis_sample[[3]],
+          fill = "darkblue",
+          lwd = 0.1,
+          color = "white")+
+  geom_sf(data = analysis_sample[[2]],
+          fill = "#4052d6",
+          lwd = 0.1,
+          color = "white")+
+  geom_sf(data= analysis_sample[[1]],
+          fill = "lightblue",
+          lwd = 0.1,
+          color = "white")+
+  geom_sf(alpha = 0.5,
+          lwd = 0.1)+
+  theme_map()
+
+
+```
+

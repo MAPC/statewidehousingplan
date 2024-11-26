@@ -59,10 +59,10 @@ set.seed(351)
 
 # Load Libraries for PUMS Analysis and PUMS API query functions
 # Sets seed and removes scientific notation
-source(here("PUMS_Analysis/PUMS_Helper_Functions.R"))
+source(file = "C:/Project_Work/statewidehousingplan/PUMS_Analysis/PUMS_Helper_Functions.R")
 source(file = "C:/Project_Work/Local_Data/General/census.data_connection.R")
 source(file = "C:/Project_Work/housing/dbConnections.R")
-# source(file = "C:/Project_Work/housing/ami-analysis.R")
+#source(file = "C:/Project_Work/housing/ami-analysis.R")
 
 # Load PUMA x RPA Crosswalk
 xw <- read.csv(paste0(rwt_path, "PUMS_data/PUMA10_RPA_crosswalk.csv")) |> 
@@ -89,16 +89,21 @@ variable_list <- c('RT', 'PUMA', 'ADJHSG','ADJINC','NP','TYPEHUGQ','BDSP','RMSP'
 # Load PUMS variables
 pums <- pums_query(var.list = variable_list, yr = vintage, srvy = "acs5") |> 
   mutate(
-    PUMA = as.character(str_pad(PUMA, width = 5, side = "left", pad = 0))
+    PUMA = as.character(str_pad(PUMA, width = 5, side = "left", pad = 0)),
+    puma_id = PUMA
   )
+
+
 
 ```
 # WORK IN PROGRESS - Less Than Elegant AMI Table Generation
 ```{r}
 # Pull AMI Table for 2021
-puma.ami_table <- get_mapc_database(db.table_name = "hous_section8_income_limits_by_year_m",
-                               year = 2021,
-                               vars = "*") |>
+puma.ami_table <- get_mapc_database(
+  db.table_name = "hous_section8_income_limits_by_year_m",
+  year = 2021,
+  vars = "*"
+) |>
   mutate(
     #100% AMI
     il_100_1 = il_50_1 * 2,
@@ -152,12 +157,15 @@ puma.ami_table <- get_mapc_database(db.table_name = "hous_section8_income_limits
   mutate(across(starts_with("il"), ~ round(mean(.), 0))) |>
   ungroup() |>
   distinct(PUMACE10, .keep_all = TRUE) |> 
-  relocate(PUMACE10)
+  relocate(PUMACE10) |> 
+  dplyr::rename(puma_id = PUMACE10)
   
   # Pull AMI Table for 2021
-rpa.ami_table <- get_mapc_database(db.table_name = "hous_section8_income_limits_by_year_m",
-                               year = 2021,
-                               vars = "*") |>
+rpa.ami_table <- get_mapc_database(
+  db.table_name = "hous_section8_income_limits_by_year_m",
+  year = 2021,
+  vars = "*"
+) |>
   mutate(
     #100% AMI
     il_100_1 = il_50_1 * 2,
@@ -212,6 +220,60 @@ rpa.ami_table <- get_mapc_database(db.table_name = "hous_section8_income_limits_
   ungroup() |>
   distinct(rpa_acr, .keep_all = TRUE) |> 
   relocate(rpa_acr)
+
+full.pums_ami.subsets <- NULL
+
+for (i in 1:8) {
+  ami_table_filtered <- puma.ami_table |> 
+    select(puma_id, ends_with(as.character(i))) |>  #change to puma id
+    # this example below is the correct syntax - also noting that if you don't reorder the table 50 comes before 30
+    `colnames<-`(c("puma_id","il30","il50","il80","il100", "il40", "il60", "il70"))
+  
+  pums_ami.subset <- pums |>
+    #account for households larger than 8, will be treated as 8 person
+    mutate(size_group = ifelse(NP > 8, 8, NP)) |>
+    #run the analysis on just the size household we have the filtered ami table to
+    filter(size_group == i) |>
+    #join in the ami table of income limits
+    left_join(ami_table_filtered, by = "puma_id") |>
+    #create a column called ami_group that will assign an ami % to an income based on the PUMA
+    mutate(
+      ami_group = case_when(
+        HINCP <= il30 ~ "u30",
+        HINCP <= il40 ~ "e40",
+        HINCP <= il50 ~ "e50",
+        HINCP <= il60 ~ "e60",
+        HINCP <= il70 ~ "e70",
+        HINCP <= il80 ~ "e80",
+        .default = "o80"
+      )
+    )
+  
+  full.pums_ami.subsets <- bind_rows(full.pums_ami.subsets, pums_ami.subset)
+  
+  rm(ami_table_filtered, pums_ami.subset)
+  
+  print(paste0("Finished creating a subset of PUMS records with a household size of ", i, "!"))
+  
+}
+
+ami_summary <- full.pums_ami.subsets |> 
+  filter(SPORDER == 1 & TYPEHUGQ == 1) |> 
+  group_by(size_group, ami_group) |> 
+  summarise(hh = sum(WGTP)) |> 
+  ungroup()  |>
+  # Percent Calculation for the first Crosstab
+  group_by(size_group) |> 
+  mutate(
+    total_hh.1st.xtab = sum(hh)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    pct.1st.xtab = round(hh/total_hh.1st.xtab, digits = 3),
+    # Percent Calculation for the second Crosstab
+    total_hh.2nd.xtab = sum(hh),
+    pct.2nd.xtab = round(hh/total_hh.2nd.xtab, digits = 3)
+  )
 
 ```
 
@@ -302,6 +364,8 @@ rpa.ami_table <- get_mapc_database(db.table_name = "hous_section8_income_limits_
 # ami_table.RPA <- ami_aggregations(muni2rpa, agg_param = rpa_acr)
 
 ```
+
+
 
 # 0.3 PUMS Data Cleaning
 

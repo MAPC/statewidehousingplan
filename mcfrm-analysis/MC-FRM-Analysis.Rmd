@@ -5,9 +5,16 @@ date: "2024-10-25"
 output: html_document
 ---
 
-## Libraries and Functions
+## Libraries and Functions and necessary variables
 
 ```{r}
+
+
+output_path<- paste0("C:/Users/",Sys.info()["user"],"/OneDrive - Metropolitan Area Planning Council/Documents - Data Services/_Current Projects/_Housing/Statewide Housing Plan - EOHLC/04_Data")
+
+arc_pro_gdb<- "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/SHP-MCFRM-InundatedUnits/SHP-MCFRM-InundatedUnits.gdb"
+
+
 
 source("libraries.R")
 source("functions.R")
@@ -16,28 +23,19 @@ source("make-data.R")
 
 ```
 
-## Defining Variables
 
-```{r}
-
-# output paths
-output_path<- paste0("C:/Users/",Sys.info()["user"],"/OneDrive - Metropolitan Area Planning Council/Documents - Data Services/_Current Projects/_Housing/Statewide Housing Plan - EOHLC/04_Data")
-
-arc_pro_gdb<- "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/SHP-MCFRM-InundatedUnits/SHP-MCFRM-InundatedUnits.gdb"
-
-
-  
-
-```
 
 ## Analysis
 
 
 ```{r}
 
+
+
 output_table<-NULL
 
 for (z in 1:length(full_parcels)){
+
 
 #make sure all parcels have the right crs  
 all_parcels_int <-st_make_valid(full_parcels[[z]])%>%
@@ -79,25 +77,53 @@ output_table[[z]]<- full_join(mcfrm30_sum, mcfrm50_sum, by = c("CITY", "USE_CODE
 
 }
 
+# Bring in all the csvs and summarize total imputed units 
+
+
+
+
 # One big table with all the summarized outputs
 obt<-rbindlist(output_table)%>%
   #some parcels do not have the city populated, there is no data for these parcels
   filter(!is.na(CITY))
 
-#maps the last city run through the loop
-ggplot(all_parcels_int)+geom_sf()+
-  geom_sf(data = units_in_mcfrm70,
-          fill = "darkblue")+
-  geom_sf(data = units_in_mcfrm50,
-          fill = "blue")+
-  geom_sf(data= units_in_mcfrm30,
-          fill = "lightblue")
+
 
 ```
 
 ```{r}
 #exports to sharepint
 write.csv(obt, paste0(output_path, "/town_mcfrm_units_results.csv"))
+
+```
+
+# Example of One Town
+
+```{r}
+
+example_parcels<- get_full_parcel_data(muni_name = "Chelsea")
+
+
+analysis_sample<-get_inundated_units(example_parcels)
+
+#maps the last city run through the loop
+ggplot(example_parcels)+
+  geom_sf(data = analysis_sample[[3]],
+          fill = "darkblue",
+          lwd = 0.1,
+          color = "white")+
+  geom_sf(data = analysis_sample[[2]],
+          fill = "#4052d6",
+          lwd = 0.1,
+          color = "white")+
+  geom_sf(data= analysis_sample[[1]],
+          fill = "lightblue",
+          lwd = 0.1,
+          color = "white")+
+  geom_sf(alpha = 0.5,
+          lwd = 0.1)+
+  theme_map()
+
 
 ```
 

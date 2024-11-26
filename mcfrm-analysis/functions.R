@@ -78,5 +78,54 @@ get_full_parcel_data<-function (muni_name){
   return(full_parcels)
 }
 
-
+get_inundated_units<-function(parcels){
+  spatial_output<-NULL
+  
+  #make sure all parcels have the right crs  
+  all_parcels_int <-st_make_valid(parcels)%>%
+    st_transform(crs = st_crs(ma_munis))
+  #filter parcels to the MC-FRM 2030 
+  units_in_mcfrm30<- all_parcels_int%>%
+    st_filter(st_make_valid(psep_2030_shp))
+  
+  #summarize by use code (so later we can make sure only residential units are counted)
+  mcfrm30_sum<-units_in_mcfrm30 %>%
+    group_by(CITY, USE_CODE_SYMB)%>%
+    summarize(units_2030 = sum(imputed_units),
+              value_2030 = sum(TOTAL_VAL))%>%
+    st_drop_geometry()
+  
+  #Repeat for 2050 scenario
+  units_in_mcfrm50<- all_parcels_int%>%
+    st_filter(st_make_valid(psep_2050_shp))
+  
+  mcfrm50_sum<-units_in_mcfrm50 %>%
+    group_by(CITY, USE_CODE_SYMB)%>%
+    summarize(units_2050 = sum(imputed_units),
+              value_2050 = sum(TOTAL_VAL))%>%
+    st_drop_geometry()
+  
+  #Repeat for 2070 scenario
+  units_in_mcfrm70 <-all_parcels_int%>%
+    st_filter(st_make_valid(psep_2070_shp))
+  
+  mcfrm70_sum<-units_in_mcfrm70 %>%
+    group_by(CITY, USE_CODE_SYMB)%>%
+    summarize(units_2070 = sum(imputed_units),
+              value_2070 = sum(TOTAL_VAL))%>%
+    st_drop_geometry()
+  
+  #joins the summarized tables to one table
+  output<- full_join(mcfrm30_sum, mcfrm50_sum, by = c("CITY", "USE_CODE_SYMB"))%>%
+    full_join(., mcfrm70_sum, by = c("CITY", "USE_CODE_SYMB"))
+  
+  spatial_output[[1]] <-units_in_mcfrm30
+  spatial_output[[2]] <-units_in_mcfrm50
+  spatial_output[[3]] <-units_in_mcfrm70
+  spatial_output[[4]] <-output
+  
+  
+  return(spatial_output)
+  
+  }
 

@@ -25,8 +25,7 @@ set.seed(351)
 options(scipen = 999)
 ```
 
-You can add options to executable code like this
-
+# 0.1 Set up filepaths
 ```{r, setup, include=FALSE}
 #Use when Rproject is open
 #root <- '../../../../Data/Working/Regional_Control_Totals/'
@@ -47,7 +46,6 @@ knitr::opts_knit$set(root.dir = pums_path)
 ```
 
 # 0.2 - Set package dependencies, set environment, set up data keys\*\*
-
 ```{r}
 pums_raw <-read_csv("K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS/ipums_2021/pums_multiadult_2021_V_2024-11-22.csv")
 
@@ -72,9 +70,7 @@ test <- pums_raw |>
 The `echo: false` option disables the printing of code (only output is displayed).
 
 # 0.3 - PUMA to RPA Crosswalk
-
 ```{r}
-
 # Load PUMA to RPA Crosswalk
 xw <- read_csv(paste0(rpa_path, 'PUMA10_RPA_crosswalk.csv')) |> 
   mutate(
@@ -86,15 +82,20 @@ xw <- read_csv(paste0(rpa_path, 'PUMA10_RPA_crosswalk.csv')) |>
 ```
 
 # 0.4 - PUMS Data Cleaning
-
 ```{r}
 # General Data Cleaning
 pums <- pums_raw |> 
-  # Create a household flag for whether there is a child in a household.
   mutate( 
+    # Create a household flag for whether there is an adult in a household.
     Adult = case_when(
       AGEP > 18 ~ 1,
       AGEP <= 18 ~ 0,
+      .default = 0
+    ),
+    # Create a household flag for whether there is an child in a household.
+    Child = case_when(
+      AGEP <= 18 ~ 1,
+      AGEP > 18 ~ 0,
       .default = 0
     ),
     # Create a grouping variable for types of relationships to the householder.
@@ -162,27 +163,35 @@ pums <- pums_raw |>
   # Creating household flags for person variables.
   group_by(SERIALNO) |> 
   mutate(
-    # Create a variable which is the sum of the number of children above 18
+    # Create a variable which is the sum of the number of children above 18.
     Adult_count = sum(Adult),
+    # Sum of the number of children present in the household.
+    ChildPresence_count = sum(Child),
     # Create a variable which is the sum of the number of son & daughter relatives in the household
     Child_count = sum(RELSHIPP_Child),
-    #  Create a variable which is the sum of the number of parent relatives in the household
+    # Create a variable which is the sum of the number of parent relatives in the household
     Parent_count = sum(RELSHIPP_PAR),
     # Create a variable that is a count of the number of adult children in a household
     AdultChild_count = sum(AdultChild) 
   )|> 
   ungroup() |> 
   mutate(
-      # Create a variable that is a household flag for whether or not a household has a adult children over 18.
+    # Create a variable that is a household flag for whether or not a household has a adult children over 18.
     AdultChild = case_when(
       AdultChild_count > 0 ~ 1,
-      Adult_count == 0 ~ 0,
+      AdultChild_count == 0 ~ 0,
       .default = 0
     ),
-     # Create a variable that is a household flag for whether or not a household has a parent of the householder living in the unit.
+    # Create a variable that is a household flag for whether or not a household has a parent of the householder living in the unit.
     ParentPresent = case_when(
       Parent_count > 0 ~ 1,
       Parent_count == 0 ~ 0,
+      .default = 0
+    ),
+    # Create a variable that is a household flag for whether or not a household has a child present.
+    ChildPresence = case_when(
+      ChildPresence_count > 0 ~ 1,
+      ChildPresence_count == 0 ~ 0,
       .default = 0
     )
   )
@@ -206,7 +215,7 @@ householdata_adultchild <- pums |>
     percent = hh_est / totalcount
   )
 
-#Write the output to csv
+# Write the output to csv
 write.csv(
   householdata_adultchild,
   paste0(output_path,"05_MultiAdultHouseholds/Adult.Children.StateLevel.csv"),
@@ -229,6 +238,25 @@ householdata_parentpresent <- pums |>
 write.csv(
   householdata_parentpresent,
   paste0(output_path,"05_MultiAdultHouseholds/Parents.Present.StateLevel.csv"),
+  row.names = FALSE
+)
+
+# Number of Households with Adult Children by State-Level
+householdata_doubledup <- pums |>
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |>
+  group_by(AdultChild, ChildPresence) |>
+  summarise(hh_est = sum(WGTP)) |>
+  ungroup() |>
+  #Adding a column to show the total amount of households and percentage
+  mutate(
+    totalcount = sum(hh_est),
+    percent = hh_est / totalcount
+  )
+
+# Write the output to csv
+write.csv(
+  householdata_doubledup,
+  paste0(output_path,"05_MultiAdultHouseholds/DoubledUp.StateLevel.csv"),
   row.names = FALSE
 )
   
@@ -314,7 +342,7 @@ householdata_rpa_adultchild <- pums_rpa |>
   summarise(hh_est = sum(WGTP)) |>
   ungroup() |> 
   group_by(rpa_acr) |> 
-#Adding a column to show the total amount of households and percentage
+# Adding a column to show the total amount of households and percentage
   mutate(
     totalcount = sum(hh_est),
   ) |> 
@@ -350,6 +378,29 @@ householdata_ParentPresent_rpa <- pums_rpa |>
 write.csv(
   householdata_ParentPresent_rpa,
   paste0(output_path,"05_MultiAdultHouseholds/Parents.Present.StateLevel.csv"),
+  row.names = FALSE
+)
+
+# Number of Households with Adult Children by RPA
+householdata_rpa_doubledup <- pums_rpa |>
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |>
+  group_by(rpa_acr, AdultChild, ChildPresence) |> 
+  summarise(hh_est = sum(WGTP)) |>
+  ungroup() |> 
+  group_by(rpa_acr) |> 
+# Adding a column to show the total amount of households and percentage
+  mutate(
+    totalcount = sum(hh_est),
+  ) |> 
+  ungroup() |> 
+  mutate(
+    percent = hh_est/totalcount
+  )
+
+#Write the output to csv
+write.csv(
+  householdata_rpa_doubledup,
+  paste0(output_path,"05_MultiAdultHouseholds/DoubledUp.RPA.csv"),
   row.names = FALSE
 )
 

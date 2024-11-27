@@ -1037,6 +1037,20 @@ create_hdsp.r <- function(df){
 # 5.2 Calculate Headship Rates for Split Households PUMS
 
 ```{r}
+# 2020 is going to look like the normal pums
+# 2025 is going to be remove og and adj SERIALNO from normal pums, replace with og and adj for the split households BUT ONLY THE SAMPLE FOR THAT YEAR. Keep the others in their normals households.
+# 2030 is going to remove og and adj serial from normal pums from 2025 and 2030 and replace with og and adj from split househods CUMULATIVE NOW. Keep the others in normal households.
+for (i in years) {
+  if(i == 2020){
+    
+  } else if(i != 2020){
+    
+  }
+  
+}
+```
+
+```{r}
 # Generating headship rates by RPA and 5-year age group for the ACS 2017-2021 PUMS
 headship_rates.split <- pums_data.adj |> 
   # Join the PUMA to RPA crosswalk to the PUMS data

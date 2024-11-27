@@ -871,7 +871,7 @@ partial.pums_data.subset2 <- full.pums_data.adj |>
 # 4.2 Sample PUMS Records from the Subsets for each Year
 ```{r}
 # Create the list of years for which we want to create a sample of subset households.
-years <- c(2020,2025,2030,2035,2040,2045,2050)
+years <- c(2025,2030,2035,2040,2045,2050)
 
 # Calculate the total number of rows in the two subset datasets.
 total_split.hhds <- sum(nrow(partial.pums_data.subset1), nrow(partial.pums_data.subset2))
@@ -883,38 +883,42 @@ for (i in years){
   
   # Set the initial number of rows in each subset.
   # Will be recalculated in each loop.
-  df.row.1 <- nrow(partial.pums_data.subset1)
-  df.row.2 <- nrow(partial.pums_data.subset2)
+  df.row.1 <- as.numeric(nrow(partial.pums_data.subset1))
+  df.row.2 <- as.numeric(nrow(partial.pums_data.subset2))
   
   if (df.row.1 >= sample.size) {
     
+    print("Following Condition 1 Logic.")
     # Sample from the subset pums records.
     tmp <- slice_sample(partial.pums_data.subset1, n = sample.size, replace = F)
     # Print the number of households that have been sampled.
     print(sum(tmp$WGTP))
-    # Create a list of SERIALNO.adj from the sample.
-    tmp_serialno.adj <- tmp |> pull(SERIALNO.adj)
     # Remove sampled households from the subset.
-    partial.pums_data.subset1 <- filter(!SERIALNO.adj %in% tmp_serialno.adj)
+    partial.pums_data.subset1 <- partial.pums_data.subset1 |> 
+      filter(!SERIALNO.adj %in% tmp$SERIALNO.adj)
     
     # Counts the number of rows remaining in each subset.
-    rowcount.1 <- df.row.1 - nrow(tmp)
-    rowcount.2 <- df.row.2 - nrow(tmp)
+    rowcount.1 <- as.numeric(df.row.1 - nrow(tmp))
+    rowcount.2 <- as.numeric(df.row.2 - nrow(tmp))
     
     # Prints the number of remaining rows in each subset.
-    print("Subset 1 has ", rowcount.1, " rows remaining.")
-    print("Subset 2 has ", rowcount.2, " rows remaining.")
+    print(paste0("Subset 1 has ", rowcount.1, " rows remaining."))
+    print(paste0("Subset 2 has ", rowcount.2, " rows remaining."))
     
     # Creates a dataframe of the sampled data for loop year.
-    assign(tmp, paste0("pums.sample_",i))
+    assign(paste0("pums.sample_",i), tmp)
+    
+    # Print Statement so I know which year used which logic.
+    print(paste0("Sampling finished for year ", i))
     
     # Remove dataframes that need to be recycled in the next loop.
-    rm(tmp, tmp_serialno.adj, rowcount.1, rowcount.2)
+    rm(tmp, rowcount.1, rowcount.2)
     
   } else if (df.row.1 < sample.size & df.row.1 != 0 & df.row.2 >= sample.size) {
     
+    print("Following Condition 2 Logic.")
     # Calculate the sample size for each sample when there are not enough rows to sample without replacement in the first dataframe.
-    tmp.sample.size.1 <- sample.size - df.row.1
+    tmp.sample.size.1 <- df.row.1
     tmp.sample.size.2 <- sample.size - tmp.sample.size.1
     
     # Sample from the subset pums records. 
@@ -925,79 +929,86 @@ for (i in years){
     # Print the number of households that have been sampled.
     print(sum(sum(tmp.1$WGTP), sum(tmp.2$WGTP)))
     
-    # Create a list of SERIALNO.adj from the sample.
-    tmp.1_serialno.adj <- tmp.1 |> pull(SERIALNO.adj)
-    tmp.2_serialno.adj <- tmp.2 |> pull(SERIALNO.adj)
-    
     # Remove sampled households from the subset.
-    partial.pums_data.subset1 <- filter(!SERIALNO.adj %in% tmp.1_serialno.adj)
-    partial.pums_data.subset2 <- filter(!SERIALNO.adj %in% tmp.2_serialno.adj)
+    partial.pums_data.subset1 <- partial.pums_data.subset1 |> 
+      filter(!SERIALNO.adj %in% tmp.1$SERIALNO.adj)
+    partial.pums_data.subset2 <- partial.pums_data.subset2 |> 
+      filter(!SERIALNO.adj %in% tmp.2$SERIALNO.adj)
     
     # Counts the number of rows remaining in each subset.
-    rowcount.1 <- df.row.1 - nrow(tmp.1)
-    rowcount.2 <- df.row.2 - nrow(tmp.2)
+    rowcount.1 <- as.numeric(df.row.1 - nrow(tmp.1))
+    rowcount.2 <- as.numeric(df.row.2 - nrow(tmp.2))
     
     # Prints the number of remaining rows in each subset.
-    print("Subset 1 has ", rowcount.1, " rows remaining.")
-    print("Subset 2 has ", rowcount.2, " rows remaining.")
+    print(paste0("Subset 1 has ", rowcount.1, " rows remaining."))
+    print(paste0("Subset 2 has ", rowcount.2, " rows remaining."))
     
     # Creates a dataframe of the sampled data for loop year.
-    assign(tmp, paste0("pums.sample_",i))
+    assign(paste0("pums.sample_",i), tmp)
+    
+        # Print Statement so I know which year used which logic.
+    print(paste0("Sampling finished for year ", i))
     
     # Remove dataframes that need to be recycled in the next loop.
-    rm(tmp, tmp.1, tmp.2, tmp.1_serialno.adj, tmp.2_serialno.adj, rowcount.1, rowcount.2)
+    rm(tmp, tmp.1, tmp.2, rowcount.1, rowcount.2)
     
   } else if (df.row.1 == 0 & df.row.2 >= sample.size){
     
+    print("Following Condition 3 Logic.")
     # Sample from the subset pums records.
     tmp <- slice_sample(partial.pums_data.subset2, n = sample.size, replace = F)
     # Print the number of households that have been sampled.
     print(sum(tmp$WGTP))
-    # Create a list of SERIALNO.adj from the sample.
-    tmp_serialno.adj <- tmp |> pull(SERIALNO.adj)
     # Remove sampled households from the subset.
-    partial.pums_data.subset2 <- filter(!SERIALNO.adj %in% tmp_serialno.adj)
+    partial.pums_data.subset2 <- partial.pums_data.subset2 |> 
+      filter(!SERIALNO.adj %in% tmp$SERIALNO.adj)
     
     # Counts the number of rows remaining in each subset.
-    rowcount.1 <- df.row.1
-    rowcount.2 <- df.row.2 - nrow(tmp)
+    rowcount.1 <- as.numeric(df.row.1)
+    rowcount.2 <- as.numeric(df.row.2 - nrow(tmp))
     
     # Prints the number of remaining rows in each subset.
-    print("Subset 1 has ", rowcount.1, " rows remaining.")
-    print("Subset 2 has ", rowcount.2, " rows remaining.")
+    print(paste0("Subset 1 has ", rowcount.1, " rows remaining."))
+    print(paste0("Subset 2 has ", rowcount.2, " rows remaining."))
     
     # Creates a dataframe of the sampled data for loop year.
-    assign(tmp, paste0("pums.sample_",i))
+    assign(paste0("pums.sample_",i), tmp)
+    
+    # Print Statement so I know which year used which logic.
+    print(paste0("Sampling finished for year ", i))
     
     # Remove dataframes that need to be recycled in the next loop.
-    rm(tmp, tmp_sporder.adj, rowcount.1, rowcount.2)
+    rm(tmp, rowcount.1, rowcount.2)
     
   } else if (df.row.2 < sample.size){
     
+    print("Following Condition 4 Logic.")
     # Set a sample size less than the standard sample size
     tmp.2.sample.size <- df.row.2
     # Sample from the subset pums records.
     tmp <- slice_sample(partial.pums_data.subset2, n = tmp.2.sample.size, replace = F)
     # Print the number of households that have been sampled.
     print(sum(tmp$WGTP))
-    # Create a list of SERIALNO.adj from the sample.
-    tmp_sporder.adj <- tmp |> pull(SERIALNO.adj)
     # Remove sampled households from the subset.
-    partial.pums_data.subset2 <- filter(!SERIALNO.adj %in% tmp_sporder.adj)
+    partial.pums_data.subset2 <- partial.pums_data.subset2 |> 
+      filter(!SERIALNO.adj %in% tmp$SERIALNO.adj)
     
     # Counts the number of rows remaining in each subset.
-    rowcount.1 <- df.row.1
-    rowcount.2 <- df.row.2 - nrow(tmp)
+    rowcount.1 <- as.numeric(df.row.1)
+    rowcount.2 <- as.numeric(df.row.2 - nrow(tmp))
     
     # Prints the number of remaining rows in each subset.
-    print("Subset 1 has ", rowcount.1, " rows remaining.")
-    print("Subset 2 has ", rowcount.2, " rows remaining.")
+    print(paste0("Subset 1 has ", rowcount.1, " rows remaining."))
+    print(paste0("Subset 2 has ", rowcount.2, " rows remaining."))
     
     # Creates a dataframe of the sampled data for loop year.
-    assign(tmp, paste0("pums.sample_",i))
+    assign(paste0("pums.sample_",i), tmp)
+    
+    # Print Statement so I know which year used which logic.
+    print(paste0("Sampling finished for year ", i))
     
     # Remove dataframes that need to be recycled in the next loop.
-    rm(tmp, tmp_sporder.adj, rowcount.1, rowcount.2)
+    rm(tmp, rowcount.1, rowcount.2)
     
   }
   
@@ -1017,7 +1028,8 @@ if (sum(df.row.1, df.row.2) == 0){
 
 ```
 
-# 5.0 Create Headship Rate Generation function
+# 5.0 Calculate Headship Rates
+# 5.1 Create Headship rate calculation function
 
 ```{r}
 create_hdsp.r <- function(df){
@@ -1062,7 +1074,7 @@ create_hdsp.r <- function(df){
 }
 ```
 
-# 4.0 Calculate Headship Rates for Split Households PUMS
+# 5.2 Calculate Headship Rates for Split Households PUMS
 
 ```{r}
 # Generating headship rates by RPA and 5-year age group for the ACS 2017-2021 PUMS

@@ -883,19 +883,19 @@ for (i in years){
   
   # Set the initial number of rows in each subset.
   # Will be recalculated in each loop.
-  df.row.1 <- nrow(partial.pums_data.subset1.sample)
-  df.row.2 <- nrow(partial.pums_data.subset2.sample)
+  df.row.1 <- nrow(partial.pums_data.subset1)
+  df.row.2 <- nrow(partial.pums_data.subset2)
   
   if (df.row.1 >= sample.size) {
     
     # Sample from the subset pums records.
-    tmp <- slice_sample(partial.pums_data.subset1.sample, n = sample.size, replace = F)
+    tmp <- slice_sample(partial.pums_data.subset1, n = sample.size, replace = F)
     # Print the number of households that have been sampled.
     print(sum(tmp$WGTP))
     # Create a list of SERIALNO.adj from the sample.
-    tmp_sporder.adj <- tmp |> pull(SERIALNO.adj)
+    tmp_serialno.adj <- tmp |> pull(SERIALNO.adj)
     # Remove sampled households from the subset.
-    partial.pums_data.subset1 <- filter(!SERIALNO.adj %in% test_sporder.adj)
+    partial.pums_data.subset1 <- filter(!SERIALNO.adj %in% tmp_serialno.adj)
     
     # Counts the number of rows remaining in each subset.
     rowcount.1 <- df.row.1 - nrow(tmp)
@@ -909,7 +909,7 @@ for (i in years){
     assign(tmp, paste0("pums.sample_",i))
     
     # Remove dataframes that need to be recycled in the next loop.
-    rm(tmp, tmp_sporder.adj, rowcount.1, rowcount.2)
+    rm(tmp, tmp_serialno.adj, rowcount.1, rowcount.2)
     
   } else if (df.row.1 < sample.size & df.row.1 != 0 & df.row.2 >= sample.size) {
     
@@ -918,20 +918,20 @@ for (i in years){
     tmp.sample.size.2 <- sample.size - tmp.sample.size.1
     
     # Sample from the subset pums records. 
-    tmp.1 <- slice_sample(partial.pums_data.subset1.sample, n = tmp.sample.size.1, replace = F)
-    tmp.2 <- slice_sample(partial.pums_data.subset2.sample, n = tmp.sample.size.2, replace = F)
+    tmp.1 <- slice_sample(partial.pums_data.subset1, n = tmp.sample.size.1, replace = F)
+    tmp.2 <- slice_sample(partial.pums_data.subset2, n = tmp.sample.size.2, replace = F)
     tmp <- bind_rows(tmp.1, tmp.2)
     
     # Print the number of households that have been sampled.
     print(sum(sum(tmp.1$WGTP), sum(tmp.2$WGTP)))
     
     # Create a list of SERIALNO.adj from the sample.
-    tmp.1_sporder.adj <- tmp.1 |> pull(SERIALNO.adj)
-    tmp.2_sporder.adj <- tmp.2 |> pull(SERIALNO.adj)
+    tmp.1_serialno.adj <- tmp.1 |> pull(SERIALNO.adj)
+    tmp.2_serialno.adj <- tmp.2 |> pull(SERIALNO.adj)
     
     # Remove sampled households from the subset.
-    partial.pums_data.subset1 <- filter(!SERIALNO.adj %in% tmp.1_sporder.adj)
-    partial.pums_data.subset2 <- filter(!SERIALNO.adj %in% tmp.2_sporder.adj)
+    partial.pums_data.subset1 <- filter(!SERIALNO.adj %in% tmp.1_serialno.adj)
+    partial.pums_data.subset2 <- filter(!SERIALNO.adj %in% tmp.2_serialno.adj)
     
     # Counts the number of rows remaining in each subset.
     rowcount.1 <- df.row.1 - nrow(tmp.1)
@@ -945,18 +945,18 @@ for (i in years){
     assign(tmp, paste0("pums.sample_",i))
     
     # Remove dataframes that need to be recycled in the next loop.
-    rm(tmp, tmp.1, tmp.2, tmp.1_sporder.adj, tmp.2_sporder.adj, rowcount.1, rowcount.2)
+    rm(tmp, tmp.1, tmp.2, tmp.1_serialno.adj, tmp.2_serialno.adj, rowcount.1, rowcount.2)
     
   } else if (df.row.1 == 0 & df.row.2 >= sample.size){
     
     # Sample from the subset pums records.
-    tmp <- slice_sample(partial.pums_data.subset2.sample, n = sample.size, replace = F)
+    tmp <- slice_sample(partial.pums_data.subset2, n = sample.size, replace = F)
     # Print the number of households that have been sampled.
     print(sum(tmp$WGTP))
     # Create a list of SERIALNO.adj from the sample.
-    tmp_sporder.adj <- tmp |> pull(SERIALNO.adj)
+    tmp_serialno.adj <- tmp |> pull(SERIALNO.adj)
     # Remove sampled households from the subset.
-    partial.pums_data.subset2 <- filter(!SERIALNO.adj %in% test_sporder.adj)
+    partial.pums_data.subset2 <- filter(!SERIALNO.adj %in% tmp_serialno.adj)
     
     # Counts the number of rows remaining in each subset.
     rowcount.1 <- df.row.1
@@ -974,10 +974,45 @@ for (i in years){
     
   } else if (df.row.2 < sample.size){
     
+    # Set a sample size less than the standard sample size
+    tmp.2.sample.size <- df.row.2
+    # Sample from the subset pums records.
+    tmp <- slice_sample(partial.pums_data.subset2, n = tmp.2.sample.size, replace = F)
+    # Print the number of households that have been sampled.
+    print(sum(tmp$WGTP))
+    # Create a list of SERIALNO.adj from the sample.
+    tmp_sporder.adj <- tmp |> pull(SERIALNO.adj)
+    # Remove sampled households from the subset.
+    partial.pums_data.subset2 <- filter(!SERIALNO.adj %in% tmp_sporder.adj)
+    
+    # Counts the number of rows remaining in each subset.
+    rowcount.1 <- df.row.1
+    rowcount.2 <- df.row.2 - nrow(tmp)
+    
+    # Prints the number of remaining rows in each subset.
+    print("Subset 1 has ", rowcount.1, " rows remaining.")
+    print("Subset 2 has ", rowcount.2, " rows remaining.")
+    
+    # Creates a dataframe of the sampled data for loop year.
+    assign(tmp, paste0("pums.sample_",i))
+    
+    # Remove dataframes that need to be recycled in the next loop.
+    rm(tmp, tmp_sporder.adj, rowcount.1, rowcount.2)
+    
   }
   
 }
 
+# 
+if (sum(df.row.1, df.row.2) == 0){
+  
+  print("Finished sampling PUMS subsets.")
+  
+} else{
+  
+  print("STOP! Data still exist in the subset dataframes. Please review sampling script.")
+  
+}
 
 
 ```

@@ -866,6 +866,8 @@ partial.pums_data.subset1 <- full.pums_data.adj |>
 partial.pums_data.subset2 <- full.pums_data.adj |> 
   filter(SPORDER.adj == 1 & TYPEHUGQ == 1 & subset.flag.2 == 1 & adj.flag == 2)
 
+#
+print(sum(sum(partial.pums_data.subset1$WGTP), sum(partial.pums_data.subset2$WGTP)))
 ```
 
 # 4.2 Sample PUMS Records from the Subsets for each Year
@@ -874,17 +876,24 @@ partial.pums_data.subset2 <- full.pums_data.adj |>
 years <- c(2025,2030,2035,2040,2045,2050)
 
 # Calculate the total number of rows in the two subset datasets.
-total_split.hhds <- sum(nrow(partial.pums_data.subset1), nrow(partial.pums_data.subset2))
+total_split.hhds <- as.numeric(sum(nrow(partial.pums_data.subset1), nrow(partial.pums_data.subset2)))
 
 # Calculate the sample size of rows we want to pull from the subsets in each year.
 sample.size <- round(total_split.hhds*0.25, 0)
 
 for (i in years){
   
+  # Print Statement so I know which year we're in.
+  print(paste0("Begin sampling for year ", i))
+  
   # Set the initial number of rows in each subset.
   # Will be recalculated in each loop.
   df.row.1 <- as.numeric(nrow(partial.pums_data.subset1))
   df.row.2 <- as.numeric(nrow(partial.pums_data.subset2))
+  
+  # Prints the total remaining rows in the subset dataframes being sampled.
+  print(paste0("First Subset has ", df.row.1, " rows remaining."))
+  print(paste0("Second Subset has ", df.row.2, " rows remaining."))
   
   if (df.row.1 >= sample.size) {
     
@@ -897,22 +906,11 @@ for (i in years){
     partial.pums_data.subset1 <- partial.pums_data.subset1 |> 
       filter(!SERIALNO.adj %in% tmp$SERIALNO.adj)
     
-    # Counts the number of rows remaining in each subset.
-    rowcount.1 <- as.numeric(df.row.1 - nrow(tmp))
-    rowcount.2 <- as.numeric(df.row.2 - nrow(tmp))
-    
-    # Prints the number of remaining rows in each subset.
-    print(paste0("Subset 1 has ", rowcount.1, " rows remaining."))
-    print(paste0("Subset 2 has ", rowcount.2, " rows remaining."))
-    
     # Creates a dataframe of the sampled data for loop year.
     assign(paste0("pums.sample_",i), tmp)
     
-    # Print Statement so I know which year used which logic.
-    print(paste0("Sampling finished for year ", i))
-    
     # Remove dataframes that need to be recycled in the next loop.
-    rm(tmp, rowcount.1, rowcount.2)
+    rm(tmp)
     
   } else if (df.row.1 < sample.size & df.row.1 != 0 & df.row.2 >= sample.size) {
     
@@ -935,22 +933,11 @@ for (i in years){
     partial.pums_data.subset2 <- partial.pums_data.subset2 |> 
       filter(!SERIALNO.adj %in% tmp.2$SERIALNO.adj)
     
-    # Counts the number of rows remaining in each subset.
-    rowcount.1 <- as.numeric(df.row.1 - nrow(tmp.1))
-    rowcount.2 <- as.numeric(df.row.2 - nrow(tmp.2))
-    
-    # Prints the number of remaining rows in each subset.
-    print(paste0("Subset 1 has ", rowcount.1, " rows remaining."))
-    print(paste0("Subset 2 has ", rowcount.2, " rows remaining."))
-    
     # Creates a dataframe of the sampled data for loop year.
     assign(paste0("pums.sample_",i), tmp)
     
-        # Print Statement so I know which year used which logic.
-    print(paste0("Sampling finished for year ", i))
-    
     # Remove dataframes that need to be recycled in the next loop.
-    rm(tmp, tmp.1, tmp.2, rowcount.1, rowcount.2)
+    rm(tmp, tmp.1, tmp.2)
     
   } else if (df.row.1 == 0 & df.row.2 >= sample.size){
     
@@ -963,22 +950,11 @@ for (i in years){
     partial.pums_data.subset2 <- partial.pums_data.subset2 |> 
       filter(!SERIALNO.adj %in% tmp$SERIALNO.adj)
     
-    # Counts the number of rows remaining in each subset.
-    rowcount.1 <- as.numeric(df.row.1)
-    rowcount.2 <- as.numeric(df.row.2 - nrow(tmp))
-    
-    # Prints the number of remaining rows in each subset.
-    print(paste0("Subset 1 has ", rowcount.1, " rows remaining."))
-    print(paste0("Subset 2 has ", rowcount.2, " rows remaining."))
-    
     # Creates a dataframe of the sampled data for loop year.
     assign(paste0("pums.sample_",i), tmp)
     
-    # Print Statement so I know which year used which logic.
-    print(paste0("Sampling finished for year ", i))
-    
     # Remove dataframes that need to be recycled in the next loop.
-    rm(tmp, rowcount.1, rowcount.2)
+    rm(tmp)
     
   } else if (df.row.2 < sample.size){
     
@@ -993,38 +969,22 @@ for (i in years){
     partial.pums_data.subset2 <- partial.pums_data.subset2 |> 
       filter(!SERIALNO.adj %in% tmp$SERIALNO.adj)
     
-    # Counts the number of rows remaining in each subset.
-    rowcount.1 <- as.numeric(df.row.1)
-    rowcount.2 <- as.numeric(df.row.2 - nrow(tmp))
-    
-    # Prints the number of remaining rows in each subset.
-    print(paste0("Subset 1 has ", rowcount.1, " rows remaining."))
-    print(paste0("Subset 2 has ", rowcount.2, " rows remaining."))
-    
     # Creates a dataframe of the sampled data for loop year.
     assign(paste0("pums.sample_",i), tmp)
     
-    # Print Statement so I know which year used which logic.
-    print(paste0("Sampling finished for year ", i))
-    
     # Remove dataframes that need to be recycled in the next loop.
-    rm(tmp, rowcount.1, rowcount.2)
+    rm(tmp)
     
   }
   
 }
 
-# 
+# QC Check - Tells us if sampling is complete.
 if (sum(df.row.1, df.row.2) == 0){
-  
   print("Finished sampling PUMS subsets.")
-  
 } else{
-  
   print("STOP! Data still exist in the subset dataframes. Please review sampling script.")
-  
 }
-
 
 ```
 

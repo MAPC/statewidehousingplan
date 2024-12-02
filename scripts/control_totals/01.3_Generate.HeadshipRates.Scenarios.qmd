@@ -1097,7 +1097,7 @@ for (i in years) {
     done_pums <- bind_rows(tmp_pums, og, adj) |> mutate(SERIALNO.adj = coalesce(SERIALNO))
     
     # Calculate headship rates for this projection year.
-    hdsp.r <- create_hdsp.r(df = done_pums)
+    hdsp.r <- create_hdsp.r(df = done_pums)|> dplyr::rename(freq.split2025 = freq.split)
     
     # Assign the headship rate object to a year specific object name.
     assign(paste0("hdsp.r_", i), hdsp.r)
@@ -1131,7 +1131,7 @@ for (i in years) {
     done_pums <- bind_rows(tmp_pums, og, pums.sample_2025) |> mutate(SERIALNO.adj = coalesce(SERIALNO))
     
     # Calculate headship rates for this projection year.
-    hdsp.r <- create_hdsp.r(df = done_pums)
+    hdsp.r <- create_hdsp.r(df = done_pums)|> dplyr::rename(freq.split2030 = freq.split)
     
     # Assign the headship rate object to a year specific object name.
     assign(paste0("hdsp.r_", i), hdsp.r)
@@ -1165,7 +1165,7 @@ for (i in years) {
     done_pums <- bind_rows(tmp_pums, og, pums.sample_2025) |> mutate(SERIALNO.adj = coalesce(SERIALNO))
     
     # Calculate headship rates for this projection year.
-    hdsp.r <- create_hdsp.r(df = done_pums)
+    hdsp.r <- create_hdsp.r(df = done_pums)|> dplyr::rename(freq.split2035 = freq.split)
     
     # Assign the headship rate object to a year specific object name.
     assign(paste0("hdsp.r_", i), hdsp.r)
@@ -1199,7 +1199,7 @@ for (i in years) {
     done_pums <- bind_rows(tmp_pums, og, pums.sample_2025) |> mutate(SERIALNO.adj = coalesce(SERIALNO))
     
     # Calculate headship rates for this projection year.
-    hdsp.r <- create_hdsp.r(df = done_pums)
+    hdsp.r <- create_hdsp.r(df = done_pums)|> dplyr::rename(freq.split2040 = freq.split)
     
     # Assign the headship rate object to a year specific object name.
     assign(paste0("hdsp.r_", i), hdsp.r)
@@ -1233,7 +1233,7 @@ for (i in years) {
     done_pums <- bind_rows(tmp_pums, og, pums.sample_2025) |> mutate(SERIALNO.adj = coalesce(SERIALNO))
     
     # Calculate headship rates for this projection year.
-    hdsp.r <- create_hdsp.r(df = done_pums)
+    hdsp.r <- create_hdsp.r(df = done_pums)|> dplyr::rename(freq.split2045 = freq.split)
     
     # Assign the headship rate object to a year specific object name.
     assign(paste0("hdsp.r_", i), hdsp.r)
@@ -1267,7 +1267,7 @@ for (i in years) {
     done_pums <- bind_rows(tmp_pums, og, pums.sample_2025) |> mutate(SERIALNO.adj = coalesce(SERIALNO))
     
     # Calculate headship rates for this projection year.
-    hdsp.r <- create_hdsp.r(df = done_pums)
+    hdsp.r <- create_hdsp.r(df = done_pums) |> dplyr::rename(freq.split2050 = freq.split)
     
     # Assign the headship rate object to a year specific object name.
     assign(paste0("hdsp.r_", i), hdsp.r)
@@ -1280,6 +1280,22 @@ for (i in years) {
   # Tell us when the loop is finished calculating the headship rates.
   print(paste0("Created Headship Rates for ", i, " !"))
 }
+```
+# 5.3 Merge Headship rate files together and export file
+```{r}
+# Left join all headship rate dataframes to create single file to export.
+hdsp.r_scenario2 <- purrr::reduce(
+  list(hdsp.r_2025, hdsp.r_2030, hdsp.r_2035, hdsp.r_2040, hdsp.r_2045, hdsp.r_2050),
+  dplyr::left_join,
+  by = c('rpa_acr','ageCAT6','var')
+)
+
+# Write .csv file
+write.csv(
+  hdsp.r_scenario2,
+  paste0(rwt_path,"Headship_rates/headship.rates.1721_household.split.csv"),
+  row.names = FALSE
+)
 ```
 
 ```{r}

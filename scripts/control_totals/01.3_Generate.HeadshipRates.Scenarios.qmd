@@ -856,7 +856,7 @@ write.csv(tbl.12, file = paste0(root,scen,"/Analysis/tbl.12_persons.by.eduattain
 ```{r}
 # Subset of unsplit that do not need to be reordered
 partial.pums_data.og <- full.pums_data.adj |> 
-  filter(SPORDER.adj == 1 & TYPEHUGQ == 1 & subset.flag.1 == 0 & adj.flag == 0)
+  filter(SPORDER.adj == 1 & TYPEHUGQ == 1 & (subset.flag.1 != 0 | subset.flag.2 !=0) & adj.flag == 0)
 
 # Subset of Subset 1 split households.
 partial.pums_data.subset1 <- full.pums_data.adj |> 
@@ -899,7 +899,10 @@ for (i in years){
     
     print("Following Condition 1 Logic.")
     # Sample from the subset pums records.
-    tmp <- slice_sample(partial.pums_data.subset1, n = sample.size, replace = F)
+    tmp <- slice_sample(partial.pums_data.subset1, n = sample.size, replace = F) |> 
+      mutate(
+        sample = i
+      )
     # Print the number of households that have been sampled.
     print(sum(tmp$WGTP))
     # Remove sampled households from the subset.
@@ -922,7 +925,10 @@ for (i in years){
     # Sample from the subset pums records. 
     tmp.1 <- slice_sample(partial.pums_data.subset1, n = tmp.sample.size.1, replace = F)
     tmp.2 <- slice_sample(partial.pums_data.subset2, n = tmp.sample.size.2, replace = F)
-    tmp <- bind_rows(tmp.1, tmp.2)
+    tmp <- bind_rows(tmp.1, tmp.2) |> 
+      mutate(
+        sample = i
+      )
     
     # Print the number of households that have been sampled.
     print(sum(sum(tmp.1$WGTP), sum(tmp.2$WGTP)))
@@ -943,7 +949,10 @@ for (i in years){
     
     print("Following Condition 3 Logic.")
     # Sample from the subset pums records.
-    tmp <- slice_sample(partial.pums_data.subset2, n = sample.size, replace = F)
+    tmp <- slice_sample(partial.pums_data.subset2, n = sample.size, replace = F) |> 
+      mutate(
+        sample = i
+      )
     # Print the number of households that have been sampled.
     print(sum(tmp$WGTP))
     # Remove sampled households from the subset.
@@ -962,7 +971,10 @@ for (i in years){
     # Set a sample size less than the standard sample size
     tmp.2.sample.size <- df.row.2
     # Sample from the subset pums records.
-    tmp <- slice_sample(partial.pums_data.subset2, n = tmp.2.sample.size, replace = F)
+    tmp <- slice_sample(partial.pums_data.subset2, n = tmp.2.sample.size, replace = F) |> 
+      mutate(
+        sample = i
+      )
     # Print the number of households that have been sampled.
     print(sum(tmp$WGTP))
     # Remove sampled households from the subset.
@@ -986,6 +998,10 @@ if (sum(df.row.1, df.row.2) == 0){
   print("STOP! Data still exist in the subset dataframes. Please review sampling script.")
 }
 
+# Put all the samples together for ease in the subsequent sections
+pums.sample <- bind_rows(pums.sample_2025, pums.sample_2030, pums.sample_2035,
+                         pums.sample_2040, pums.sample_2045, pums.sample_2050)
+
 ```
 
 # 5.0 Calculate Headship Rates
@@ -1002,7 +1018,7 @@ create_hdsp.r <- function(df){
       relationship = "many-to-many"
     ) |>
     # Includes only observations for people in households (omits GQ)
-    filter(SPORDER.adj == "1" & TYPEHUGQ == "1") |>
+    filter(TYPEHUGQ == "1") |>
     # Groups by variables in the dataframe necessary to getting the granularity of
     # data we're interested in.
     group_by(rpa_acr, ageCAT6) |>
@@ -1040,13 +1056,184 @@ create_hdsp.r <- function(df){
 # 2020 is going to look like the normal pums
 # 2025 is going to be remove og and adj SERIALNO from normal pums, replace with og and adj for the split households BUT ONLY THE SAMPLE FOR THAT YEAR. Keep the others in their normals households.
 # 2030 is going to remove og and adj serial from normal pums from 2025 and 2030 and replace with og and adj from split househods CUMULATIVE NOW. Keep the others in normal households.
+
+pums <- pums_data
+
 for (i in years) {
+  
   if(i == 2020){
     
-  } else if(i != 2020){
+  } else if(i == 2025){
+    
+    sn <- pums.sample |>
+      filter(sample == i) |>
+      select(SERIALNO) |>
+      pull()
+    
+    og <- full.pums_data.adj |> 
+      filter(TYPEHUGQ == 1 & (subset.flag.1 != 0 | subset.flag.2 !=0) & adj.flag == 0) |>
+      filter(SERIALNO %in% sn)
+    
+    adj <- full.pums_data.adj |> 
+      filter(TYPEHUGQ == 1 & (subset.flag.1 != 0 | subset.flag.2 !=0) & adj.flag == 1) |>
+      filter(SERIALNO %in% sn)
+    
+    tmp_pums <- pums |> filter(!SERIALNO %in% sn)
+    
+    done_pums <- bind_rows(tmp_pums, og, adj) |> 
+      mutate(
+        SERIALNO.adj = coalesce(SERIALNO)
+      )
+    
+    hdsp.r <- create_hdsp.r(df = done_pums)
+    
+    assign(paste0("hdsp.r_", i), hdsp.r)
+    
+    rm(sn, og, tmp_pums, done_pums, hdsp.r)
+    
+  } else if (i == 2030){
+    
+    sn <- pums.sample |>
+      filter(sample == i | sample == (i - 5)) |>
+      select(SERIALNO) |>
+      pull()
+    
+    og <- full.pums_data.adj |> 
+      filter(TYPEHUGQ == 1 & (subset.flag.1 != 0 | subset.flag.2 !=0) & adj.flag == 0) |>
+      filter(SERIALNO %in% sn)
+    
+    adj <- full.pums_data.adj |> 
+      filter(TYPEHUGQ == 1 & (subset.flag.1 != 0 | subset.flag.2 !=0) & adj.flag == 1) |>
+      filter(SERIALNO %in% sn)
+    
+    tmp_pums <- pums |> filter(!SERIALNO %in% sn)
+    
+    done_pums <- bind_rows(tmp_pums, og, pums.sample_2025) |> 
+      mutate(
+        SERIALNO.adj = coalesce(SERIALNO)
+      )
+    
+    hdsp.r <- create_hdsp.r(df = done_pums)
+    
+    assign(paste0("hdsp.r_", i), hdsp.r)
+    
+    rm(sn, og, tmp_pums, done_pums, hdsp.r)
+    
+  } else if (i == 2035){
+    
+    sn <- pums.sample |>
+      filter(sample == i| sample == (i - 5) | sample == (i - 10)) |>
+      select(SERIALNO) |>
+      pull()
+    
+    og <- full.pums_data.adj |> 
+      filter(TYPEHUGQ == 1 & (subset.flag.1 != 0 | subset.flag.2 !=0) & adj.flag == 0) |>
+      filter(SERIALNO %in% sn)
+    
+    adj <- full.pums_data.adj |> 
+      filter(TYPEHUGQ == 1 & (subset.flag.1 != 0 | subset.flag.2 !=0) & adj.flag == 1) |>
+      filter(SERIALNO %in% sn)
+    
+    tmp_pums <- pums |> filter(!SERIALNO %in% sn)
+    
+    done_pums <- bind_rows(tmp_pums, og, pums.sample_2025) |> 
+      mutate(
+        SERIALNO.adj = coalesce(SERIALNO)
+      )
+    
+    hdsp.r <- create_hdsp.r(df = done_pums)
+    
+    assign(paste0("hdsp.r_", i), hdsp.r)
+  
+    rm(sn, og, tmp_pums, done_pums, hdsp.r)
+    
+  } else if (i == 2040){
+    
+    sn <- pums.sample |>
+      filter(sample == i | sample == (i - 5) | sample == (i - 10) | sample == (i - 15)) |>
+      select(SERIALNO) |>
+      pull()
+    
+    og <- full.pums_data.adj |> 
+      filter(TYPEHUGQ == 1 & (subset.flag.1 != 0 | subset.flag.2 !=0) & adj.flag == 0) |>
+      filter(SERIALNO %in% sn)
+    
+    adj <- full.pums_data.adj |> 
+      filter(TYPEHUGQ == 1 & (subset.flag.1 != 0 | subset.flag.2 !=0) & adj.flag == 1) |>
+      filter(SERIALNO %in% sn)
+    
+    tmp_pums <- pums |> filter(!SERIALNO %in% sn)
+    
+    done_pums <- bind_rows(tmp_pums, og, pums.sample_2025) |> 
+      mutate(
+        SERIALNO.adj = coalesce(SERIALNO)
+      )
+    
+    hdsp.r <- create_hdsp.r(df = done_pums)
+    
+    assign(paste0("hdsp.r_", i), hdsp.r)
+    
+    rm(sn, og, tmp_pums, done_pums, hdsp.r)
+    
+  } else if (i == 2045){
+    
+    sn <- pums.sample |>
+      filter(sample == i | sample == (i - 5) | sample == (i - 10) | sample == (i - 15) | sample == (i - 20)) |>
+      select(SERIALNO) |>
+      pull()
+    
+    og <- full.pums_data.adj |> 
+      filter(TYPEHUGQ == 1 & (subset.flag.1 != 0 | subset.flag.2 !=0) & adj.flag == 0) |>
+      filter(SERIALNO %in% sn)
+    
+    adj <- full.pums_data.adj |> 
+      filter(TYPEHUGQ == 1 & (subset.flag.1 != 0 | subset.flag.2 !=0) & adj.flag == 1) |>
+      filter(SERIALNO %in% sn)
+    
+    tmp_pums <- pums |> filter(!SERIALNO %in% sn)
+    
+    done_pums <- bind_rows(tmp_pums, og, pums.sample_2025) |> 
+      mutate(
+        SERIALNO.adj = coalesce(SERIALNO)
+      )
+    
+    hdsp.r <- create_hdsp.r(df = done_pums)
+    
+    assign(paste0("hdsp.r_", i), hdsp.r)
+    
+    rm(sn, og, tmp_pums, done_pums, hdsp.r)
+    
+  } else if (i == 2050){
+    
+    sn <- pums.sample |>
+      filter(sample == i | sample == (i - 5) | sample == (i - 10) | sample == (i - 15) | sample == (i - 20) |sample == (i -25)) |>
+      select(SERIALNO) |>
+      pull()
+    
+    og <- full.pums_data.adj |> 
+      filter(TYPEHUGQ == 1 & (subset.flag.1 != 0 | subset.flag.2 !=0) & adj.flag == 0) |>
+      filter(SERIALNO %in% sn)
+    
+    adj <- full.pums_data.adj |> 
+      filter(TYPEHUGQ == 1 & (subset.flag.1 != 0 | subset.flag.2 !=0) & adj.flag == 1) |>
+      filter(SERIALNO %in% sn)
+    
+    tmp_pums <- pums |> filter(!SERIALNO %in% sn)
+    
+    done_pums <- bind_rows(tmp_pums, og, pums.sample_2025) |> 
+      mutate(
+        SERIALNO.adj = coalesce(SERIALNO)
+      )
+    
+    hdsp.r <- create_hdsp.r(df = done_pums)
+    
+    assign(paste0("hdsp.r_", i), hdsp.r)
+    
+    rm(sn, og, tmp_pums, done_pums, hdsp.r)
     
   }
   
+  print(paste0("Created Headship Rates for ", i, " !"))
 }
 ```
 

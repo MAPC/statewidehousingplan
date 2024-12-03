@@ -326,7 +326,7 @@ hdshp.r_2000.compare.1721.split <- hdshp.r_2000.compare.1721.split |>
   pivot_longer(
     !c(rpa_acr, ageCAT6, var),
     names_to = "year",
-    values_to = "freq.split"
+    values_to = "freq.scenario2"
   ) |> 
   mutate(
     year = case_when(

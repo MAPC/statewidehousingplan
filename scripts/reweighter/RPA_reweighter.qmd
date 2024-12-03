@@ -20,6 +20,7 @@ scen <- 'Scenario_2'
 vintage <-  2021
 
 # Set headship rate scenario
+#hdshp <- 'acs1721'
 hdshp <- 'scen2'
 
 # Set MAPC at 101 or 97 towns
@@ -124,15 +125,9 @@ for (m in mpos){
   outfile2 <- paste0(workpath, scen, '/Input_Files/', m, '/reweighting_config_2020baseyear_', m, '.json')
   cfig1 = readLines(infile1)
   cfig1 = gsub('PUMS2021', paste0('PUMS2021_', m), cfig1)
-  if (scen == 'Scenario_2'){
-    cfig1 = gsub('SPORDER', 'SPORDER.adj', cfig1)
-  }
   writeLines(cfig1, outfile1)
   cfig2 = readLines(infile2)
   cfig2 = gsub('PUMS2021', paste0('PUMS2021_', m), cfig2)
-  if (scen == 'Scenario_2'){
-    cfig2 = gsub('SPORDER', 'SPORDER.adj', cfig2)
-  }
   writeLines(cfig2, outfile2)
 }
 
@@ -267,7 +262,7 @@ for (yr in c(2025, 2030, 2035, 2040, 2045, 2050)) {
     message(paste0(mid, ' targets set'))
     
     pums <- fread(paste0(inpath, 'PUMS', vintage, '_', mid, '.csv'))
-    
+    if(scen=='Scenario 2'){pums[,SPORDER:=SPORDER.adj][,SERIALNO:=SERIALNO.adj]}
     source(here('scripts/reweighter/Manage_Scenario_RPA.R'))
     message(paste0(mid, ' reweighter complete'))
     

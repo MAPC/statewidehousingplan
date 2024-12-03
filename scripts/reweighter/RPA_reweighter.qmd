@@ -15,8 +15,8 @@ This set of scripts runs the household reweighter to produce reweighted PUMS dat
 
 # Set Scenario name
 
-scen <- 'Scenario_1'
-#scen <- 'Scenario_2'
+#scen <- 'Scenario_1'
+scen <- 'Scenario_2'
 #scen <- 'Scenario_3'
 #scen <- 'Scenario_4'
 
@@ -24,8 +24,8 @@ scen <- 'Scenario_1'
 vintage <-  2021
 
 # Set headship rate scenario
-hdshp <- 'acs1721'
-#hdshp <- 'scen2'
+#hdshp <- 'acs1721'
+hdshp <- 'scen2'
 
 # Set MAPC at 101 or 97 towns
 reb <- 'MAPC101'

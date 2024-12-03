@@ -1464,9 +1464,13 @@ tenure_rates <- pums_data |>
   mutate(
     freq = (n/sum(n))) |> 
   # Removes the level of aggregation set earlier by group_by()
-  ungroup() |> 
-  select(-c(n)) |> 
-  dplyr::rename(tenure = var)
+  ungroup() |>
+  dplyr::rename(tenure = var) |> 
+  mutate(
+    AgeCat = paste0("x == ", ageCAT6),
+    tenure = paste0("x == ", tenure)
+  ) |>  
+  select(-c(n, ageCAT6)) |> 
 
 # QC Check - determine if the frequencies in each Household Type, Age Group crosstab add to 1
 hr_check <- headship_rates |> 
@@ -2034,8 +2038,11 @@ if (scen == "Scenario_1"){ # Scenario 1
   print("Using Headship Rates for Scenario 2.")
   
   hdsp.r <- hdsp.r_read(scenario = scen, file = "headship.rates.comparison_2000.hsr_to_1721.household.split.hsr.csv") |> 
-    select(rpa_acr, ageCAT6, var, freq.scenario2) |> 
-    dplyr::rename(freq = freq.scenario2)
+    select(rpa_acr, ageCAT6, var, year, freq.scenario2) |> 
+    dplyr::rename(freq = freq.scenario2) |> 
+    mutate(
+      ageCAT6 = as.factor(ageCAT6)
+    )
   
   hdsp.r <- bind_rows(headship_rates, hdsp.r)
   
@@ -2059,52 +2066,35 @@ if (scen == "Scenario_1"){ # Scenario 1
 
 ```{r}
 # Load in Population in Households for MAPC101
-umdi.pop.MAPC101 <- fread(paste0(output_path,'pop.in.hhds.MAPC101_by.RPA.ageCAT6.csv'))
-
-proj.hh.MAPC101_by.rpa.hhtype <- NULL
-
-hhds.MAPC101 <- NULL
-
-years <- c(2020,2025,2030,2035,2040,2045,2050)
-
-for (i in years) {
+umdi.pop.MAPC101 <- fread(paste0(output_path,'pop.in.hhds.MAPC101_by.RPA.ageCAT6.csv')) |> 
+  mutate(
+    ageCAT6 = as.factor(ageCAT6)
+  )
   
-  print(paste0("Projecting Households for ",i,"."))
-  
-  tmp_hdsp.r <- hdsp.r |> filter(year == i)
-  
-  tmp_proj.hh <- left_join(
-    hdsp.r,
-    umdi.pop.MAPC101,
-    by = c("rpa_acr", "ageCAT6"),
-    relationship = "many-to-many"
+proj.hh.MAPC101_by.rpa.hhtype <- left_join(
+  hdsp.r,
+  umdi.pop.MAPC101,
+  by = c("rpa_acr", "ageCAT6", "year"),
+  relationship = "many-to-many"
+) |>
+  rowwise() |>
+  mutate(
+    hh = round(hhpop * freq, 0),
+    HHtype = case_when(
+      var == "hhderchild" ~ "x == 1",
+      var == "hhdernochild" ~ "x == 3",
+      var == "single" ~ "x == 5"
+    ),
+    AgeCat = paste0("x == ", ageCAT6)
   ) |>
-    rowwise() |>
-    mutate(
-      hh = round(hhpop * freq, 0),
-      HHtype = case_when(
-        var == "hhderchild" ~ "x == 1",
-        var == "hhdernochild" ~ "x == 3",
-        var == "single" ~ "x == 5"
-      ),
-      AgeCat = paste0("x == ", ageCAT6)
-    ) |>
-    select(-c(pop, hhpop, freq, var, ageCAT6)) |>
-    relocate(rpa_acr, AgeCat, HHtype, hh, year)
+  select(-c(pop, hhpop, freq, var, ageCAT6)) |>
+  relocate(rpa_acr, AgeCat, HHtype, hh, year)
   
-  tmp_hh <- tmp_proj.hh |>
-    group_by(rpa_acr, year, AgeCat) |>
-    summarise(hh = sum(hh)) |>
-    ungroup()
+hhds.MAPC101 <- proj.hh.MAPC101_by.rpa.hhtype |>
+  group_by(rpa_acr, year, AgeCat) |>
+  summarise(hh = sum(hh)) |>
+  ungroup()
   
-  proj.hh.MAPC101_by.rpa.hhtype <- bind_rows(proj.hh.MAPC101_by.rpa.hhtype, tmp_proj.hh)
-  
-  hhds.MAPC101 <- bind_rows(hhds.MAPC101, tmp_hh)
-  
-  rm(tmp_hdsp.r, tmp_proj.hh, tmp_hh)
-  
-}
-
 # 7.4.2.2 - Household Projections by RPA (MAPC101), 5-Year Age Groups, and Tenure
 proj.hh.MAPC101_by.rpa.tenure <- left_join(
    tenure_rates,
@@ -2115,9 +2105,7 @@ proj.hh.MAPC101_by.rpa.tenure <- left_join(
   rowwise() |>
   # Calculating the number of households in each RPA and age category
   mutate(
-    hh = round(hh * freq, 0),
-    AgeCat = paste0("x == ", ageCAT6),
-    tenure = paste0("x == ", tenure)
+    hh = round(hh * freq, 0)
   ) |>
   select(-c(freq, ageCAT6)) |>
   relocate(rpa_acr, AgeCat, tenure, hh, year)

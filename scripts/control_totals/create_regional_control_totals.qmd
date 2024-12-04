@@ -2103,7 +2103,10 @@ proj.hh.MAPC101_by.rpa.tenure <- left_join(
   ) |> 
   rowwise() |>
   # Calculating the number of households in each RPA and age category
-  mutate(hh = round(hh * freq, 0)) |>
+  mutate(
+    hh = round(hh * freq, 0),
+    hh = if_else(rpa_acr == "NPEDC" & AgeCat == "x == 6" & tenure == "x == 2" & year == 2030, hh - 1, hh)
+  ) |>
   select(-c(freq)) |>
   relocate(rpa_acr, AgeCat, tenure, hh, year)
 
@@ -2150,7 +2153,11 @@ proj.hh.MAPC97_by.mpo.tenure <- left_join(
   ) |> 
   rowwise() |>
   # Calculating the number of households in each RPA and age category
-  mutate(hh = round(hh * freq, 0)) |>
+  mutate(
+    hh = round(
+      hh * freq, 0),
+      hh = if_else(rpa_acr == "NPEDC" & AgeCat == "x == 6" & tenure == "x == 2"  & year == 2030, hh - 1, hh)
+  ) |>
   select(-c(freq)) |>
   relocate(rpa_acr, AgeCat, tenure, hh, year)
 
@@ -2190,57 +2197,71 @@ if (sum(tmp.1$hh) != sum(tmp.2$hh)-1) {
 #===============================================================================
 # Iterate through household projections to create reweighter targeting files for households
 # MAPC101/RPA Versions
-
 for (i in yrs) {
-  # Filter the projected households dataframe by year i
   if (i != 2020) {
+    # Record when the process has finished for each year in the year list.
+    print(paste0("Generating MAPC101 Reweighter Target Files for ", i, "."))
+    
+    # Filter the projected households dataframe by year i
     tmp1 <- proj.hh.MAPC101_by.rpa.hhtype |>
       filter(year == i) |>
       select(-c(year))
     
-    #Join the projected households by year to the baseline file.
-    target.file1 <- left_join(
+    # Join the projected households by year to the baseline file.
+    target.file1 <- full_join(
       hhtype_baseline,
       tmp1,
       by = c("RPA" = "rpa_acr", "AgeCat", "HHtype")
-    ) |>
+    ) |> 
+      # Baseline files may not have every age group, household type segment that the projections have.
+      # Need to fill in places in the baseline where there are zeros for those segments.
+      mutate(across(everything(), ~ replace_na(., 0))) |> 
       dplyr::rename(TARGET = hh)
     
-    #Write the reweighter targeting file to .csv by year i.
+    # Join the projected households by year to the baseline file.
+    tmp2 <- proj.hh.MAPC101_by.rpa.tenure |>
+      filter(year == i) |>
+      select(-c(year))
+    
+    target.file2 <- full_join(
+      tenure_baseline,
+      tmp2,
+      by = c("RPA" = "rpa_acr", "AgeCat", "tenure")
+    ) |> 
+      # Baseline files may not have every age group, household type segment that the projections have.
+      # Need to fill in places in the baseline where there are zeros for those segments.
+      mutate(across(everything(), ~ replace_na(., 0))) |> 
+      dplyr::rename(TARGET = hh)
+    
+    # QC print statements confirming total households are equivalent between Household type and Tenure targets.
+    if (sum(target.file1$TARGET) != sum(target.file2$TARGET)) {
+      print("STOP! Please review target file creation code.")
+    } else{
+      print("Proceed.")
+    }
+    
+    # Write the reweighter targeting file to .csv by year i.
     write.csv(
       target.file1,
       paste0(output_path,"hhtype.targetfile.MAPC101.",scen,'.hdshp.',hdshp,'.y',i,".csv"),
       row.names = FALSE
     )
     
-    #Join the projected households by year to the baseline file.
-    
-    tmp2 <- proj.hh.MAPC101_by.rpa.tenure |>
-      filter(year == i) |>
-      select(-c(year))
-    
-    target.file2 <- left_join(
-      tenure_baseline,
-      tmp2,
-      by = c("RPA" = "rpa_acr", "AgeCat", "tenure")
-    ) |>
-      dplyr::rename(TARGET = hh)
-    
-    #Write the reweighter targeting file to .csv by year i.
+    # Write the reweighter targeting file to .csv by year i.
     write.csv(
       target.file2,
       paste0(output_path,"tenure.targetfile.MAPC101.",scen,'.hdshp.',hdshp,'.y',i,".csv"),
       row.names = FALSE
     )
     
-    #Remove files that will be re-written in each loop.
+    # Remove files that will be re-written in each loop.
     rm(tmp1, tmp2, target.file1, target.file2)
     
-    #Record when the process has finished for each year in the year list.
-    print(paste0("MAPC101 Reweighter Target File for ", i, " has been generated."))
-    
   } else if (i == 2020) {
-    #Join the projected households by year to the baseline file.
+    # Record when the process has finished for each year in the year list.
+    print(paste0("Generating MAPC101 Reweighter Target Files for ", i, "."))
+   
+    # Join the projected households by year to the baseline file.
     target.age <- left_join(
       age_baseline,
       age20_mapc101,
@@ -2259,104 +2280,106 @@ for (i in yrs) {
       by = c("RPA" = "rpa_acr", "size")
     )
     
-    #Write the reweighter targeting file to .csv by year i.
+    # Write the reweighter targeting file to .csv by year i.
     fwrite(target.age, paste0(output_path,"age.targetfile.MAPC101.", scen,'.hdshp.',hdshp,'.y',i,".csv"))
     fwrite(target.type, paste0(output_path, "type.targetfile.MAPC101.", scen,'.hdshp.',hdshp,'.y',i,".csv"))
     fwrite(target.size,paste0(output_path,"size.targetfile.MAPC101.",scen,'.hdshp.',hdshp,'.y',i,".csv"))
     
-    #Record when the process has finished for each year in the year list.
-    print(paste0("MAPC101 Reweighter Target File for ", i, " has been generated."))
   }
 }
-
 #===============================================================================
 # MAPC97/MPO Versions
 for (i in yrs) {
-  
   if(i!=2020){
-  #Filter the projected households dataframe by year i
-  tmp1 <- proj.hh.MAPC97_by.mpo.hhtype |> 
-    filter(
-      year == i
-    ) |> 
-    select(-c(year))
+    # Record when the process has finished for each year in the year list.
+    print(paste0("Generating MAPC101 Reweighter Target Files for ", i, "."))  
   
-  #Join the projected households by year to the baseline file.
-  target.file1 <- left_join(
-    hhtype_baseline,
-    tmp1,
-    by = c("RPA" = "mpo", "AgeCat", "HHtype")
-  ) |> 
-    dplyr::rename(
-      TARGET = hh
-    )
+    #cFilter the projected households dataframe by year i
+    tmp1 <- proj.hh.MAPC97_by.mpo.hhtype |>
+      filter(year == i) |>
+      select(-c(year))
   
-  #Write the reweighter targeting file to .csv by year i.
-  write.csv(
-    target.file1,
-    paste0(output_path, "hhtype.targetfile.MAPC97.",scen,'.hdshp.',hdshp,'.y',i,".csv"),
-    row.names = FALSE
-  )
+    #cJoin the projected households by year to the baseline file.
+    target.file1 <- full_join(
+      hhtype_baseline,
+      tmp1,
+      by = c("RPA" = "mpo", "AgeCat", "HHtype")
+    )|>
+      # Baseline files may not have every age group, household type segment that the projections have.
+      # Need to fill in places in the baseline where there are zeros for those segments.
+      mutate(across(everything(), ~ replace_na(., 0))) |>
+      dplyr::rename(TARGET = hh)
   
-  #Join the projected households by year to the baseline file.
-  
-  tmp2 <- proj.hh.MAPC97_by.mpo.tenure |> 
-    filter(
-      year == i
-    ) |> 
-    select(-c(year))   
+    # Join the projected households by year to the baseline file.
+    tmp2 <- proj.hh.MAPC97_by.mpo.tenure |> 
+      filter(
+        year == i
+      ) |> 
+      select(-c(year))   
  
-  target.file2 <- left_join(
-    tenure_baseline,
-    tmp2,
-    by = c("RPA" = "mpo", "AgeCat", "tenure")
-  ) |> 
-    dplyr::rename(
-      TARGET = hh
+    target.file2 <- left_join(
+      tenure_baseline,
+      tmp2,
+      by = c("RPA" = "mpo", "AgeCat", "tenure")
+    ) |>
+      # Baseline files may not have every age group, household type segment that the projections have.
+      # Need to fill in places in the baseline where there are zeros for those segments.
+      mutate(across(everything(), ~ replace_na(., 0))) |>
+      dplyr::rename(TARGET = hh)
+    
+    # QC print statements confirming total households are equivalent between Household type and Tenure targets.
+    if (sum(target.file1$TARGET) != sum(target.file2$TARGET)) {
+      print("STOP! Please review target file creation code.")
+    } else{
+      print("Proceed.")
+    }
+  
+    # Write the reweighter targeting file to .csv by year i.
+    write.csv(
+      target.file1,
+      paste0(output_path, "hhtype.targetfile.MAPC97.",scen,'.hdshp.',hdshp,'.y',i,".csv"),
+      row.names = FALSE
     )
   
-  #Write the reweighter targeting file to .csv by year i.
-  write.csv(
-    target.file2,
-    paste0(output_path, "tenure.targetfile.MAPC97.",scen,'.hdshp.',hdshp,'.y',i,".csv"),
-    row.names = FALSE
-  )
+    # Write the reweighter targeting file to .csv by year i.
+    write.csv(
+      target.file2,
+      paste0(output_path, "tenure.targetfile.MAPC97.",scen,'.hdshp.',hdshp,'.y',i,".csv"),
+      row.names = FALSE
+    )
   
-  #Remove files that will be re-written in each loop.
-  rm(tmp1, tmp2, target.file1, target.file2)
-  #Record when the process has finished for each year in the year list.
-  print(paste0("MAPC97 Reweighter Target File for ",i," has been generated."))
+    # Remove files that will be re-written in each loop.
+    rm(tmp1, tmp2, target.file1, target.file2)
+
 }
   if (i==2020){
-  #Join the projected households by year to the baseline file.
-  target.age <- left_join(
-    age_baseline,
-    age20_mapc97,
-    by = c("RPA" = "mpo", "ageCAT4", "tenure"))
+    # Record when the process has finished for each year in the year list.
+    print(paste0("Generating MAPC101 Reweighter Target Files for ", i, ".")) 
+    
+    # Join the projected households by year to the baseline file.
+    target.age <- left_join(
+      age_baseline,
+      age20_mapc97,
+      by = c("RPA" = "mpo", "ageCAT4", "tenure")
+    )
   
-  target.type <- left_join(
-    type_baseline,
-    type20_mapc97,
-    by = c("RPA" = "mpo", "HHtype"))
+    target.type <- left_join(
+      type_baseline,
+      type20_mapc97,
+      by = c("RPA" = "mpo", "HHtype")
+    )
   
-  target.size <- left_join(
-    size_baseline,
-    size20_mapc97,
-    by = c("RPA" = "mpo", "size"))
+    target.size <- left_join(
+      size_baseline,
+      size20_mapc97,
+      by = c("RPA" = "mpo", "size")
+    )
   
-  #Write the reweighter targeting file to .csv by year i.
-  fwrite(
-    target.age,
-    paste0(output_path, "age.targetfile.MAPC97.",scen,'.hdshp.',hdshp,'.y',i,".csv"))
-    fwrite(
-    target.type,
-    paste0(output_path, "type.targetfile.MAPC97.",scen,'.hdshp.',hdshp,'.y',i,".csv"))
-    fwrite(
-    target.size,
-    paste0(output_path, "size.targetfile.MAPC97.",scen,'.hdshp.',hdshp,'.y',i,".csv"))
-
-  #Record when the process has finished for each year in the year list.
-  print(paste0("MAPC97 Reweighter Target File for ",i," has been generated."))
+    # Write the reweighter targeting file to .csv by year i.
+    fwrite(target.age,paste0(output_path, "age.targetfile.MAPC97.",scen,'.hdshp.',hdshp,'.y',i,".csv"))
+    fwrite(target.type,paste0(output_path, "type.targetfile.MAPC97.",scen,'.hdshp.',hdshp,'.y',i,".csv"))
+    fwrite(target.size,paste0(output_path, "size.targetfile.MAPC97.",scen,'.hdshp.',hdshp,'.y',i,".csv"))
+    
   }
 }
 

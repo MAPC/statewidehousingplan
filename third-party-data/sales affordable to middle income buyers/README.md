@@ -24,7 +24,7 @@ for the statewide housing plan the mortgage calculator was run with the followin
 
 methods:
 1. use federal mortgage interest rates from Freddie Mac and calculate and average annual interest rate
-2. use municipal property tax rates and calculate the average rate by municipality over the entire data period
+2. join annual municipal property tax rates to data, calculate rate as percentage rather than dollar amount per $1000, assign 2003 tax rates to properties sold from 2000-2002 to supplement missing data
 3. filter input data frame to only show condos and single family homes
 4. the monthly mortgage principle is calculated as (price - down payment)/(loan term * 12)
 6. property tax is calculated using the average property tax rate for the municipality and the assessed value of the home

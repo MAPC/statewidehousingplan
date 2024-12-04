@@ -9,17 +9,22 @@ project: execute-dir: project
 
 This set of scripts runs the household reweighter to produce reweighted PUMS data that satisfies household targets set by the user.
 
-# 1 - Set Scenario Name, knitr path, and root directory
+# 1 - Set Scenario Name, knitr path, and root directory, load packages
 
 ```{r, setup, include=FALSE}
 
 # Set Scenario name
+
+#scen <- 'Scenario_1'
 scen <- 'Scenario_2'
+#scen <- 'Scenario_3'
+#scen <- 'Scenario_4'
 
 # Set ACS / PUMS vintage
 vintage <-  2021
 
 # Set headship rate scenario
+#hdshp <- 'acs1721'
 hdshp <- 'scen2'
 
 # Set MAPC at 101 or 97 towns
@@ -27,8 +32,8 @@ reb <- 'MAPC101'
 # reb <- 'MAPC97'
 
 # Root Directory
- root <- 'S:/Network Shares/K Drive/DataServices/Projects/'
- #root <- 'K:/DataServices/Projects/'
+root <- 'S:/Network Shares/K Drive/DataServices/Projects/'
+#root <- 'K:/DataServices/Projects/'
 
 ctrltotal.path <- paste0(root, 'Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/', scen, '/')
 
@@ -38,12 +43,8 @@ input_path <- paste0(workpath, scen, '/Input_Files/')
 output_path <- paste0(workpath, scen, '/Output_Files/') 
 
 #Set knitr path
-# knitr::opts_knit$set(root.dir = workpath)
-```
+#knitr::opts_knit$set(root.dir = workpath)
 
-# 2 - Set package dependencies, set environment, helper functions
-
-```{r}
 pacman::p_load(
   tidyverse,
   tidycensus,
@@ -54,23 +55,18 @@ pacman::p_load(
   data.table,
   here
 )
-
 ##get rid of scientific notation
 options(scipen = 999)
-
 #Set random seed
 set.seed(351)
-
 # Helper function
 sun <- function(x){sort(unique(x))}
-
 # List of RPA names
 mpos <- unlist(c(mapcdatakeys::all_muni_data_keys |> select(mpo) |> unique()))
 
-
 ```
 
-# 3 - Subset PUMS data for each RPA
+# 2 - Subset PUMS data for each RPA
 
 Formatted PUMS data is created by the *create_regional_control_totals.qmd* in section 6.2
 
@@ -110,7 +106,7 @@ for (m in unique(swm.pumas$rpa_acr)) {
 
 ```
 
-# 4 - Create RPA config JSON files for reweighter configuration
+# 3 - Create RPA config JSON files for reweighter configuration
 
 ```{r}
 
@@ -124,21 +120,15 @@ for (m in mpos){
   outfile2 <- paste0(workpath, scen, '/Input_Files/', m, '/reweighting_config_2020baseyear_', m, '.json')
   cfig1 = readLines(infile1)
   cfig1 = gsub('PUMS2021', paste0('PUMS2021_', m), cfig1)
-  if (scen == 'Scenario_2'){
-    cfig1 = gsub('SPORDER', 'SPORDER.adj', cfig1)
-  }
   writeLines(cfig1, outfile1)
   cfig2 = readLines(infile2)
   cfig2 = gsub('PUMS2021', paste0('PUMS2021_', m), cfig2)
-  if (scen == 'Scenario_2'){
-    cfig2 = gsub('SPORDER', 'SPORDER.adj', cfig2)
-  }
   writeLines(cfig2, outfile2)
 }
 
 ```
 
-# 5 - Configure, set targets and run reweighter for each RPA and year
+# 4 - Configure, set targets and run reweighter for each RPA and year
 
 ```{r}
 
@@ -267,7 +257,7 @@ for (yr in c(2025, 2030, 2035, 2040, 2045, 2050)) {
     message(paste0(mid, ' targets set'))
     
     pums <- fread(paste0(inpath, 'PUMS', vintage, '_', mid, '.csv'))
-    
+    if(scen=='Scenario 2'){pums[,SPORDER:=SPORDER.adj][,SERIALNO:=SERIALNO.adj]}
     source(here('scripts/reweighter/Manage_Scenario_RPA.R'))
     message(paste0(mid, ' reweighter complete'))
     
@@ -278,7 +268,7 @@ for (yr in c(2025, 2030, 2035, 2040, 2045, 2050)) {
 
 ```
 
-# 6 - Create reweighted PUMS files and QC the reweighter Outputs
+# 5 - Create reweighted PUMS files and QC the reweighter Outputs
 
 ```{r}
 
@@ -380,7 +370,7 @@ comp.dt[abs(diff)>1]
 
 ```
 
-# 7 - Create summary tables of reweighted households
+# 6 - Create summary tables of reweighted households
 
 ```{r}
 
@@ -396,7 +386,7 @@ for (yr in c(2020,2025,2030,2035,2040,2045,2050)){
  }
 ```
 
-# 8 - Vacancy and Unit Demand post-model calculations
+# 7 - Vacancy and Unit Demand post-model calculations
 
 ```{r}
 

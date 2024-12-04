@@ -9,6 +9,7 @@ editor: visual
 ```{r, include = FALSE}
 source("libraries.R")
 source("functions.R")
+options(scipen = 999)
 ```
 
 # Load home sale data

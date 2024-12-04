@@ -491,18 +491,18 @@ full.pums_data.adj <- full.pums_data.adj |>
     # NOTE: Categories are:
     # (0) under 16 or not in labor force
     # (1) in labor force or non-civilian worker
-    worker = case_when(
+    worker.adj = case_when(
       (ESR == "b" | ESR == 6) ~ 0,
       (ESR == 1 | ESR == 2 | ESR == 3 | ESR == 4 | ESR == 5) ~ 1,
       is.na(ESR) ~ 0
     ),
     # Determine if case counts as person
-    person = case_when(
-      SPORDER != 0 ~ 1,
-      SPORDER == 0 ~ 0
+    person.adj = case_when(
+      SPORDER.adj != 0 ~ 1,
+      SPORDER.adj == 0 ~ 0
     ),
     # Determine if case counts as child
-    child = case_when(
+    child.adj = case_when(
       AGEP < 18 ~ 1,
       AGEP >= 18 ~ 0
     )
@@ -516,9 +516,9 @@ full.pums_data.adj <- full.pums_data.adj |>
     # Adjust income data to 2021 dollars
     HINCP.adj.2021USD = as.numeric(HINCP.adj)*as.numeric(ADJINC),
     # Sum the total number of workers in the household
-    Worker_Total = sum(worker),
+    Worker_Total.adj = sum(worker),
     # Sum the total number of children in the household
-    Child_Total = sum(child)
+    Child_Total.adj = sum(child)
   ) |> 
   ungroup() |> 
   mutate(
@@ -535,7 +535,7 @@ full.pums_data.adj <- full.pums_data.adj |>
         labels = c("1", "2", "3", "4", "5")
     ),
     # Categorizing Household Size
-    size = case_when(
+    size.adj = case_when(
       NP.adj == 1 ~ 1,
       NP.adj == 2 ~ 2,
       NP.adj == 3 ~ 3,
@@ -549,22 +549,22 @@ full.pums_data.adj <- full.pums_data.adj |>
     # (1) one worker
     # (2) two workers
     # (3) three or more workers
-    WRKHH = case_when(
-      Worker_Total == 0 ~ 0,
-      Worker_Total == 1 ~ 1,
-      Worker_Total == 2 ~ 2,
-      Worker_Total >= 3 ~ 3
+    WRKHH.adj = case_when(
+      Worker_Total.adj == 0 ~ 0,
+      Worker_Total.adj == 1 ~ 1,
+      Worker_Total.adj == 2 ~ 2,
+      Worker_Total.adj >= 3 ~ 3
       ),
     # Determine if person is not hhder vs hhder of 
     # (0) No workers
     # (1) One worker
     # (2) Two workers
     # (3) Three or more workers
-    HHder = case_when(
-      SPORDER.adj == 1 & WRKHH == 0 ~ 0,
-      SPORDER.adj == 1 & WRKHH == 1 ~ 1,
-      SPORDER.adj == 1 & WRKHH == 2 ~ 2,
-      SPORDER.adj == 1 & WRKHH == 3 ~ 3,
+    HHder.adj = case_when(
+      SPORDER.adj == 1 & WRKHH.adj == 0 ~ 0,
+      SPORDER.adj == 1 & WRKHH.adj == 1 ~ 1,
+      SPORDER.adj == 1 & WRKHH.adj == 2 ~ 2,
+      SPORDER.adj == 1 & WRKHH.adj == 3 ~ 3,
       SPORDER.adj > 1 ~ 99
     ),
     # Determine what type of household the person is heading or not heading 
@@ -573,12 +573,12 @@ full.pums_data.adj <- full.pums_data.adj |>
     # (3) Householder of a Household with Multiple Adults and no children
     # (4) Non-Householder in a Household with no children 
     # (5) Householder of a Single Person Household
-    HHtype = case_when(
-      Child_Total >= 1 & NP.adj > 1 & HHder != 99 ~ 1,
-      Child_Total >= 1 & NP.adj > 1 & HHder == 99 ~ 2,
-      Child_Total == 0 & NP.adj > 1 & HHder != 99 ~ 3,
-      Child_Total == 0 & NP.adj > 1 & HHder == 99 ~ 4,
-      NP.adj == 1 & HHder != 99 ~ 5
+    HHtype.adj = case_when(
+      Child_Total.adj >= 1 & NP.adj > 1 & HHder.adj != 99 ~ 1,
+      Child_Total.adj >= 1 & NP.adj > 1 & HHder.adj == 99 ~ 2,
+      Child_Total.adj == 0 & NP.adj > 1 & HHder.adj != 99 ~ 3,
+      Child_Total.adj == 0 & NP.adj > 1 & HHder.adj == 99 ~ 4,
+      NP.adj == 1 & HHder.adj != 99 ~ 5
     )
   )
 
@@ -682,6 +682,13 @@ if (!file.exists(file_check)){
   print("File already exists!")
   
 }
+
+test <- pums_data.adj.rwt |> 
+  filter(
+    rpa_acr == "OCPC",
+    ageCAT6 == "4",
+    HHtype == '1' 
+  )
 
 ```
 
@@ -873,7 +880,7 @@ print(sum(sum(partial.pums_data.subset1$WGTP), sum(partial.pums_data.subset2$WGT
 # 4.2 Sample PUMS Records from the Subsets for each Year
 ```{r}
 # Create the list of years for which we want to create a sample of subset households.
-years <- c(2025,2030,2035,2040,2045,2050)
+years <- c(2030,2035,2040,2045,2050)
 
 # Calculate the total number of rows in the two subset datasets.
 total_split.hhds <- as.numeric(sum(nrow(partial.pums_data.subset1), nrow(partial.pums_data.subset2)))
@@ -999,8 +1006,7 @@ if (sum(df.row.1, df.row.2) == 0){
 }
 
 # Put all the samples together for ease in the subsequent sections
-pums.sample <- bind_rows(pums.sample_2025, pums.sample_2030, pums.sample_2035,
-                         pums.sample_2040, pums.sample_2045, pums.sample_2050)
+pums.sample <- bind_rows(pums.sample_2030, pums.sample_2035,pums.sample_2040, pums.sample_2045, pums.sample_2050)
 
 ```
 
@@ -1024,7 +1030,7 @@ create_hdsp.r <- function(df){
     group_by(rpa_acr, ageCAT6) |>
     # Computes the weighted sum of individuals in each HH type category by the groups
     # assigned above.
-    count(var = HHtype, wt = WGTP)  |>
+    count(var = HHtype.adj, wt = WGTP)  |>
     ungroup() |>
     group_by(rpa_acr, ageCAT6) |>
     # Recodes factor variables as the categories they represent.
@@ -1086,7 +1092,7 @@ check_hdsp.r <- function(df){
 
 #===============================================================================
 # Create the list of years for which we want to create a sample of subset households.
-years <- c(2025,2030,2035,2040,2045,2050)
+years <- c(2030,2035,2040,2045,2050)
 
 # Assign the full PUMS 2017-2021 5-year ACS Data to a new object
 pums <- pums_data
@@ -1095,9 +1101,9 @@ pums <- pums_data
 
 for (i in years) {
   
-  if(i == 2020){
+  if(i == 2020 | i == 2025){
     
-  } else if(i == 2025){
+  } else if (i == 2030){
     
     # Creates a list of SERIALNO to include from the split household data (both the newly create households and the original household which is now smaller).
     sn <- pums.sample |>
@@ -1120,44 +1126,7 @@ for (i in years) {
     
     # Add the original and split households from this year's sample (and cumulative samples) to the standard PUMS dataset.
     # This simulates the formation of new households.
-    done_pums <- bind_rows(tmp_pums, og, adj) |> mutate(SERIALNO.adj = coalesce(SERIALNO))
-    
-    # Calculate headship rates for this projection year.
-    hdsp.r <- create_hdsp.r(df = done_pums)
-    
-    # QC check for headship rates
-    check_hdsp.r(hdsp.r)
-    
-    # Assign the headship rate object to a year specific object name.
-    assign(paste0("hdsp.r_", i), hdsp.r)
-    
-    # Remove dataframes that will be recreated in the next loop to avoid accidentally using residual data.
-    rm(sn, og, tmp_pums, done_pums, hdsp.r)
-    
-  } else if (i == 2030){
-    
-    # Creates a list of SERIALNO to include from the split household data (both the newly create households and the original household which is now smaller).
-    sn <- pums.sample |>
-      filter(sample == i | sample == (i - 5)) |>
-      select(SERIALNO) |>
-      pull()
-    
-    # Create a dataframe of original households that had subfamilies split out from it.
-    og <- full.pums_data.adj |> 
-      filter(TYPEHUGQ == 1 & (subset.flag.1 != 0 | subset.flag.2 !=0) & adj.flag == 0) |>
-      filter(SERIALNO %in% sn)
-    
-    # Create a dataframe of split households.
-    adj <- full.pums_data.adj |> 
-      filter(TYPEHUGQ == 1 & (subset.flag.1 != 0 | subset.flag.2 !=0) & adj.flag == 1) |>
-      filter(SERIALNO %in% sn)
-    
-    # Remove unsplit original and split households from standard PUMS dataset by SERIALNO
-    tmp_pums <- pums |> filter(!SERIALNO %in% sn)
-    
-    # Add the original and split households from this year's sample (and cumulative samples) to the standard PUMS dataset.
-    # This simulates the formation of new households.
-    done_pums <- bind_rows(tmp_pums, og, pums.sample_2025) |> mutate(SERIALNO.adj = coalesce(SERIALNO))
+    done_pums <- bind_rows(tmp_pums, og, adj) |> mutate(SERIALNO.adj = coalesce(SERIALNO), HHtype.adj = coalesce(HHtype))
     
     # Calculate headship rates for this projection year.
     hdsp.r <- create_hdsp.r(df = done_pums)
@@ -1175,7 +1144,7 @@ for (i in years) {
     
     # Creates a list of SERIALNO to include from the split household data (both the newly create households and the original household which is now smaller).
     sn <- pums.sample |>
-      filter(sample == i| sample == (i - 5) | sample == (i - 10)) |>
+      filter(sample == i| sample == (i - 5)) |>
       select(SERIALNO) |>
       pull()
     
@@ -1194,7 +1163,7 @@ for (i in years) {
     
     # Add the original and split households from this year's sample (and cumulative samples) to the standard PUMS dataset.
     # This simulates the formation of new households.
-    done_pums <- bind_rows(tmp_pums, og, pums.sample_2025) |> mutate(SERIALNO.adj = coalesce(SERIALNO))
+    done_pums <- bind_rows(tmp_pums, og, adj) |> mutate(SERIALNO.adj = coalesce(SERIALNO), HHtype.adj = coalesce(HHtype))
     
     # Calculate headship rates for this projection year.
     hdsp.r <- create_hdsp.r(df = done_pums)
@@ -1209,6 +1178,43 @@ for (i in years) {
     rm(sn, og, tmp_pums, done_pums, hdsp.r)
     
   } else if (i == 2040){
+    
+    # Creates a list of SERIALNO to include from the split household data (both the newly create households and the original household which is now smaller).
+    sn <- pums.sample |>
+      filter(sample == i | sample == (i - 5) | sample == (i - 10)) |>
+      select(SERIALNO) |>
+      pull()
+    
+    # Create a dataframe of original households that had subfamilies split out from it.
+    og <- full.pums_data.adj |> 
+      filter(TYPEHUGQ == 1 & (subset.flag.1 != 0 | subset.flag.2 !=0) & adj.flag == 0) |>
+      filter(SERIALNO %in% sn)
+    
+    # Create a dataframe of split households.
+    adj <- full.pums_data.adj |> 
+      filter(TYPEHUGQ == 1 & (subset.flag.1 != 0 | subset.flag.2 !=0) & adj.flag == 1) |>
+      filter(SERIALNO %in% sn)
+    
+    # Remove unsplit original and split households from standard PUMS dataset by SERIALNO
+    tmp_pums <- pums |> filter(!SERIALNO %in% sn)
+    
+    # Add the original and split households from this year's sample (and cumulative samples) to the standard PUMS dataset.
+    # This simulates the formation of new households.
+    done_pums <- bind_rows(tmp_pums, og, adj) |> mutate(SERIALNO.adj = coalesce(SERIALNO), HHtype.adj = coalesce(HHtype))
+    
+    # Calculate headship rates for this projection year.
+    hdsp.r <- create_hdsp.r(df = done_pums)
+    
+    # QC check for headship rates
+    check_hdsp.r(hdsp.r)
+    
+    # Assign the headship rate object to a year specific object name.
+    assign(paste0("hdsp.r_", i), hdsp.r)
+    
+    # Remove dataframes that will be recreated in the next loop to avoid accidentally using residual data.
+    rm(sn, og, tmp_pums, done_pums, hdsp.r)
+    
+  } else if (i == 2045){
     
     # Creates a list of SERIALNO to include from the split household data (both the newly create households and the original household which is now smaller).
     sn <- pums.sample |>
@@ -1231,7 +1237,7 @@ for (i in years) {
     
     # Add the original and split households from this year's sample (and cumulative samples) to the standard PUMS dataset.
     # This simulates the formation of new households.
-    done_pums <- bind_rows(tmp_pums, og, pums.sample_2025) |> mutate(SERIALNO.adj = coalesce(SERIALNO))
+    done_pums <- bind_rows(tmp_pums, og, adj) |> mutate(SERIALNO.adj = coalesce(SERIALNO), HHtype.adj = coalesce(HHtype))
     
     # Calculate headship rates for this projection year.
     hdsp.r <- create_hdsp.r(df = done_pums)
@@ -1245,7 +1251,7 @@ for (i in years) {
     # Remove dataframes that will be recreated in the next loop to avoid accidentally using residual data.
     rm(sn, og, tmp_pums, done_pums, hdsp.r)
     
-  } else if (i == 2045){
+  } else if (i == 2050){
     
     # Creates a list of SERIALNO to include from the split household data (both the newly create households and the original household which is now smaller).
     sn <- pums.sample |>
@@ -1268,44 +1274,7 @@ for (i in years) {
     
     # Add the original and split households from this year's sample (and cumulative samples) to the standard PUMS dataset.
     # This simulates the formation of new households.
-    done_pums <- bind_rows(tmp_pums, og, pums.sample_2025) |> mutate(SERIALNO.adj = coalesce(SERIALNO))
-    
-    # Calculate headship rates for this projection year.
-    hdsp.r <- create_hdsp.r(df = done_pums)
-    
-    # QC check for headship rates
-    check_hdsp.r(hdsp.r)
-    
-    # Assign the headship rate object to a year specific object name.
-    assign(paste0("hdsp.r_", i), hdsp.r)
-    
-    # Remove dataframes that will be recreated in the next loop to avoid accidentally using residual data.
-    rm(sn, og, tmp_pums, done_pums, hdsp.r)
-    
-  } else if (i == 2050){
-    
-    # Creates a list of SERIALNO to include from the split household data (both the newly create households and the original household which is now smaller).
-    sn <- pums.sample |>
-      filter(sample == i | sample == (i - 5) | sample == (i - 10) | sample == (i - 15) | sample == (i - 20) |sample == (i -25)) |>
-      select(SERIALNO) |>
-      pull()
-    
-    # Create a dataframe of original households that had subfamilies split out from it.
-    og <- full.pums_data.adj |> 
-      filter(TYPEHUGQ == 1 & (subset.flag.1 != 0 | subset.flag.2 !=0) & adj.flag == 0) |>
-      filter(SERIALNO %in% sn)
-    
-    # Create a dataframe of split households.
-    adj <- full.pums_data.adj |> 
-      filter(TYPEHUGQ == 1 & (subset.flag.1 != 0 | subset.flag.2 !=0) & adj.flag == 1) |>
-      filter(SERIALNO %in% sn)
-    
-    # Remove unsplit original and split households from standard PUMS dataset by SERIALNO
-    tmp_pums <- pums |> filter(!SERIALNO %in% sn)
-    
-    # Add the original and split households from this year's sample (and cumulative samples) to the standard PUMS dataset.
-    # This simulates the formation of new households.
-    done_pums <- bind_rows(tmp_pums, og, pums.sample_2025) |> mutate(SERIALNO.adj = coalesce(SERIALNO))
+    done_pums <- bind_rows(tmp_pums, og, adj) |> mutate(SERIALNO.adj = coalesce(SERIALNO), HHtype.adj = coalesce(HHtype))
     
     # Calculate headship rates for this projection year.
     hdsp.r <- create_hdsp.r(df = done_pums)
@@ -1325,21 +1294,21 @@ for (i in years) {
   print(paste0("Created Headship Rates for ", i, " !"))
 }
 ```
+
 # 5.3 Merge Headship rate files together and export file
 ```{r}
 # Left join all headship rate dataframes to create single file to export.
 hdsp.r_scenario2 <- purrr::reduce(
-  list(hdsp.r_2025, hdsp.r_2030, hdsp.r_2035, hdsp.r_2040, hdsp.r_2045, hdsp.r_2050),
+  list(hdsp.r_2030, hdsp.r_2035, hdsp.r_2040, hdsp.r_2045, hdsp.r_2050),
   dplyr::left_join,
   by = c('rpa_acr','ageCAT6','var')
 ) |> 
   dplyr::rename(
-    freq.split.25 = freq.split.x,
-    freq.split.30 = freq.split.y,
-    freq.split.35 = freq.split.x.x,
-    freq.split.40 = freq.split.y.y,
-    freq.split.45 = freq.split.x.x.x,
-    freq.split.50 = freq.split.y.y.y,
+    freq.split.30 = freq.split.x,
+    freq.split.35 = freq.split.y,
+    freq.split.40 = freq.split.x.x,
+    freq.split.45 = freq.split.y.y,
+    freq.split.50 = freq.split,
   )
 
 # Write .csv file
@@ -1350,10 +1319,3 @@ write.csv(
 )
 ```
 
-```{r}
-
-
-
-
-
-```

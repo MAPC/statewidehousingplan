@@ -141,7 +141,6 @@ hdshp.r_2000.compare.1721.split <- full_join(
     across(starts_with("freq"), ~replace_na(.,0)),
     # When freq.diff is positive, headship rates in 2000 are higher than in the 1721 est.
     # When freq.diff is negative, headship rates in the 1721 est are higher than in 2000.
-    freq.diff.25 = freq.2000 - freq.split.25,
     freq.diff.30 = freq.2000 - freq.split.30,
     freq.diff.35 = freq.2000 - freq.split.35,
     freq.diff.40 = freq.2000 - freq.split.40,
@@ -149,18 +148,6 @@ hdshp.r_2000.compare.1721.split <- full_join(
     freq.diff.50 = freq.2000 - freq.split.50,
     # Create a flag which tells us which headship rates to use given our strategy for Scenario 2 headship rates:
     # Use 2000 headships rates unless 1721 Split Household headship rates exceed 2000 headship rates.
-    use.flag.25 = case_when(
-      # Households with householders under the age of 45:
-      # .1 Use the Headship rates from the 17-21 ACS w/ Split Households when it is higher than 2000 headship rates.
-      ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & freq.diff.25 < 0 ~ "Use freq.split",
-      # .2 Use the Headship rates from the 2000 5% PUMS Sample when it is higher than headship rates from the 17-21 ACS w/ Split Households.
-      ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & freq.diff.25 >= 0 ~ "Use freq.2000",
-      # Households with householders 45 and older:
-      # .1 Use the Headship rates from the 17-21 ACS w/ Split Households
-      ageCAT6 %in% c("10","11","12","13","14","15","16","17","18") ~ "Use freq.split",
-      # Default for if the conditional formatting screws up.
-      .default = "STOP! Somethings gone awry!"
-    ),
     use.flag.30 = case_when(
       # Households with householders under the age of 45:
       # .1 Use the Headship rates from the 17-21 ACS w/ Split Households when it is higher than 2000 headship rates.
@@ -222,12 +209,6 @@ hdshp.r_2000.compare.1721.split <- full_join(
       .default = "STOP! Somethings gone awry!"
     ),
     # Create a column with the headship rates to be used in the Scenario 2 Control Totals script.
-    freq.scenario2.25 = case_when(
-      use.flag.25 == "Use freq.split" ~ freq.split.25,
-      use.flag.25 == "Use freq.2000" ~ freq.2000,
-      .default = 999
-    ),
-        # Create a column with the headship rates to be used in the Scenario 2 Control Totals script.
     freq.scenario2.30 = case_when(
       use.flag.30 == "Use freq.split" ~ freq.split.30,
       use.flag.30 == "Use freq.2000" ~ freq.2000,
@@ -296,10 +277,6 @@ hdsp.r_QC.print <- function(df, check){
 }
 
 # QC for Headshi[p rates]
-hr_check <- hdsp.r_QC(df = hdshp.r_2000.compare.1721.split, hdsp.r = freq.scenario2.25)
-hdsp.r_QC.print(df = hr_check, check = flag)
-rm(hr_check)
-
 hr_check <- hdsp.r_QC(df = hdshp.r_2000.compare.1721.split, hdsp.r = freq.scenario2.30)
 hdsp.r_QC.print(df = hr_check, check = flag)
 rm(hr_check)
@@ -330,7 +307,6 @@ hdshp.r_2000.compare.1721.split <- hdshp.r_2000.compare.1721.split |>
   ) |> 
   mutate(
     year = case_when(
-      year == "freq.scenario2.25" ~ 2025,
       year == "freq.scenario2.30" ~ 2030,
       year == "freq.scenario2.35" ~ 2035,
       year == "freq.scenario2.40" ~ 2040,

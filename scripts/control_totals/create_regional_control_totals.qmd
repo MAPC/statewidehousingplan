@@ -1589,19 +1589,7 @@ if (scen == "Scenario_1"){
   # Reads in the 2017-2021 PUMS data.
   pums_data <- read_csv(paste0(rwt_path, '/PUMS_data/PUMS', vintage, '_formatted.csv'))
   
-} else if (scen == "Scenario_2"){
-  # Reads in the 2017-2021 PUMS Split Household data.
-  pums_data <- read_csv(paste0(rwt_path, '/PUMS_data/PUMS', vintage, '.Split_formatted.csv'))
-  
-} else if (scen == "Scenario_3"){
-  # Reads in the 2017-2021 PUMS Split Household data.
-  pums_data <- read_csv(paste0(rwt_path, '/PUMS_data/PUMS', vintage, '.Split_formatted.csv'))
-  
-} else if (scen == "Scenario_4"){
-  
-}
-
-#===============================================================================
+  #===============================================================================
 # 7.1.1-3 - Generate BASELINE data for the reweighter targeting files for non 2020 years
 # 7.1.1 -Baseline of people in Households
 hhpop_baseline <- pums_data |>  
@@ -1871,6 +1859,246 @@ write.csv(
   paste0(output_path,"type_baseline.",hdshp,".csv"), 
   row.names = FALSE
 )
+  
+} else if (scen == "Scenario_2"){
+  # Reads in the 2017-2021 PUMS Split Household data.
+  pums_data <- read_csv(paste0(rwt_path, '/PUMS_data/PUMS', vintage, '.Split_formatted.csv'))
+  
+  #===============================================================================
+  # 7.1.1-3 - Generate BASELINE data for the reweighter targeting files for non 2020 years
+  # 7.1.1 -Baseline of people in Households
+  hhpop_baseline <- pums_data |>
+    # Filter for households.
+    filter(TYPEHUGQ == "1") |>
+    mutate(RPA = rpa_acr) |>
+    group_by(RPA) |>
+    # Sum the person weights in the PUMS data.
+    dplyr::count(
+      var = AgeCat,
+      wt = PWGTP
+    ) |>
+    dplyr::rename(
+      AgeCat = var,
+      BASELINE = n
+    ) |>
+    # Rename variables to match the reweigher input requirements.
+    mutate(
+      AgeCat = paste0("x == ", AgeCat),
+      INTER = BASELINE
+    )
+  
+  # 7.1.2 - Baseline of Households by Household Type by Tenure
+  hhtype_baseline <- pums_data |>
+    # Filter for households and the head of household for each SERIALNO
+    filter(TYPEHUGQ == "1" & SPORDER.adj == "1") |>
+    mutate(RPA = rpa_acr) |>
+    group_by(RPA, AgeCat) |>
+    # Sum the household weights in the PUMS data.
+    dplyr::count(
+      var = HHtype.adj,
+      wt = WGTP
+    ) |>
+    ungroup() |>
+    dplyr::rename(
+      HHtype = var,
+      BASELINE = n,
+      AgeCat = AgeCat
+    ) |>
+    # Rename variables to match the reweighter input requirements.
+    mutate(
+      HHtype = paste0("x == ", HHtype),
+      AgeCat = paste0("x == ", AgeCat),
+      INTER = BASELINE
+    ) |>
+    # Filter for household types with householders (what we need for the reweighter!)
+    # HHtype x == 1: Multiple Adult Householders with Children
+    # HHtype x == 3: Multiple Adult Householders with No Children
+    # HHtype x == 5: Single Householders
+    dplyr::filter(HHtype == "x == 1" |HHtype == "x == 3" | HHtype == "x == 5")
+  
+  # 7.1.3 Tenure baseline
+  tenure_baseline <- pums_data |>
+    # Filter for households and the head of household for each SERIALNO
+    filter(TYPEHUGQ == "1" & SPORDER.adj == "1" & ageCAT6 > 3) |>
+    mutate(RPA = rpa_acr) |>
+    group_by(RPA, AgeCat) |>
+    # Sum the household weights in the PUMS data.
+    dplyr::count(
+      var = tenure,
+      wt = WGTP
+    ) |>
+    ungroup() |>
+    dplyr::rename(
+      tenure = var,
+      BASELINE = n
+    ) |>
+    # Rename variables to match the reweigher input requirements.
+    mutate(
+      AgeCat = paste0("x == ", AgeCat),
+      tenure = paste0("x == ", tenure),
+      INTER = BASELINE
+    ) |>
+    relocate(AgeCat, .after = RPA)
+  
+  # 7.1.4 - Baseline of People in the laborforce
+  lf_baseline <- pums_data |>
+    # Filter for households and people in the labor force
+    filter(TYPEHUGQ == "1" & lf == "1") |>
+    mutate(
+      AgeCat = as.factor(ageCAT6),
+      RPA = as.factor(rpa_acr),
+      eduattn = as.factor(eduattn)
+    ) |>
+    group_by(RPA, AgeCat) |>
+    # Sum the person weights in the PUMS data.
+    dplyr::count(
+      var = eduattn,
+      wt = PWGTP) |>
+    ungroup() |>
+    rename(
+      eduattn = var,
+      BASELINE = n,
+      AgeCat = AgeCat
+    ) |>
+    # Rename variables to match the reweighter input requirements.
+    mutate(
+      eduattn = paste0("x == ", eduattn),
+      AgeCat = paste0("x == ", AgeCat),
+      INTER = BASELINE
+    )
+  
+  #===============================================================================
+  # QC for baseline files. Compare total household baseline for HHtype and Tenure baseline files.
+  if (sum(hhtype_baseline$BASELINE) != sum(tenure_baseline$BASELINE)) {
+    print("STOP! Please review scripts which create the baseline data for the targeting files.")
+  } else {
+    print("Proceed!")
+  }
+  
+  #===============================================================================
+  # Write baseline files
+  # Output the baseline file for Household Population aggregations
+  write.csv(hhpop_baseline, paste0(output_path, "hhpop_baseline.", hdshp, ".csv"), row.names = FALSE)
+  
+  # Output the baseline file for Household Type aggregations
+  write.csv(hhtype_baseline, paste0(output_path, "hhtype_baseline.", hdshp, ".csv"), row.names = FALSE)
+  
+  # Output the baseline file for Age of Householder by tenure aggregations
+  write.csv(tenure_baseline ,paste0(output_path, "tenure_baseline.", hdshp, ".csv"), row.names = FALSE)
+  
+  # Output the baseline file for Laborforce aggregations
+  write.csv(lf_baseline, paste0(output_path, "lf_baseline.", hdshp, ".csv"), row.names = FALSE)
+  #===============================================================================
+  # 7.1.5-7 Baseline targeting files for 2020
+  # 7.1.5 For 2020 - baseline file of households by age of householder by tenure
+  age_baseline <- pums_data |>
+    # Filter for households and the head of household for each SERIALNO
+    filter(TYPEHUGQ == "1" & SPORDER.adj == "1") |>
+    # Rename variables to match the reweighter input requirements.
+    mutate(
+      RPA = as.factor(rpa_acr),
+      ageCAT4 = paste0("x == ", ageCAT4),
+      tenure = paste0("x == ", tenure)
+    ) |>
+    group_by(RPA, tenure) |>
+    # Sum the household weights in the PUMS data.
+    dplyr::count(
+      var = ageCAT4,
+      wt = WGTP
+    ) |>
+    ungroup() |>
+    dplyr::rename(
+      ageCAT4 = var,
+      BASELINE = n
+    ) |>
+    mutate(INTER = BASELINE)
+  
+  # 7.1.6 For 2020 - baseline file of household size
+  size_baseline <- pums_data |>
+    # Filter for households and the head of household for each SERIALNO
+    filter(TYPEHUGQ == "1" & SPORDER.adj == "1") |>
+    mutate(
+      size.adj = as.factor(size.adj),
+      RPA = as.factor(rpa_acr)
+    ) |>
+    group_by(RPA) |>
+    # Sum the household weights in the PUMS data.
+    dplyr::count(
+      var = size.adj,
+      wt = WGTP
+    ) |>
+    ungroup() |>
+    dplyr::rename(
+      size = var,
+      BASELINE = n) |>
+    # Rename variables to match the reweigher input requirements.
+    mutate(
+      size = paste0("x == ", size),
+      INTER = BASELINE
+    )
+  
+  # 7.1.6 - Baseline of only Households by Household Type for 2020
+  type_baseline <- pums_data |>
+    # Filter for households and the head of household for each SERIALNO
+    filter(TYPEHUGQ == "1" & SPORDER.adj == "1") |>
+    mutate(
+      RPA = as.factor(rpa_acr),
+      HHtype.adj = as.factor(HHtype.adj)
+    ) |>
+    group_by(RPA) |>
+    # Sum the household weights in the PUMS data.
+    dplyr::count(
+      var = HHtype.adj,
+      wt = WGTP
+    ) |>
+    ungroup() |>
+    dplyr::rename(
+      HHtype = var,
+      BASELINE = n
+    ) |>
+    # Rename variables to match the reweigher input requirements.
+    mutate(
+      HHtype = paste0("x == ", HHtype),
+      INTER = BASELINE
+    ) |>
+    # Filter for household types with householders (what we need for the reweighter!)
+    # HHtype x == 1: Multiple Adult Householders with Children
+    # HHtype x == 3: Multiple Adult Householders with No Children
+    # HHtype x == 5: Single Householders
+    dplyr::filter(HHtype == "x == 1" |HHtype == "x == 3" | HHtype == "x == 5")
+  
+  #===============================================================================
+  # QC for baseline files. Compare total household baseline for HHtype and Tenure baseline files.
+  if (sum(hhtype_baseline$BASELINE) != sum(type_baseline$BASELINE)) {
+    print("STOP! Please review scripts which create the baseline data for the targeting files.")
+  } else {
+    print("Proceed!")
+  }
+  
+  #===============================================================================
+  # Output the baseline file for 2020 Age of Householder by tenure aggregations
+  write.csv(age_baseline,
+            paste0(output_path, "age_baseline.", hdshp, ".csv"),
+            row.names = FALSE)
+  
+  # Output the baseline file for 2020 Household size aggregations
+  write.csv(size_baseline,
+            paste0(output_path, "size_baseline.", hdshp, ".csv"),
+            row.names = FALSE)
+  
+  # Output the baseline file for 2020 Household type only aggregations
+  write.csv(type_baseline,
+            paste0(output_path, "type_baseline.", hdshp, ".csv"),
+            row.names = FALSE)
+  
+} else if (scen == "Scenario_3"){
+  # Reads in the 2017-2021 PUMS Split Household data.
+  pums_data <- read_csv(paste0(rwt_path, '/PUMS_data/PUMS', vintage, '.Split_formatted.csv'))
+  
+} else if (scen == "Scenario_4"){
+  
+}
+
 ```
 
 # 7.2 Create 2020 control total targets using Decennial Census 2020 DHC
@@ -2037,6 +2265,11 @@ if (scen == "Scenario_1"){ # Scenario 1
   
   print("Using Headship Rates for Scenario 2.")
   
+  headship_rates.25 <- headship_rates |> 
+    mutate(
+      year = 2025
+    )
+  
   hdsp.r <- hdsp.r_read(scenario = scen, file = "headship.rates.comparison_2000.hsr_to_1721.household.split.hsr.csv") |> 
     select(rpa_acr, ageCAT6, var, year, freq.scenario2) |> 
     dplyr::rename(freq = freq.scenario2) |> 
@@ -2044,7 +2277,7 @@ if (scen == "Scenario_1"){ # Scenario 1
       ageCAT6 = as.factor(ageCAT6)
     )
   
-  hdsp.r <- bind_rows(headship_rates, hdsp.r)
+  hdsp.r <- bind_rows(headship_rates, headship_rates.25, hdsp.r)
   
 } else if (scen == "Scenario_3"){ # Scenario 3
   

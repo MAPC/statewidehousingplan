@@ -23,7 +23,14 @@ mortgage_calculator <- function(df, down_payment, loan_term, ho_insurance, condo
     summarize(mortgage_rate_30 = mean(pmms30))
   
   ## PROPERTY TAX RATE TABLE - THIS TABLE WILL NEED TO BE UPDATED WITH FUTURE YEARS AS DATA BECOMES AVAILABLE!
- prop_taxrate = read_csv(paste0(calc_data_path, "prop_taxrates_ma_2024.csv")) |> 
+  prop_taxrate = read_csv(paste0(calc_data_path, "prop_taxrates_ma_2024.csv")) |> 
+    # fix muni names where needed
+    mutate(
+      Municipality = case_when(
+        `DOR Code` == "166" ~ "Manchester",
+        TRUE ~ Municipality
+      )
+    ) |> 
     # property tax rate is reported as amount per $1000 of assessed value
     # calculate this ratio
     mutate(proptaxrate = Residential/1000) |> 
@@ -33,8 +40,9 @@ mortgage_calculator <- function(df, down_payment, loan_term, ho_insurance, condo
     # need to create rows for property taxes from 2000-2002
     group_by(municipal) |>
     complete(fy_year = full_seq(2000:2024, 1)) |> 
-    # applying 2023 tax rates back to 2000 through 2002
-    fill(proptaxrate, .direction = "up")
+    # applying 2003 tax rates back to 2000 through 2002
+    fill(proptaxrate, .direction = "up") 
+  
 
   
   ## MORTGAGE CALCULATOR
@@ -43,7 +51,12 @@ mortgage_calculator <- function(df, down_payment, loan_term, ho_insurance, condo
     filter(restype %in% c("R1F", "CON")) |> 
     # make clean fiscal year field
     mutate(
-      fy_year = ifelse(month <= 6, year, year+1)
+      fy_year = ifelse(month <= 6, year, year+1),
+      # fix muni names where needed
+      municipal = case_when(
+        muni_id == 166 ~ "Manchester",
+        muni_id == 16 ~ "Attleboro",
+        TRUE ~ municipal)
     ) |> 
     # joining average property tax rate to warren data by municipality
     left_join(prop_taxrate, by = c("municipal", "fy_year")) |> 
@@ -63,9 +76,9 @@ mortgage_calculator <- function(df, down_payment, loan_term, ho_insurance, condo
     monthly_payment = ifelse(proptype == 'RCD', 
                              mortgage_interest_tax + ho_insurance + condo_fee,
                              mortgage_interest_tax + ho_insurance)
-    ) |> 
+    ) #|> 
     # remove interim fields
-    select(-c(proptaxrate, mortgage_rate_30, property_tax_m, mortgage_interest_tax))
+    #select(-c(proptaxrate, mortgage_rate_30, property_tax_m, mortgage_interest_tax))
     
   return(mortgage_df)
 }
@@ -77,15 +90,21 @@ mortgage_calculator <- function(df, down_payment, loan_term, ho_insurance, condo
 
 affordable_sales <- function(df, output_type) {
 
-  ### read in table with HUD income lmiits from database
+  ### read in table with HUD income limits from database
   # Set the driver
   drv = dbDriver("PostgreSQL")
-  ch.ds = dbConnect(drv, host='10.10.10.240', port='5432', dbname='ds', user='viewer', password=rstudioapi::askForPassword("Database password"))
   # Prompt database connection 
-  #db_connection <- dbConnect(drv, host = host, port = port, dbname = dbname, user = user, password = password)
-  ami_table <- dbGetQuery(ch.ds, "SELECT * FROM tabular.hous_section8_income_limits_by_year_m") |> 
-    # create income limits for 100% and 120% AMI
+  db_connection <- dbConnect(drv, host = Sys.getenv("host"), port = Sys.getenv("port"), dbname = Sys.getenv("dbname"), 
+                             user = Sys.getenv("user"), password = Sys.getenv("password"))
+  
+  ami_table <- dbGetQuery(db_connection, "SELECT * FROM tabular.hous_section8_income_limits_by_year_m") |> 
     mutate(
+    # fix muni names where needed
+      municipal = case_when(
+        muni_id == 166 ~ "Manchester",
+        TRUE ~ municipal
+      ), 
+    # create income limits for 100% and 120% AMI
       # 100% AMI
       il_100_1 = il_50_1*2,
       il_100_2 = il_50_2*2,
@@ -146,7 +165,9 @@ affordable_sales <- function(df, output_type) {
         affordable_120 = ifelse(monthly_payment <= il120, TRUE, FALSE)
         ) |>
       arrange(fy_year, municipal) |> 
-      group_by(municipal, fy_year, hh_size) 
+      group_by(municipal, fy_year, hh_size) |> 
+      # remove 2024 fiscal year while we have incomplete data & sales with missing municipalities
+      filter(fy_year != 2024 & !is.na(municipal))
       
     # if else statement to determine what summary table to output based on function input
     if(output_type == 'count'){

@@ -13,8 +13,8 @@ editor: visual
 #root <- '../../../../Data/Working/Regional_Control_Totals/'
 
 # Base root. Toggle between S: and K: drive depending on mapped paths on your computer
-base <- "K:/DataServices/Projects/Current_Projects/"
-# base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
+#base <- "K:/DataServices/Projects/Current_Projects/"
+base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
 
 #General K drive filepath
 root <- paste0(base, "/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/")
@@ -859,7 +859,9 @@ write.csv(tbl.12, file = paste0(root,scen,"/Analysis/tbl.12_persons.by.eduattain
 ```
 
 # 4.0 Subset Sampling
+
 # 4.1 Create Subsets of PUMS Records
+
 ```{r}
 # Subset of unsplit that do not need to be reordered
 partial.pums_data.og <- full.pums_data.adj |> 
@@ -878,6 +880,7 @@ print(sum(sum(partial.pums_data.subset1$WGTP), sum(partial.pums_data.subset2$WGT
 ```
 
 # 4.2 Sample PUMS Records from the Subsets for each Year
+
 ```{r}
 # Create the list of years for which we want to create a sample of subset households.
 years <- c(2030,2035,2040,2045,2050)
@@ -1011,6 +1014,7 @@ pums.sample <- bind_rows(pums.sample_2030, pums.sample_2035,pums.sample_2040, pu
 ```
 
 # 5.0 Calculate Headship Rates
+
 # 5.1 Create Headship rate calculation function
 
 ```{r}
@@ -1296,6 +1300,7 @@ for (i in years) {
 ```
 
 # 5.3 Merge Headship rate files together and export file
+
 ```{r}
 # Left join all headship rate dataframes to create single file to export.
 hdsp.r_scenario2 <- purrr::reduce(
@@ -1318,4 +1323,3 @@ write.csv(
   row.names = FALSE
 )
 ```
-

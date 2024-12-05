@@ -13,8 +13,8 @@ editor: visual
 #root <- '../../../../Data/Working/Regional_Control_Totals/'
 
 # Base root. Toggle between S: and K: drive depending on mapped paths on your computer
-#base <- "K:/DataServices/Projects/Current_Projects/"
-base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
+base <- "K:/DataServices/Projects/Current_Projects/"
+# base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
 
 #General K drive filepath
 root <- paste0(base, "/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/")
@@ -654,44 +654,6 @@ if(sum(sum(subset.1$new.hhds), sum(subset.2$new.hhds)) != sum(sum(subset.1.adj.t
 
 ```
 
-# 3.5 Create PUMS Extract for Reweighter
-
-```{r}
-# Create a check to see if the file has already been written.
-file_check = paste0(rwt_path, '/PUMS_data/PUMS2021.Split_formatted.csv')
-
-if (!file.exists(file_check)){
-  
-  # Creating the PUMS data extract for Scenario 2
-  pums_data.adj.rwt <- full.pums_data.adj |>
-    left_join(
-      xw,
-      by = c("PUMA"),
-      relationship = "many-to-many"
-    )
-  
-  # Write PUMS extract to reweighter input folder for Scenario 2
-  write.csv(
-    pums_data.adj.rwt,
-    file = paste0(rwt_path, '/PUMS_data/PUMS2021.Split_formatted.csv'),
-    row.names = FALSE
-  )
-  
-} else if (file.exists(file_check)){
-  
-  print("File already exists!")
-  
-}
-
-test <- pums_data.adj.rwt |> 
-  filter(
-    rpa_acr == "OCPC",
-    ageCAT6 == "4",
-    HHtype == '1' 
-  )
-
-```
-
 # 3.6 Analysis of Subset Households
 
 ```{r}
@@ -997,6 +959,10 @@ for (i in years){
     # Remove dataframes that need to be recycled in the next loop.
     rm(tmp)
     
+    # Recalculate df.row to pass QC print statement.
+    df.row.1 <- as.numeric(nrow(partial.pums_data.subset1))
+    df.row.2 <- as.numeric(nrow(partial.pums_data.subset2))
+    
   }
   
 }
@@ -1056,6 +1022,35 @@ create_hdsp.r <- function(df){
     mutate(ageCAT6 = as.factor(ageCAT6))
   
   return(hdsp.r)
+  
+}
+
+create_tenure.r <- function(df){
+  # Generating headship rates by RPA and 5-year age group for the ACS 2017-2022 PUMS
+  ten.r <- df |>
+    # Join the PUMA to RPA ceosswalk to the PUMS data
+    left_join(
+      xw,
+      by = c('PUMA')
+    ) |>
+    # Includes only observations for people in households (omits GQ)
+    filter(SPORDER.adj == "1" & TYPEHUGQ == "1") |>
+    # Groups by variables in the dataframe necessary to getting the granularity of
+    # data we're interested in.
+    group_by(rpa_acr, ageCAT6) |>
+    # Computes the weighted sum of individuals in each HH type category by the groups
+    # assigned above.
+    count(var = TEN_Group, wt = WGTP) |>
+    ungroup() |>
+    group_by(rpa_acr, ageCAT6) |>
+    # Converts numbers into frequencies.
+    mutate(freq = (n / sum(n))) |>
+    # Removes the level of aggregation set earlier by group_by()
+    ungroup() |>
+    select(-c(n)) |>
+    mutate(ageCAT6 = as.factor(ageCAT6))
+  
+  return(ten.r)
   
 }
 
@@ -1135,11 +1130,17 @@ for (i in years) {
     # Calculate headship rates for this projection year.
     hdsp.r <- create_hdsp.r(df = done_pums)
     
+    # Calculate tenure rates for this projection year.
+    ten.r <- create_tenure.r(df = done_pums)
+    
     # QC check for headship rates
     check_hdsp.r(hdsp.r)
     
     # Assign the headship rate object to a year specific object name.
     assign(paste0("hdsp.r_", i), hdsp.r)
+    
+    # Assign the tenure rate object to a year specific object name.
+    assign(paste0("ten.r_", i), ten.r)
     
     # save year-specific PUMS dataset for generating baselines.
     fwrite(done_pums, paste0(rwt_path,'PUMS_data/PUMS2021_Scenario_2_',i,'.csv'))
@@ -1174,11 +1175,17 @@ for (i in years) {
     # Calculate headship rates for this projection year.
     hdsp.r <- create_hdsp.r(df = done_pums)
     
+    # Calculate tenure rates for this projection year.
+    ten.r <- create_tenure.r(df = done_pums)
+    
     # QC check for headship rates
     check_hdsp.r(hdsp.r)
     
     # Assign the headship rate object to a year specific object name.
     assign(paste0("hdsp.r_", i), hdsp.r)
+    
+    # Assign the tenure rate object to a year specific object name.
+    assign(paste0("ten.r_", i), ten.r)
   
     # save year-specific PUMS dataset for generating baselines.
     fwrite(done_pums, paste0(rwt_path,'PUMS_data/PUMS2021_Scenario_2_',i,'.csv'))
@@ -1213,11 +1220,17 @@ for (i in years) {
     # Calculate headship rates for this projection year.
     hdsp.r <- create_hdsp.r(df = done_pums)
     
+    # Calculate tenure rates for this projection year.
+    ten.r <- create_tenure.r(df = done_pums)
+    
     # QC check for headship rates
     check_hdsp.r(hdsp.r)
     
     # Assign the headship rate object to a year specific object name.
     assign(paste0("hdsp.r_", i), hdsp.r)
+    
+    # Assign the tenure rate object to a year specific object name.
+    assign(paste0("ten.r_", i), ten.r)
     
     # save year-specific PUMS dataset for generating baselines.
     fwrite(done_pums, paste0(rwt_path,'PUMS_data/PUMS2021_Scenario_2_',i,'.csv'))
@@ -1252,11 +1265,17 @@ for (i in years) {
     # Calculate headship rates for this projection year.
     hdsp.r <- create_hdsp.r(df = done_pums)
     
+    # Calculate tenure rates for this projection year.
+    ten.r <- create_tenure.r(df = done_pums)
+    
     # QC check for headship rates
     check_hdsp.r(hdsp.r)
     
     # Assign the headship rate object to a year specific object name.
     assign(paste0("hdsp.r_", i), hdsp.r)
+    
+    # Assign the tenure rate object to a year specific object name.
+    assign(paste0("ten.r_", i), ten.r)
     
     # save year-specific PUMS dataset for generating baselines.
     fwrite(done_pums, paste0(rwt_path,'PUMS_data/PUMS2021_Scenario_2_',i,'.csv'))
@@ -1291,11 +1310,17 @@ for (i in years) {
     # Calculate headship rates for this projection year.
     hdsp.r <- create_hdsp.r(df = done_pums)
     
+    # Calculate tenure rates for this projection year.
+    ten.r <- create_tenure.r(df = done_pums)
+    
     # QC check for headship rates
     check_hdsp.r(hdsp.r)
     
     # Assign the headship rate object to a year specific object name.
     assign(paste0("hdsp.r_", i), hdsp.r)
+    
+    # Assign the tenure rate object to a year specific object name.
+    assign(paste0("ten.r_", i), ten.r)
     
     # save year-specific PUMS dataset for generating baselines.
     fwrite(done_pums, paste0(rwt_path,'PUMS_data/PUMS2021_Scenario_2_',i,'.csv'))
@@ -1330,6 +1355,27 @@ hdsp.r_scenario2 <- purrr::reduce(
 write.csv(
   hdsp.r_scenario2,
   paste0(rwt_path,"Headship_rates/hdsp.r.1721_household.split.paced.csv"),
+  row.names = FALSE
+)
+
+# Left join all headship rate dataframes to create single file to export.
+ten.r_scenario2 <- purrr::reduce(
+  list(ten.r_2030, ten.r_2035, ten.r_2040, ten.r_2045, ten.r_2050),
+  dplyr::left_join,
+  by = c('rpa_acr','ageCAT6','var')
+) |> 
+  dplyr::rename(
+    freq.split.30 = freq.x,
+    freq.split.35 = freq.y,
+    freq.split.40 = freq.x.x,
+    freq.split.45 = freq.y.y,
+    freq.split.50 = freq,
+  )
+
+# Write .csv file
+write.csv(
+  ten.r_scenario2,
+  paste0(rwt_path,"Headship_rates/ten.r.1721_household.split.paced.csv"),
   row.names = FALSE
 )
 ```

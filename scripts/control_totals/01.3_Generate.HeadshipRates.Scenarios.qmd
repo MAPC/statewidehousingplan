@@ -516,9 +516,9 @@ full.pums_data.adj <- full.pums_data.adj |>
     # Adjust income data to 2021 dollars
     HINCP.adj.2021USD = as.numeric(HINCP.adj)*as.numeric(ADJINC),
     # Sum the total number of workers in the household
-    Worker_Total.adj = sum(worker),
+    Worker_Total.adj = sum(worker.adj),
     # Sum the total number of children in the household
-    Child_Total.adj = sum(child)
+    Child_Total.adj = sum(child.adj)
   ) |> 
   ungroup() |> 
   mutate(
@@ -595,7 +595,8 @@ full.pums_data.adj <- full.pums_data.adj |>
 # 1. Tenure remains the same. A split subfamily lived in a house owned by the householder, we assume they've also purchased a home. If they were in a rental household, they rent.
 # 2. Number of rooms in the house remain the same, even if the number of rooms and bedrooms doesn't necessarily make sense for the split subfamily household. Easier to not make assumptions about the types of housing they rent or buy after splitting out.
 # 3. Household income is the sum of incomes of the individuals within the household. Incomes are recalculated for the original household and the new split subfamily household.
-# 4. 
+# 4.
+
 ```
 
 # 3.4 QA/QC - Check Split Households are Equal to The Number of Households We Expect to Be Split

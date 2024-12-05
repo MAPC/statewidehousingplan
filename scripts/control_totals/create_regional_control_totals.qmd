@@ -1864,7 +1864,7 @@ write.csv(
   
   
   for (yr in seq(2030,2050,5)){
-  pums_data <- fread(paste0(rwt_path, '/PUMS_data/PUMS', vintage, '.Split',yr,'_formatted.csv'))
+  pums_data <- fread(paste0(rwt_path,'PUMS_data/PUMS2021_Scenario_2_',yr,'.csv'))
   
   hhpop_baseline <- pums_data |>
     # Filter for households.

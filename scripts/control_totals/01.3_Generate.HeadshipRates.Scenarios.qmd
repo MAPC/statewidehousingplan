@@ -1141,6 +1141,8 @@ for (i in years) {
     # Assign the headship rate object to a year specific object name.
     assign(paste0("hdsp.r_", i), hdsp.r)
     
+    # save year-specific PUMS dataset for generating baselines.
+    fwrite(done_pums, paste0(rwt_path,'PUMS_data/PUMS2021_Scenario_2_',i,'.csv'))
         # Remove dataframes that will be recreated in the next loop to avoid accidentally using residual data.
     rm(sn, og, tmp_pums, done_pums, hdsp.r)
     
@@ -1178,6 +1180,8 @@ for (i in years) {
     # Assign the headship rate object to a year specific object name.
     assign(paste0("hdsp.r_", i), hdsp.r)
   
+    # save year-specific PUMS dataset for generating baselines.
+    fwrite(done_pums, paste0(rwt_path,'PUMS_data/PUMS2021_Scenario_2_',i,'.csv'))
     # Remove dataframes that will be recreated in the next loop to avoid accidentally using residual data.
     rm(sn, og, tmp_pums, done_pums, hdsp.r)
     
@@ -1215,6 +1219,8 @@ for (i in years) {
     # Assign the headship rate object to a year specific object name.
     assign(paste0("hdsp.r_", i), hdsp.r)
     
+    # save year-specific PUMS dataset for generating baselines.
+    fwrite(done_pums, paste0(rwt_path,'PUMS_data/PUMS2021_Scenario_2_',i,'.csv'))
     # Remove dataframes that will be recreated in the next loop to avoid accidentally using residual data.
     rm(sn, og, tmp_pums, done_pums, hdsp.r)
     
@@ -1252,6 +1258,8 @@ for (i in years) {
     # Assign the headship rate object to a year specific object name.
     assign(paste0("hdsp.r_", i), hdsp.r)
     
+    # save year-specific PUMS dataset for generating baselines.
+    fwrite(done_pums, paste0(rwt_path,'PUMS_data/PUMS2021_Scenario_2_',i,'.csv'))
     # Remove dataframes that will be recreated in the next loop to avoid accidentally using residual data.
     rm(sn, og, tmp_pums, done_pums, hdsp.r)
     
@@ -1289,6 +1297,8 @@ for (i in years) {
     # Assign the headship rate object to a year specific object name.
     assign(paste0("hdsp.r_", i), hdsp.r)
     
+    # save year-specific PUMS dataset for generating baselines.
+    fwrite(done_pums, paste0(rwt_path,'PUMS_data/PUMS2021_Scenario_2_',i,'.csv'))
     # Remove dataframes that will be recreated in the next loop to avoid accidentally using residual data.
     rm(sn, og, tmp_pums, done_pums, hdsp.r)
     

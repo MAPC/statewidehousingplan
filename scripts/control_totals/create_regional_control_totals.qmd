@@ -2025,11 +2025,6 @@ write.csv(
   write.csv(ten.r, paste0(output_path, "tenure_rates.", scen, ".csv"), row.names = FALSE)
   #===============================================================================
   
-} else if (scen == "Scenario_3"){
-
-  
-} else if (scen == "Scenario_4"){
-  
 }
 
 ```
@@ -2215,7 +2210,7 @@ if (scen == "Scenario_1"){ # Scenario 1
   hdsp.r <- bind_rows(headship_rates, headship_rates.25, hdsp.r)
   
   # Use tenure rates from Scenario 2
-  ten.r <- fread(paste0(output_path, "tenure_rates.Scenario_2.csv"))
+  ten.r <- fread(paste0(root, "Scenario_2/tenure_rates.Scenario_2.csv"))
 }
 ```
 
@@ -2637,7 +2632,7 @@ if (scen == 'Scenario_1') {
 
 ------------------------------------------------------------------------
 
-# 7.6.2 Scenario 2
+# 7.6.2 Scenario 2/3/4
 
 ```{r}
 if (scen %in% c('Scenario_2','Scenario_3','Scenario_4')) {

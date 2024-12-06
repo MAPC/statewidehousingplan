@@ -16,8 +16,8 @@ This set of scripts runs the household reweighter to produce reweighted PUMS dat
 # Set Scenario name
 
 #scen <- 'Scenario_1'
-scen <- 'Scenario_2'
-#scen <- 'Scenario_3'
+# scen <- 'Scenario_2'
+scen <- 'Scenario_3'
 #scen <- 'Scenario_4'
 
 # Set ACS / PUMS vintage
@@ -128,7 +128,9 @@ if(scen=='Scenario_1') {
 ```{r}
 if(scen %in% c('Scenario_2', 'Scenario_3', 'Scenario_4')) {
   for (yr in seq(2030, 2050, 5)) {
-    pums_data <- fread(paste0(rwt_path, 'PUMS_data/PUMS2021_Scenario_2_', yr, '.csv')) |>
+    x2 <- fread(paste0(workpath, 'PUMS_data/PUMA10_RPA_crosswalk.csv')) |> 
+      mutate(PUMA = as.numeric(PUMA))
+    pums_data <- fread(paste0(workpath, 'PUMS_data/PUMS2021_Scenario_2_', yr, '.csv')) |>
       left_join(x2, by = c('PUMA')) |>
       filter(TYPEHUGQ == "1") |>
       mutate(AgeCat = ageCAT6)
@@ -394,7 +396,7 @@ for (yr in c(2030, 2035, 2040, 2045, 2050)) {
     
     message(paste0(mid, ' targets set'))
     
-    pums <- fread(paste0(inpath,'PUMS2021_Scenario_2_',mid,'_',yr,'.csv'))
+    pums <- fread(paste0(inpath,'PUMS2021_',scen,'_',mid,'_',yr,'.csv'))
 
     source(here('scripts/reweighter/Manage_Scenario_RPA.R'))
     message(paste0(mid, ' reweighter complete'))

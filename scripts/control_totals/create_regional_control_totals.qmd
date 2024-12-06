@@ -1583,6 +1583,8 @@ lfpr <- pums_data |>
 
 # 7.1 - Generate the ACS 2017-2021 PUMS Baseline data for each of our categories
 
+# 7.1.1 - Scenario 1
+
 ```{r}
 # Determine which PUMS data to use as the baseline for the targeting files
 if (scen == "Scenario_1"){
@@ -1859,8 +1861,13 @@ write.csv(
   paste0(output_path,"type_baseline.",hdshp,".csv"), 
   row.names = FALSE
 )
-  
-} else if (scen %in% c("Scenario_2","Scenario_3","Scenario_4")){
+} 
+```
+
+# 7.1.2 - Scenario 2/3/4
+
+```{r}
+if(scen %in% c("Scenario_2","Scenario_3","Scenario_4")){
   ten.20 <- tenure_rates |> 
     mutate(
       year = 2020
@@ -2635,7 +2642,7 @@ if (scen == 'Scenario_1') {
 # 7.6.2 Scenario 2/3/4
 
 ```{r}
-if (scen %in% c('Scenario_2','Scenario_3','Scenario_4')) {
+if (scen %in% c('Scenario_2', 'Scenario_3', 'Scenario_4')) {
   for (i in yrs) {
     if (i != 2020) {
       # Record when the process has finished for each year in the year list.
@@ -2663,9 +2670,7 @@ if (scen %in% c('Scenario_2','Scenario_3','Scenario_4')) {
         filter(year == i) |>
         select(-c(year))
       
-      target.file2 <- full_join(ten.base,
-                                tmp2,
-                                by = c("RPA" = "rpa_acr", "AgeCat", "tenure")) |>
+      target.file2 <- full_join(ten.base, tmp2, by = c("RPA" = "rpa_acr", "AgeCat", "tenure")) |>
         # Baseline files may not have every age group, household type segment that the projections have.
         # Need to fill in places in the baseline where there are zeros for those segments.
         mutate(across(everything(), ~ replace_na(., 0))) |>
@@ -2720,7 +2725,7 @@ if (scen %in% c('Scenario_2','Scenario_3','Scenario_4')) {
   for (i in yrs) {
     if (i != 2020) {
       # Record when the process has finished for each year in the year list.
-      print(paste0("Generating MAPC101 Reweighter Target Files for ", i, "."))
+      print(paste0("Generating MAPC97 Reweighter Target Files for ", i, "."))
       
       hhtype.base <- fread(paste0(output_path, "hhtype_baseline.", hdshp, ".", yr, ".csv"))
       ten.base <- fread(paste0(output_path, "tenure_baseline.", hdshp, ".", yr, ".csv"))

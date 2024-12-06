@@ -1140,9 +1140,9 @@ for (i in years) {
     # This simulates the formation of new households.
     done_pums <- bind_rows(tmp_pums, og, adj) |>
       mutate(
-        SERIALNO.adj = coalesce(SERIALNO),
-        SPORDER.adj = coalesce(SPORDER),
-        HHtype.adj = coalesce(HHtype)
+        SERIALNO.adj = coalesce(SERIALNO.adj, SERIALNO),
+        SPORDER.adj = coalesce(SPORDER.adj, SPORDER),
+        HHtype.adj = coalesce(HHtype.adj, HHtype)
       )
     
     # # QC - Household Type Check
@@ -1194,9 +1194,9 @@ for (i in years) {
     # This simulates the formation of new households.
     done_pums <- bind_rows(tmp_pums, og, adj)  |>
       mutate(
-        SERIALNO.adj = coalesce(SERIALNO),
-        SPORDER.adj = coalesce(SPORDER),
-        HHtype.adj = coalesce(HHtype)
+        SERIALNO.adj = coalesce(SERIALNO.adj, SERIALNO),
+        SPORDER.adj = coalesce(SPORDER.adj, SPORDER),
+        HHtype.adj = coalesce(HHtype.adj, HHtype)
       )
     
     # Calculate headship rates for this projection year.
@@ -1244,9 +1244,9 @@ for (i in years) {
     # This simulates the formation of new households.
     done_pums <- bind_rows(tmp_pums, og, adj)  |>
       mutate(
-        SERIALNO.adj = coalesce(SERIALNO),
-        SPORDER.adj = coalesce(SPORDER),
-        HHtype.adj = coalesce(HHtype)
+        SERIALNO.adj = coalesce(SERIALNO.adj, SERIALNO),
+        SPORDER.adj = coalesce(SPORDER.adj, SPORDER),
+        HHtype.adj = coalesce(HHtype.adj, HHtype)
       )
     
     # Calculate headship rates for this projection year.
@@ -1294,9 +1294,9 @@ for (i in years) {
     # This simulates the formation of new households.
     done_pums <- bind_rows(tmp_pums, og, adj)  |>
       mutate(
-        SERIALNO.adj = coalesce(SERIALNO),
-        SPORDER.adj = coalesce(SPORDER),
-        HHtype.adj = coalesce(HHtype)
+        SERIALNO.adj = coalesce(SERIALNO.adj, SERIALNO),
+        SPORDER.adj = coalesce(SPORDER.adj, SPORDER),
+        HHtype.adj = coalesce(HHtype.adj, HHtype)
       )
     
     # Calculate headship rates for this projection year.
@@ -1344,9 +1344,9 @@ for (i in years) {
     # This simulates the formation of new households.
     done_pums <- bind_rows(tmp_pums, og, adj)  |>
       mutate(
-        SERIALNO.adj = coalesce(SERIALNO),
-        SPORDER.adj = coalesce(SPORDER),
-        HHtype.adj = coalesce(HHtype)
+        SERIALNO.adj = coalesce(SERIALNO.adj, SERIALNO),
+        SPORDER.adj = coalesce(SPORDER.adj, SPORDER),
+        HHtype.adj = coalesce(HHtype.adj, HHtype)
       )
     
     # Calculate headship rates for this projection year.

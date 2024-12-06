@@ -653,6 +653,12 @@ if(sum(sum(subset.1$new.hhds), sum(subset.2$new.hhds)) != sum(sum(subset.1.adj.t
   print("Proceed!")
 }
 
+test2 <- subset.2.adj.test |> 
+  filter(SPORDER.adj == "1") |> 
+  group_by(HHtype.adj) |> 
+  summarise(hh = sum(WGTP)) |> 
+  ungroup()
+
 ```
 
 # 3.6 Analysis of Subset Households
@@ -978,6 +984,12 @@ if (sum(df.row.1, df.row.2) == 0){
 # Put all the samples together for ease in the subsequent sections
 pums.sample <- bind_rows(pums.sample_2030, pums.sample_2035,pums.sample_2040, pums.sample_2045, pums.sample_2050)
 
+test2 <- pums.sample |> 
+  filter(SPORDER.adj == "1") |> 
+  group_by(HHtype.adj) |> 
+  summarise(hh = sum(WGTP)) |> 
+  ungroup()
+
 ```
 
 # 5.0 Calculate Headship Rates
@@ -1126,7 +1138,16 @@ for (i in years) {
     
     # Add the original and split households from this year's sample (and cumulative samples) to the standard PUMS dataset.
     # This simulates the formation of new households.
-    done_pums <- bind_rows(tmp_pums, og, adj) |> mutate(SERIALNO.adj = coalesce(SERIALNO), HHtype.adj = coalesce(HHtype))
+    done_pums <- bind_rows(tmp_pums, og, adj) |>
+      mutate(
+        SERIALNO.adj = coalesce(SERIALNO),
+        SPORDER.adj = coalesce(SPORDER),
+        HHtype.adj = coalesce(HHtype)
+      )
+    
+    # # QC - Household Type Check
+    # ht.check <- done_pums |> 
+    #   filter(SPORDER.adj == "1")
     
     # Calculate headship rates for this projection year.
     hdsp.r <- create_hdsp.r(df = done_pums)
@@ -1134,7 +1155,7 @@ for (i in years) {
     # Calculate tenure rates for this projection year.
     ten.r <- create_tenure.r(df = done_pums)
     
-    # QC check for headship rates
+    # QC - check headship rates do not exceed 1
     check_hdsp.r(hdsp.r)
     
     # Assign the headship rate object to a year specific object name.
@@ -1171,7 +1192,12 @@ for (i in years) {
     
     # Add the original and split households from this year's sample (and cumulative samples) to the standard PUMS dataset.
     # This simulates the formation of new households.
-    done_pums <- bind_rows(tmp_pums, og, adj) |> mutate(SERIALNO.adj = coalesce(SERIALNO), HHtype.adj = coalesce(HHtype))
+    done_pums <- bind_rows(tmp_pums, og, adj)  |>
+      mutate(
+        SERIALNO.adj = coalesce(SERIALNO),
+        SPORDER.adj = coalesce(SPORDER),
+        HHtype.adj = coalesce(HHtype)
+      )
     
     # Calculate headship rates for this projection year.
     hdsp.r <- create_hdsp.r(df = done_pums)
@@ -1216,7 +1242,12 @@ for (i in years) {
     
     # Add the original and split households from this year's sample (and cumulative samples) to the standard PUMS dataset.
     # This simulates the formation of new households.
-    done_pums <- bind_rows(tmp_pums, og, adj) |> mutate(SERIALNO.adj = coalesce(SERIALNO), HHtype.adj = coalesce(HHtype))
+    done_pums <- bind_rows(tmp_pums, og, adj)  |>
+      mutate(
+        SERIALNO.adj = coalesce(SERIALNO),
+        SPORDER.adj = coalesce(SPORDER),
+        HHtype.adj = coalesce(HHtype)
+      )
     
     # Calculate headship rates for this projection year.
     hdsp.r <- create_hdsp.r(df = done_pums)
@@ -1261,7 +1292,12 @@ for (i in years) {
     
     # Add the original and split households from this year's sample (and cumulative samples) to the standard PUMS dataset.
     # This simulates the formation of new households.
-    done_pums <- bind_rows(tmp_pums, og, adj) |> mutate(SERIALNO.adj = coalesce(SERIALNO), HHtype.adj = coalesce(HHtype))
+    done_pums <- bind_rows(tmp_pums, og, adj)  |>
+      mutate(
+        SERIALNO.adj = coalesce(SERIALNO),
+        SPORDER.adj = coalesce(SPORDER),
+        HHtype.adj = coalesce(HHtype)
+      )
     
     # Calculate headship rates for this projection year.
     hdsp.r <- create_hdsp.r(df = done_pums)
@@ -1306,7 +1342,12 @@ for (i in years) {
     
     # Add the original and split households from this year's sample (and cumulative samples) to the standard PUMS dataset.
     # This simulates the formation of new households.
-    done_pums <- bind_rows(tmp_pums, og, adj) |> mutate(SERIALNO.adj = coalesce(SERIALNO), HHtype.adj = coalesce(HHtype))
+    done_pums <- bind_rows(tmp_pums, og, adj)  |>
+      mutate(
+        SERIALNO.adj = coalesce(SERIALNO),
+        SPORDER.adj = coalesce(SPORDER),
+        HHtype.adj = coalesce(HHtype)
+      )
     
     # Calculate headship rates for this projection year.
     hdsp.r <- create_hdsp.r(df = done_pums)

@@ -12,7 +12,7 @@ editor: visual
 # Set Scenario Names
 
 # Population Scenario
-scen <- 'Scenario_2'
+scen <- 'Scenario_3'
 # Headship rate Scenario
 # hdshp <- 'acs1721'
 hdshp <- 'scen2'
@@ -1209,7 +1209,7 @@ gc()
 
 ```{r}
 # Load PUMA to RPA Crosswalk
-xw <- fread(paste0(output_path, 'PUMA10_RPA_crosswalk.csv')) |> 
+xw <- fread(paste0(root, 'PUMA10_RPA_crosswalk.csv')) |> 
   mutate(
     # Change the data type and pad the string with a leading zero.
     PUMA = as.character(PUMA),

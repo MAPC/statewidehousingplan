@@ -1860,7 +1860,7 @@ write.csv(
   row.names = FALSE
 )
   
-} else if (scen == "Scenario_2"){
+} else if (scen %in% c("Scenario_2","Scenario_3","Scenario_4")){
   ten.20 <- tenure_rates |> 
     mutate(
       year = 2020
@@ -1877,6 +1877,7 @@ write.csv(
       left_join(x2,by = c('PUMA'))
     pums_data[!is.na(SPORDER.adj),SPORDER:=SPORDER.adj]
     pums_data[!is.na(HHtype.adj),HHtype:=HHtype.adj]
+    pums_data[!is.na(SERIALNO.adj),SERIALNO:=SERIALNO.adj]
     
   hhpop_baseline <- pums_data |>
     # Filter for households.
@@ -2193,9 +2194,9 @@ if (scen == "Scenario_1"){ # Scenario 1
   # hdsp.r_read(scenario = scen, file = "/headship_rates.1721.csv")
 
 
-} else if (scen == "Scenario_2"){ # Scenario 2
+} else if (scen %in% c("Scenario_2","Scenario_3","Scenario_4")){ # Scenario 2
   
-  print("Using Headship Rates for Scenario 2.")
+  print("Using Headship Rates for Scenario 2/3/4.")
   
   headship_rates.25 <- headship_rates |> 
     mutate(
@@ -2213,23 +2214,9 @@ if (scen == "Scenario_1"){ # Scenario 1
   
   hdsp.r <- bind_rows(headship_rates, headship_rates.25, hdsp.r)
   
-  # Load tenure rates for Scenario 2
-  ten.r <- fread(paste0(output_path, "tenure_rates.", scen, ".csv"))
-  
-} else if (scen == "Scenario_3"){ # Scenario 3
-  
-  print("Using Headship Rates for Scenario 3.")
-  
-  hdsp.r_read(scenario = scen, file = "")
-  
-} else {  #Scenario 4
-  
-  print("Using Headship Rates for Scenario 4.")
-  
-  hdsp.r_read(scenario = scen, file = "")
-  
+  # Use tenure rates from Scenario 2
+  ten.r <- fread(paste0(output_path, "tenure_rates.Scenario_2.csv"))
 }
-
 ```
 
 # 7.4 Join Headship Rates to Projected Population in Households by Age Group and RPA
@@ -2368,6 +2355,7 @@ if (sum(tmp.1$hh) != sum(tmp.2$hh)) {
 # 7.6 Create Reweighter Template Files for Household Projections by RPA/MPO and Household Type
 
 ------------------------------------------------------------------------
+
 # 7.6.1 Scenario 1
 
 ```{r}
@@ -2648,10 +2636,11 @@ if (scen == 'Scenario_1') {
 ```
 
 ------------------------------------------------------------------------
+
 # 7.6.2 Scenario 2
 
 ```{r}
-if (scen == 'Scenario_2') {
+if (scen %in% c('Scenario_2','Scenario_3','Scenario_4')) {
   for (i in yrs) {
     if (i != 2020) {
       # Record when the process has finished for each year in the year list.

@@ -84,6 +84,7 @@ if(scen=='Scenario_2'){
       mutate(AgeCat = ageCAT6)
     pums_data[!is.na(SPORDER.adj),SPORDER:=SPORDER.adj]
     pums_data[!is.na(HHtype.adj),HHtype:=HHtype.adj]
+    pums_data[!is.na(SERIALNO.adj),SERIALNO:=SERIALNO.adj]
 
 # Make Input folders for reweighter by RPA
 dir.create(paste0(workpath, scen, '/Input_Files/'), showWarnings = F)
@@ -148,7 +149,7 @@ source('algo_hh.R')
 # Set Targets and run reweighter loop
 
 # Different configuration for 2020 base year
-
+if(scen == 'Scenario_1'){
 for (yr in c(2020)) {
   #for (mid in c('MAPC')) {
   for (mid in mpos) {
@@ -229,7 +230,6 @@ for (yr in c(2020)) {
 }
 for (yr in 2025) {
   for (mid in mpos) {
-    scen='Scenario 1'
     # Set config
     inpath <- paste0(workpath, scen, '/Input_Files/', mid, '/')
     source(here('scripts/reweighter/read_config_RPA.R'))
@@ -274,11 +274,10 @@ for (yr in 2025) {
     fwrite(mess, paste0(outpath, mid, '_', yr, '_complete.txt'))
   }
 }
+}
 
-# for (yr in c(2030, 2035, 2040, 2045, 2050)) {
-for (yr in c(2035, 2040, 2045, 2050)) {
-  # for (mid in mpos) {
-  for (mid in m2) {
+for (yr in c(2030, 2035, 2040, 2045, 2050)) {
+  for (mid in mpos) {
     if(scen=='Scenario_2'){
       infile1 <- paste0(workpath, 'Templates/reweighting_config_2021.json')
       outfile1 <- paste0(workpath, scen, '/Input_Files/', mid, '/reweighting_config_2021_', mid, '.json')
@@ -441,10 +440,10 @@ for (yr in c(2030,2035,2040,2045,2050)){
     # Calculate total households from the reweighter outputs
   
       pums <- fread(paste0(inpath, 'PUMS', vintage, '_', scen, '_', mid, '_', yr, '.csv'))
-    setkey(pums, SERIALNO, SPORDER)
+    setkey(pums, SERIALNO.adj, SPORDER)
 
-    x <- fread(paste0(outpath, 'weights_final_', scen, '_', mid, '_', yr, '.csv')) |> select(SERIALNO, SPORDER, new_WGTP) |> mutate(mpo = mid) |> setDT()
-    setkey(x, SERIALNO, SPORDER)
+    x <- fread(paste0(outpath, 'weights_final_', scen, '_', mid, '_', yr, '.csv')) |> select(SERIALNO, SERIALNO.adj, SPORDER, new_WGTP) |> mutate(mpo = mid) |> setDT()
+    setkey(x, SERIALNO.adj, SPORDER)
     xp <- pums[x]
     fwrite(xp, paste0(outpath, '/reweighted_PUMS_', scen, '_', reb, '_', mid, '_', hdshp, '_', yr, '.csv'))
     rw <- xp[SPORDER == 1, lapply(.SD, sum), .(mpo), .SDcols = c('WGTP', 'new_WGTP')]
@@ -481,6 +480,7 @@ for (yr in c(2020,2025,2030,2035,2040,2045,2050)){
 ```
 
 # 7 - Vacancy and Unit Demand post-model calculations
+
 # 7.1 - Scenario 1
 
 ```{r}

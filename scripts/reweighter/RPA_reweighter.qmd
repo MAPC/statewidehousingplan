@@ -76,7 +76,7 @@ pums_data <- fread(paste0(workpath, 'PUMS_data/PUMS', vintage, '_formatted.csv')
   mutate(AgeCat = ageCAT6)
 }
 
-if(scen=='Scenario_2'){
+if(scen %in% c('Scenario_2','Scenario_3','Scenario_4')){
   for (yr in seq(2030,2050,5)){
      pums_data <- fread(paste0(rwt_path,'PUMS_data/PUMS2021_Scenario_2_',yr,'.csv')) |>
       left_join(x2,by = c('PUMA')) |> 
@@ -101,14 +101,14 @@ swm.pumas <- pums_data[rpa_acr != 'MAPC', .(rpa_acr, PUMA)] |>
 
 # MAPC 101 subset
 fwrite(pums_data[PUMA %in% mapc.pumas],
-       paste0(workpath, scen, '/Input_Files/MAPC/PUMS2021_Scenario_2_MAPC_',yr,'.csv'))
+       paste0(workpath, scen, '/Input_Files/MAPC/PUMS2021_',scen,'_MAPC_',yr,'.csv'))
 message(paste0('MAPC 101 PUMS export complete ',yr))
 
 # SWM join PUMA and export subsets
 for (m in unique(swm.pumas$rpa_acr)) {
   pums_data |>
     filter(rpa_acr==m) |>
-    fwrite(paste0(workpath, scen, '/Input_Files/', m, '/PUMS2021_Scenario_2_',m,'_',yr,'.csv'))
+    fwrite(paste0(workpath, scen, '/Input_Files/', m, '/PUMS2021_',scen,'_',m,'_',yr,'.csv'))
   message(paste0(m, ' PUMS export complete ',yr))
 }
   }
@@ -278,11 +278,11 @@ for (yr in 2025) {
 
 for (yr in c(2030, 2035, 2040, 2045, 2050)) {
   for (mid in mpos) {
-    if(scen=='Scenario_2'){
+    if(scen %in% c('Scenario_2','Scenario_3','Scenario_4')){
       infile1 <- paste0(workpath, 'Templates/reweighting_config_2021.json')
       outfile1 <- paste0(workpath, scen, '/Input_Files/', mid, '/reweighting_config_2021_', mid, '.json')
       cfig1 = readLines(infile1)
-      cfig1 = gsub('PUMS2021.csv', paste0('PUMS2021_Scenario_2_',mid,'_',yr,'.csv'), cfig1)
+      cfig1 = gsub('PUMS2021.csv', paste0('PUMS2021_',scen,'_',mid,'_',yr,'.csv'), cfig1)
       writeLines(cfig1, outfile1)
     }
     # Set config
@@ -409,12 +409,12 @@ comp.dt[abs(diff)>1]
 }
 ```
 
-# 5.2 - Scenario 2
+# 5.2 - Scenario 2/3/4
 
 ```{r}
 
 comp.dt <- data.table()
-if(scen=='Scenario_2'){
+if(scen %in% c('Scenario_2','Scenario_3','Scenario_4')){
 for (yr in c(2020,2025)){
   for (mid in mpos) {
     inpath <- paste0(workpath, scen, '/Input_Files/', mid, '/')
@@ -440,10 +440,10 @@ for (yr in c(2030,2035,2040,2045,2050)){
     # Calculate total households from the reweighter outputs
   
       pums <- fread(paste0(inpath, 'PUMS', vintage, '_', scen, '_', mid, '_', yr, '.csv'))
-    setkey(pums, SERIALNO.adj, SPORDER)
+    setkey(pums, SERIALNO, SPORDER)
 
-    x <- fread(paste0(outpath, 'weights_final_', scen, '_', mid, '_', yr, '.csv')) |> select(SERIALNO, SERIALNO.adj, SPORDER, new_WGTP) |> mutate(mpo = mid) |> setDT()
-    setkey(x, SERIALNO.adj, SPORDER)
+    x <- fread(paste0(outpath, 'weights_final_', scen, '_', mid, '_', yr, '.csv')) |> select(SERIALNO, SPORDER, new_WGTP) |> mutate(mpo = mid) |> setDT()
+    setkey(x, SERIALNO, SPORDER)
     xp <- pums[x]
     fwrite(xp, paste0(outpath, '/reweighted_PUMS_', scen, '_', reb, '_', mid, '_', hdshp, '_', yr, '.csv'))
     rw <- xp[SPORDER == 1, lapply(.SD, sum), .(mpo), .SDcols = c('WGTP', 'new_WGTP')]

@@ -40,7 +40,7 @@ root <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regi
 output_path <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Final_Outputs/", scen, "/")
 
 # Reweighter files path
-rwt_path <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Reweighter/", scen, "/Output_Files/")
+rwt_path <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Reweighter/")
 
 # Set knitr path
 knitr::opts_knit$set(root.dir = root)
@@ -83,16 +83,13 @@ pums.df<- NULL
 # - scenario: data that is generated to reflect population and headship rate scenarios. See xx for further detail
 # - year: a year in a list of years created earlier in this code block. Typically in 5-year or 10-year intervals.
 read_rwt.files <- function(scenario, year){
-  read_csv(
-      paste0(rwt_path, "reweighted_PUMS_",scenario,"_MAPC101_",hdshp,"_",year,".csv")
-    )
+  read_csv(paste0(rwt_path, scen, "/Output_Files/reweighted_PUMS_",scenario,"_MAPC101_",hdshp,"_",year,".csv"))
 }
 
 read_PUMS.files <- function(scenario, year){
-  read_csv(
-    paste0(rwt_path,'PUMS_data/PUMS2021_',scenario,'_',year,'.csv')
-  )
+  read_csv(paste0(rwt_path,'PUMS_data/PUMS2021_',scenario,'_',year,'.csv'))
 }
+
 
 if(scen == "Scenario_1"){
   

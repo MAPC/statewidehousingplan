@@ -16,8 +16,8 @@ This set of scripts runs the household reweighter to produce reweighted PUMS dat
 # Set Scenario name
 
 #scen <- 'Scenario_1'
-# scen <- 'Scenario_2'
-scen <- 'Scenario_3'
+scen <- 'Scenario_2'
+#scen <- 'Scenario_3'
 #scen <- 'Scenario_4'
 
 # Set ACS / PUMS vintage
@@ -409,6 +409,37 @@ for (yr in c(2030, 2035, 2040, 2045, 2050)) {
 ```
 
 # 5 - Create reweighted PUMS files and QC the reweighter Outputs
+
+# 5.0 - Check that all years/RPAs successfully converged
+
+```{r}
+  
+log.comp <- c()
+for (mid in mpos) {
+  outpath <- paste0(workpath, scen, '/Output_Files/', mid, '/')
+  logs <- list.files(path = outpath, pattern ='logfile*')
+  for (f in logs){
+    df <- readLines(paste0(outpath,f))
+    log.comp <- c(log.comp, if (length(
+      grep("Maximum deviation from target stopping condition achieved", df)
+    ) != 0) {
+      print(paste0(f, ' success'))
+    } else if (length(grep("Maximum number of iterations reached", df)) !=
+               0) {
+      print(paste0(f, ' failed to converge'))
+    } else if (length(grep(
+      "No change in weights stopping condition met", df
+    )) != 0) {
+      print(paste0(f, ' failed to converge'))
+    })
+  }
+}
+fwrite(as.data.table(log.comp),paste0(workpath,scen,'/reweighter_convergence_check.txt'))
+
+
+
+
+```
 
 # 5.1 - Scenario 1
 

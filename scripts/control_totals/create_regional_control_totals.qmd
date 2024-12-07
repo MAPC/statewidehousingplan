@@ -12,7 +12,7 @@ editor: visual
 # Set Scenario Names
 
 # Population Scenario
-scen <- 'Scenario_3'
+scen <- 'Scenario_2'
 # Headship rate Scenario
 # hdshp <- 'acs1721'
 hdshp <- 'scen2'
@@ -819,61 +819,61 @@ gc()
 
 ```{r}
 # Create a municipality to county crosswalk with {mapcdatakeys}
-muni_county.xw <- mapcdatakeys::all_muni_data_keys |> 
-  select(muni_id,muni_name,county_id,county) |> 
-  # Make all variables characters
-  mutate(across(everything(), ~as.character(.)))
-
-# Join the municipal level population data to the county to muni crosswalk
-qc.population.df <- left_join(
-  population.df,
-  muni_county.xw,
-  by = c("muni_id")
-) |> 
-  group_by(
-    county_id,
-    Sex,
-    ageCAT6
-  ) |> 
-  # Aggregate municipal level calculated group quarters to the county level
-  summarise(
-    calc.GQPopulation.10 = sum(GQPopulation.10),
-    calc.GQPopulation.20 = sum(GQPopulation.20)
-  ) |> 
-  ungroup()
-
-# Join gq population calculated in from the population - household population data
-# aggregated to county level to the gq population data pulled directly from the Census
-qc.population.df <- purrr::reduce(
-  list(qc.population.df, gqpop.10, gqpop.20),
-  dplyr::left_join, by = c("county_id", "Sex", "ageCAT6")
-) |> 
-  dplyr::rename(
-    GQPopulation.10 = GQPopulation.x,
-    GQPopulation.20 = GQPopulation.y,
-  ) |> 
-  # Calculate the difference between the calculated gq population and the available gq population
-  mutate(
-    gq.check.10 = calc.GQPopulation.10 - GQPopulation.10,
-    gq.check.20 = calc.GQPopulation.20 - GQPopulation.20
-  )
-
-# Print terms to automatically tell the user if they have passed the QC check.
-if (sum(qc.population.df$gq.check.10 > 0)){
-  print("STOP! Please check 2010 Census data queries and Group Quarters population calculations.")
-} else{
-  print("PROCEED!")
-}
-
-if(sum(qc.population.df$gq.check.20 > 0)){
-  print("STOP! Please check 2020 Census data queries and Group Quarters population calculations.")
-} else{
-  print("PROCEED!")
-  
-  # Remove unneeded dataframes
-  rm(qc.population.df, muni_county.xw, gqpop.10, gqpop.20, gqpop.df, hhpop.10, hhpop.20,
-     pop.10, pop.20)
-}
+# muni_county.xw <- mapcdatakeys::all_muni_data_keys |> 
+#   select(muni_id,muni_name,county_id,county) |> 
+#   # Make all variables characters
+#   mutate(across(everything(), ~as.character(.)))
+# 
+# # Join the municipal level population data to the county to muni crosswalk
+# qc.population.df <- left_join(
+#   population.df,
+#   muni_county.xw,
+#   by = c("muni_id")
+# ) |> 
+#   group_by(
+#     county_id,
+#     Sex,
+#     ageCAT6
+#   ) |> 
+#   # Aggregate municipal level calculated group quarters to the county level
+#   summarise(
+#     calc.GQPopulation.10 = sum(GQPopulation.10),
+#     calc.GQPopulation.20 = sum(GQPopulation.20)
+#   ) |> 
+#   ungroup()
+# 
+# # Join gq population calculated in from the population - household population data
+# # aggregated to county level to the gq population data pulled directly from the Census
+# qc.population.df <- purrr::reduce(
+#   list(qc.population.df, gqpop.10, gqpop.20),
+#   dplyr::left_join, by = c("county_id", "Sex", "ageCAT6")
+# ) |> 
+#   dplyr::rename(
+#     GQPopulation.10 = GQPopulation.x,
+#     GQPopulation.20 = GQPopulation.y,
+#   ) |> 
+#   # Calculate the difference between the calculated gq population and the available gq population
+#   mutate(
+#     gq.check.10 = calc.GQPopulation.10 - GQPopulation.10,
+#     gq.check.20 = calc.GQPopulation.20 - GQPopulation.20
+#   )
+# 
+# # Print terms to automatically tell the user if they have passed the QC check.
+# if (sum(qc.population.df$gq.check.10 > 0)){
+#   print("STOP! Please check 2010 Census data queries and Group Quarters population calculations.")
+# } else{
+#   print("PROCEED!")
+# }
+# 
+# if(sum(qc.population.df$gq.check.20 > 0)){
+#   print("STOP! Please check 2020 Census data queries and Group Quarters population calculations.")
+# } else{
+#   print("PROCEED!")
+#   
+#   # Remove unneeded dataframes
+#   rm(qc.population.df, muni_county.xw, gqpop.10, gqpop.20, gqpop.df, hhpop.10, hhpop.20,
+#      pop.10, pop.20)
+# }
 
 ```
 
@@ -1423,6 +1423,9 @@ if (scen == "Scenario_1"){
 # 6.3 Create Headship rates from this PUMS vintage
 
 ```{r}
+
+pums_data <- fread(paste0(rwt_path, '/PUMS_data/PUMS2021_formatted.csv'))
+
 # Generating headship rates by RPA, 5-year Age Group, and Household Type for the ACS 2017-2021 PUMS
 headship_rates <- pums_data |> 
   # Inclues only observations for people in households (omits GQ)                   
@@ -2209,10 +2212,7 @@ if (scen == "Scenario_1"){ # Scenario 1
     pivot_longer(cols=starts_with('freq'),names_to='year',names_prefix='freq.split.') |> 
     filter(var %in% c('single','hhderchild','hhdernochild')) |> 
     mutate(year =as.numeric(paste0('20',year))) |> 
-    dplyr::rename(freq = value) |> 
-    mutate(
-      ageCAT6 = as.factor(ageCAT6)
-    )
+    dplyr::rename(freq = value)
   
   hdsp.r <- bind_rows(headship_rates, headship_rates.25, hdsp.r)
   
@@ -2225,8 +2225,7 @@ if (scen == "Scenario_1"){ # Scenario 1
 
 ```{r}
 # Load in Population in Households for MAPC101
-umdi.pop.MAPC101 <- fread(paste0(output_path,'pop.in.hhds.MAPC101_by.RPA.ageCAT6.csv')) |> 
-  mutate(ageCAT6 = as.factor(ageCAT6))
+umdi.pop.MAPC101 <- fread(paste0(output_path,'pop.in.hhds.MAPC101_by.RPA.ageCAT6.csv'))
 
 # Household Projections by RPA (MAPC101) and Household Type
 proj.hh.MAPC101_by.rpa.hhtype <- left_join(
@@ -2271,8 +2270,7 @@ proj.hh.MAPC101_by.rpa.tenure <- left_join(
 
 #===============================================================================
 # Load in Population in Households for MAPC97
-umdi.pop.MAPC97 <- fread(paste0(output_path,'pop.in.hhds.MAPC97_by.RPA.ageCAT6.csv')) |> 
-  mutate(ageCAT6 = as.factor(ageCAT6))
+umdi.pop.MAPC97 <- fread(paste0(output_path,'pop.in.hhds.MAPC97_by.RPA.ageCAT6.csv'))
 
 # Household Projections by MPO (MAPC97) and Household Type
 proj.hh.MAPC97_by.mpo.hhtype <- hdsp.r |>
@@ -2643,87 +2641,83 @@ if (scen == 'Scenario_1') {
 
 ```{r}
 if (scen %in% c('Scenario_2', 'Scenario_3', 'Scenario_4')) {
-  for (i in yrs) {
-    if (i != 2020) {
-      # Record when the process has finished for each year in the year list.
-      print(paste0("Generating MAPC101 Reweighter Target Files for ", i, "."))
-      
-      hhtype.base <- fread(paste0(output_path, "hhtype_baseline.", hdshp, ".", yr, ".csv"))
-      ten.base <- fread(paste0(output_path, "tenure_baseline.", hdshp, ".", yr, ".csv"))
-      
-      # Filter the projected households dataframe by year i
-      tmp1 <- proj.hh.MAPC101_by.rpa.hhtype |>
-        filter(year == i) |>
-        select(-c(year))
-      
-      # Join the projected households by year to the baseline file.
-      target.file1 <- full_join(hhtype.base,
-                                tmp1,
-                                by = c("RPA" = "rpa_acr", "AgeCat", "HHtype")) |>
-        # Baseline files may not have every age group, household type segment that the projections have.
-        # Need to fill in places in the baseline where there are zeros for those segments.
-        mutate(across(everything(), ~ replace_na(., 0))) |>
-        dplyr::rename(TARGET = hh)
-      
-      # Join the projected households by year to the baseline file.
-      tmp2 <- proj.hh.MAPC101_by.rpa.tenure |>
-        filter(year == i) |>
-        select(-c(year))
-      
-      target.file2 <- full_join(ten.base, tmp2, by = c("RPA" = "rpa_acr", "AgeCat", "tenure")) |>
-        # Baseline files may not have every age group, household type segment that the projections have.
-        # Need to fill in places in the baseline where there are zeros for those segments.
-        mutate(across(everything(), ~ replace_na(., 0))) |>
-        dplyr::rename(TARGET = hh)
-      
-      # QC print statements confirming total households are equivalent between Household type and Tenure targets.
-      if (sum(target.file1$TARGET) != sum(target.file2$TARGET)) {
-        print("STOP! Please review target file creation code.")
-      } else{
-        print("Proceed.")
-      }
-      
-      # Write the reweighter targeting file to .csv by year i.
-      write.csv(
-        target.file1,
-        paste0(
-          output_path,
-          "hhtype.targetfile.MAPC101.",
-          scen,
-          '.hdshp.',
-          hdshp,
-          '.y',
-          i,
-          ".csv"
-        ),
-        row.names = FALSE
-      )
-      
-      # Write the reweighter targeting file to .csv by year i.
-      write.csv(
-        target.file2,
-        paste0(
-          output_path,
-          "tenure.targetfile.MAPC101.",
-          scen,
-          '.hdshp.',
-          hdshp,
-          '.y',
-          i,
-          ".csv"
-        ),
-        row.names = FALSE
-      )
-      
-      # Remove files that will be re-written in each loop.
-      rm(tmp1, tmp2, target.file1, target.file2)
-      
+  for (i in seq(2030, 2050, 5)) {
+    print(paste0("Generating MAPC101 Reweighter Target Files for ", i, "."))
+    
+    hhtype.base <- fread(paste0(output_path, "hhtype_baseline.", hdshp, ".", yr, ".csv"))
+    ten.base <- fread(paste0(output_path, "tenure_baseline.", hdshp, ".", yr, ".csv"))
+    
+    # Filter the projected households dataframe by year i
+    tmp1 <- proj.hh.MAPC101_by.rpa.hhtype |>
+      filter(year == i) |>
+      select(-c(year))
+    
+    # Join the projected households by year to the baseline file.
+    target.file1 <- full_join(hhtype.base,
+                              tmp1,
+                              by = c("RPA" = "rpa_acr", "AgeCat", "HHtype")) |>
+      # Baseline files may not have every age group, household type segment that the projections have.
+      # Need to fill in places in the baseline where there are zeros for those segments.
+      mutate(across(everything(), ~ replace_na(., 0))) |>
+      dplyr::rename(TARGET = hh)
+    
+    # Join the projected households by year to the baseline file.
+    tmp2 <- proj.hh.MAPC101_by.rpa.tenure |>
+      filter(year == i) |>
+      select(-c(year))
+    
+    target.file2 <- full_join(ten.base, tmp2, by = c("RPA" = "rpa_acr", "AgeCat", "tenure")) |>
+      # Baseline files may not have every age group, household type segment that the projections have.
+      # Need to fill in places in the baseline where there are zeros for those segments.
+      mutate(across(everything(), ~ replace_na(., 0))) |>
+      dplyr::rename(TARGET = hh)
+    
+    # QC print statements confirming total households are equivalent between Household type and Tenure targets.
+    if (sum(target.file1$TARGET) != sum(target.file2$TARGET)) {
+      print("STOP! Please review target file creation code.")
+    } else{
+      print("Proceed.")
     }
+    
+    # Write the reweighter targeting file to .csv by year i.
+    write.csv(
+      target.file1,
+      paste0(
+        output_path,
+        "hhtype.targetfile.MAPC101.",
+        scen,
+        '.hdshp.',
+        hdshp,
+        '.y',
+        i,
+        ".csv"
+      ),
+      row.names = FALSE
+    )
+    
+    # Write the reweighter targeting file to .csv by year i.
+    write.csv(
+      target.file2,
+      paste0(
+        output_path,
+        "tenure.targetfile.MAPC101.",
+        scen,
+        '.hdshp.',
+        hdshp,
+        '.y',
+        i,
+        ".csv"
+      ),
+      row.names = FALSE
+    )
+    
+    # Remove files that will be re-written in each loop.
+    rm(tmp1, tmp2, target.file1, target.file2)
   }
   #===============================================================================
   # MAPC97/MPO Versions
-  for (i in yrs) {
-    if (i != 2020) {
+  for (i in seq(2030, 2050, 5)){
+      
       # Record when the process has finished for each year in the year list.
       print(paste0("Generating MAPC97 Reweighter Target Files for ", i, "."))
       
@@ -2794,9 +2788,7 @@ if (scen %in% c('Scenario_2', 'Scenario_3', 'Scenario_4')) {
       
       # Remove files that will be re-written in each loop.
       rm(tmp1, tmp2, target.file1, target.file2)
-      
     }
-  }
 }
 
 ```

@@ -32,8 +32,8 @@ reb <- 'MAPC101'
 # reb <- 'MAPC97'
 
 # Root Directory
-root <- 'S:/Network Shares/K Drive/DataServices/Projects/'
-#root <- 'K:/DataServices/Projects/'
+#root <- 'S:/Network Shares/K Drive/DataServices/Projects/'
+root <- 'K:/DataServices/Projects/'
 
 ctrltotal.path <- paste0(root, 'Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/', scen, '/')
 

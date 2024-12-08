@@ -45,7 +45,7 @@ library(mapcdatakeys)
 library(janitor)
 library(readxl)
 library(here)
-library(RPostgreSQL)
+#library(RPostgreSQL)
 
 # Remove scientific notation
 options(scipen = 999)
@@ -91,6 +91,7 @@ variable_list <- c('RT', 'PUMA', 'ADJHSG','ADJINC','NP','TYPEHUGQ','BDSP','RMSP'
 # Query {tidycensus} for 2017-2021 5-Year PUMS data
 pums_data <- pums_query(var.list = variable_list, yr = vintage, srvy = "acs5") |>
   # General Data Cleaning
+
   mutate(
     # Generate five-year age groupings to match UMDI population projections data.
     ageCAT6 = cut(AGEP, breaks = c(-Inf, seq(4, 84, 5), Inf), labels = 1:18),

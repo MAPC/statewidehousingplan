@@ -21,8 +21,8 @@ hdshp <- 'scen2'
 # root <- '../../../../Data/Working/Regional_Control_Totals/'
 
 # Base root. Toggle between S: and K: drive depedning on mapped paths on your computer
-#base <- "K:/DataServices/Projects/Current_Projects/"
-base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
+base <- "K:/DataServices/Projects/Current_Projects/"
+#base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
 
 # General K drive filepath
 root <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/")
@@ -2208,11 +2208,9 @@ if (scen == "Scenario_1"){ # Scenario 1
       year = 2025
     )
    
-  hdsp.r <- fread(paste0(rwt_path,"Headship_rates/hdsp.r.1721_household.split.paced.csv")) |> 
-    pivot_longer(cols=starts_with('freq'),names_to='year',names_prefix='freq.split.') |> 
+  hdsp.r <- fread(paste0(root,"Scenario_2/headship.rates.comparison_2000.hsr_to_1721.household.split.hsr.csv")) |> 
     filter(var %in% c('single','hhderchild','hhdernochild')) |> 
-    mutate(year =as.numeric(paste0('20',year))) |> 
-    dplyr::rename(freq = value)
+    dplyr::rename(freq=freq.scenario2)
   
   hdsp.r <- bind_rows(headship_rates, headship_rates.25, hdsp.r)
   
@@ -2328,21 +2326,39 @@ proj.hh.MAPC97_by.mpo.tenure <- ten.r |>
 ```{r}
 # QA Total Households in Each Projection Year
 tmp.1 <- proj.hh.MAPC101_by.rpa.hhtype |>
-  group_by(year) |>
+  group_by(year,rpa_acr,AgeCat) |>
   summarise(hh = sum(hh)) |>
   ungroup()
 
 tmp.2 <- proj.hh.MAPC101_by.rpa.tenure  |>
-  group_by(year) |>
+  group_by(year,rpa_acr,AgeCat) |>
   summarise(hh = sum(hh)) |>
   ungroup()
 # 
-# tt <- tmp.1 |> left_join(tmp.2, by=c('year','rpa_acr','AgeCat')) |> setDT()
-# tt[,diff:=hh.x-hh.y]
+tt <- tmp.1 |> left_join(tmp.2, by=c('year','rpa_acr','AgeCat')) |> setDT()
+tt[,diff:=hh.x-hh.y]
+tt[diff!=0]
+low.diff <- tt[diff==-1,paste(year,rpa_acr,AgeCat)]
+hi.diff <- tt[diff==1,paste(year,rpa_acr,AgeCat)]
+
+setDT(proj.hh.MAPC101_by.rpa.tenure)
+proj.hh.MAPC101_by.rpa.tenure[paste(year,rpa_acr,AgeCat)==low.diff & tenure=='x == 1', hh:=hh-1]
+proj.hh.MAPC101_by.rpa.tenure[paste(year,rpa_acr,AgeCat)==hi.diff & tenure=='x == 1', hh:=hh+1]
 
 # QC for baseline files. Compare total households for HHtype and Tenure projection files.
+
+tmp.3 <- proj.hh.MAPC101_by.rpa.hhtype |>
+  group_by(year,rpa_acr,AgeCat) |>
+  summarise(hh = sum(hh)) |>
+  ungroup()
+
+tmp.4 <- proj.hh.MAPC101_by.rpa.tenure  |>
+  group_by(year,rpa_acr,AgeCat) |>
+  summarise(hh = sum(hh)) |>
+  ungroup()
+# 
 # There is a small rounding error.
-if (sum(tmp.1$hh) != sum(tmp.2$hh)) {
+if (sum(tmp.3$hh) != sum(tmp.4$hh)) {
   print("STOP! Please review scripts which create the target files.")
 } else {
   print("Proceed!")
@@ -2350,6 +2366,47 @@ if (sum(tmp.1$hh) != sum(tmp.2$hh)) {
  # rm(tmp.1, tmp.2)
 }
 
+
+tmp.1 <- proj.hh.MAPC97_by.mpo.hhtype |>
+  group_by(year,mpo,AgeCat) |>
+  summarise(hh = sum(hh)) |>
+  ungroup()
+
+tmp.2 <- proj.hh.MAPC97_by.mpo.tenure  |>
+  group_by(year,mpo,AgeCat) |>
+  summarise(hh = sum(hh)) |>
+  ungroup()
+# 
+tt <- tmp.1 |> left_join(tmp.2, by=c('year','mpo','AgeCat')) |> setDT()
+tt[,diff:=hh.x-hh.y]
+tt[diff!=0]
+low.diff <- tt[diff==-1,paste(year,mpo,AgeCat)]
+hi.diff <- tt[diff==1,paste(year,mpo,AgeCat)]
+
+setDT(proj.hh.MAPC97_by.mpo.tenure)
+proj.hh.MAPC97_by.mpo.tenure[paste(year,mpo,AgeCat)==low.diff & tenure=='x == 1', hh:=hh-1]
+proj.hh.MAPC97_by.mpo.tenure[paste(year,mpo,AgeCat)==hi.diff & tenure=='x == 1', hh:=hh+1]
+
+# QC for baseline files. Compare total households for HHtype and Tenure projection files.
+
+tmp.3 <- proj.hh.MAPC97_by.mpo.hhtype |>
+  group_by(year,mpo,AgeCat) |>
+  summarise(hh = sum(hh)) |>
+  ungroup()
+
+tmp.4 <- proj.hh.MAPC97_by.mpo.tenure  |>
+  group_by(year,mpo,AgeCat) |>
+  summarise(hh = sum(hh)) |>
+  ungroup()
+# 
+# There is a small rounding error.
+if (sum(tmp.3$hh) != sum(tmp.4$hh)) {
+  print("STOP! Please review scripts which create the target files.")
+} else {
+  print("Proceed!")
+  
+ # rm(tmp.1, tmp.2)
+}
 ```
 
 # 7.6 Create Reweighter Template Files for Household Projections by RPA/MPO and Household Type
@@ -2644,8 +2701,8 @@ if (scen %in% c('Scenario_2', 'Scenario_3', 'Scenario_4')) {
   for (i in seq(2030, 2050, 5)) {
     print(paste0("Generating MAPC101 Reweighter Target Files for ", i, "."))
     
-    hhtype.base <- fread(paste0(output_path, "hhtype_baseline.", hdshp, ".", yr, ".csv"))
-    ten.base <- fread(paste0(output_path, "tenure_baseline.", hdshp, ".", yr, ".csv"))
+    hhtype.base <- fread(paste0(output_path, "hhtype_baseline.", hdshp, ".", i, ".csv"))
+    ten.base <- fread(paste0(output_path, "tenure_baseline.", hdshp, ".", i, ".csv"))
     
     # Filter the projected households dataframe by year i
     tmp1 <- proj.hh.MAPC101_by.rpa.hhtype |>
@@ -2721,8 +2778,8 @@ if (scen %in% c('Scenario_2', 'Scenario_3', 'Scenario_4')) {
       # Record when the process has finished for each year in the year list.
       print(paste0("Generating MAPC97 Reweighter Target Files for ", i, "."))
       
-      hhtype.base <- fread(paste0(output_path, "hhtype_baseline.", hdshp, ".", yr, ".csv"))
-      ten.base <- fread(paste0(output_path, "tenure_baseline.", hdshp, ".", yr, ".csv"))
+      hhtype.base <- fread(paste0(output_path, "hhtype_baseline.", hdshp, ".", i, ".csv"))
+      ten.base <- fread(paste0(output_path, "tenure_baseline.", hdshp, ".", i, ".csv"))
       
       #Filter the projected households dataframe by year i
       tmp1 <- proj.hh.MAPC97_by.mpo.hhtype |>
@@ -2749,6 +2806,9 @@ if (scen %in% c('Scenario_2', 'Scenario_3', 'Scenario_4')) {
       
       # QC print statements confirming total households are equivalent between Household type and Tenure targets.
       if (sum(target.file1$TARGET) != sum(target.file2$TARGET)) {
+        
+        setDT(proj.hh.MAPC97_by.mpo.tenure)
+        
         print("STOP! Please review target file creation code.")
       } else{
         print("Proceed.")

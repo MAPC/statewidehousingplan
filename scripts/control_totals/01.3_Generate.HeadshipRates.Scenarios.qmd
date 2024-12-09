@@ -55,19 +55,11 @@ set.seed(351)
 # Load Libraries for PUMS Analysis and PUMS API query functions
 # Sets seed and removes scientific notation
 source(here("PUMS_Analysis/PUMS_Helper_Functions.R"))
-# source(file = "C:/Project_Work/Local_Data/General/census.data_connection.R")
-#source(file = "C:/Project_Work/housing/dbConnections.R")
 
 # Load PUMA x RPA Crosswalk
 xw <- read.csv(paste0(rwt_path, "PUMS_data/PUMA10_RPA_crosswalk.csv")) |> 
   mutate(PUMA = str_pad(PUMA, 5, "left", pad = 0))
 
-# # Pull AMI Table for 2021
-# ami_table <- get_mapc_database(
-#   db.table_name = "hous_section8_income_limits_by_year_m",
-#   year = 2021,
-#   vars = "*"
-# )
 
 ```
 
@@ -861,6 +853,9 @@ total_split.hhds <- as.numeric(sum(nrow(partial.pums_data.subset1), nrow(partial
 # Calculate the sample size of rows we want to pull from the subsets in each year.
 sample.size <- round(total_split.hhds*0.25, 0)
 
+# Test the 
+sample_sum <- 0
+
 for (i in years){
   
   # Print Statement so I know which year we're in.
@@ -885,6 +880,10 @@ for (i in years){
       )
     # Print the number of households that have been sampled.
     print(sum(tmp$WGTP))
+    
+    # And add them up to an object to record the total number of households as QC.
+    sample_sum <- sample_sum + as.numeric(sum(tmp$WGTP))
+    
     # Remove sampled households from the subset.
     partial.pums_data.subset1 <- partial.pums_data.subset1 |> 
       filter(!SERIALNO.adj %in% tmp$SERIALNO.adj)
@@ -913,6 +912,9 @@ for (i in years){
     # Print the number of households that have been sampled.
     print(sum(sum(tmp.1$WGTP), sum(tmp.2$WGTP)))
     
+    # And add them up to an object to record the total number of households as QC.
+    sample_sum <- sample_sum + as.numeric(sum(tmp$WGTP))
+    
     # Remove sampled households from the subset.
     partial.pums_data.subset1 <- partial.pums_data.subset1 |> 
       filter(!SERIALNO.adj %in% tmp.1$SERIALNO.adj)
@@ -935,6 +937,10 @@ for (i in years){
       )
     # Print the number of households that have been sampled.
     print(sum(tmp$WGTP))
+    
+    # And add them up to an object to record the total number of households as QC.
+    sample_sum <- sample_sum + as.numeric(sum(tmp$WGTP))
+    
     # Remove sampled households from the subset.
     partial.pums_data.subset2 <- partial.pums_data.subset2 |> 
       filter(!SERIALNO.adj %in% tmp$SERIALNO.adj)
@@ -957,6 +963,10 @@ for (i in years){
       )
     # Print the number of households that have been sampled.
     print(sum(tmp$WGTP))
+    
+    # And add them up to an object to record the total number of households as QC.
+    sample_sum <- sample_sum + as.numeric(sum(tmp$WGTP))
+    
     # Remove sampled households from the subset.
     partial.pums_data.subset2 <- partial.pums_data.subset2 |> 
       filter(!SERIALNO.adj %in% tmp$SERIALNO.adj)
@@ -982,14 +992,15 @@ if (sum(df.row.1, df.row.2) == 0){
   print("STOP! Data still exist in the subset dataframes. Please review sampling script.")
 }
 
+# QC Check - tell us if the number of households in the samples matches the number of households we started with.
+if (sample_sum == 15371){
+  print("Finished sampling PUMS subsets.")
+} else{
+  print("STOP! Data still exist in the subset dataframes. Please review sampling script.")
+}
+
 # Put all the samples together for ease in the subsequent sections
 pums.sample <- bind_rows(pums.sample_2030, pums.sample_2035,pums.sample_2040, pums.sample_2045, pums.sample_2050)
-
-test2 <- pums.sample |> 
-  filter(SPORDER.adj == "1") |> 
-  group_by(HHtype.adj) |> 
-  summarise(hh = sum(WGTP)) |> 
-  ungroup()
 
 ```
 

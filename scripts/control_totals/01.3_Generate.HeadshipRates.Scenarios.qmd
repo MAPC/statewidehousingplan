@@ -1148,6 +1148,15 @@ for (i in years) {
     # Remove unsplit original and split households from standard PUMS dataset by SERIALNO
     tmp_pums <- pums |> filter(!SERIALNO %in% sn)
     
+    # QC - Check that the numbers of swapped the rows is correct. 
+    row.check <- as.numeric((nrow(pums) - nrow(tmp_pums)) - (nrow(og) + nrow(adj)))
+    
+    if (row.check == 0){
+      print("Proceed")
+    } else{
+      print("STOP! The number of swapped rows in the tmp_pums dataframe is incorrect.")
+    }
+    
     # Add the original and split households from this year's sample (and cumulative samples) to the standard PUMS dataset.
     # This simulates the formation of new households.
     done_pums <- bind_rows(tmp_pums, og, adj) |>
@@ -1202,6 +1211,15 @@ for (i in years) {
     # Remove unsplit original and split households from standard PUMS dataset by SERIALNO
     tmp_pums <- pums |> filter(!SERIALNO %in% sn)
     
+    # QC - Check that the numbers of swapped the rows is correct. 
+    row.check <- as.numeric((nrow(pums) - nrow(tmp_pums)) - (nrow(og) + nrow(adj)))
+    
+    if (row.check == 0){
+      print("Proceed")
+    } else{
+      print("STOP! The number of swapped rows in the tmp_pums dataframe is incorrect.")
+    }
+    
     # Add the original and split households from this year's sample (and cumulative samples) to the standard PUMS dataset.
     # This simulates the formation of new households.
     done_pums <- bind_rows(tmp_pums, og, adj)  |>
@@ -1251,6 +1269,15 @@ for (i in years) {
     
     # Remove unsplit original and split households from standard PUMS dataset by SERIALNO
     tmp_pums <- pums |> filter(!SERIALNO %in% sn)
+    
+    # QC - Check that the numbers of swapped the rows is correct. 
+    row.check <- as.numeric((nrow(pums) - nrow(tmp_pums)) - (nrow(og) + nrow(adj)))
+    
+    if (row.check == 0){
+      print("Proceed")
+    } else{
+      print("STOP! The number of swapped rows in the tmp_pums dataframe is incorrect.")
+    }
     
     # Add the original and split households from this year's sample (and cumulative samples) to the standard PUMS dataset.
     # This simulates the formation of new households.
@@ -1302,6 +1329,15 @@ for (i in years) {
     # Remove unsplit original and split households from standard PUMS dataset by SERIALNO
     tmp_pums <- pums |> filter(!SERIALNO %in% sn)
     
+   # QC - Check that the numbers of swapped the rows is correct. 
+    row.check <- as.numeric((nrow(pums) - nrow(tmp_pums)) - (nrow(og) + nrow(adj)))
+    
+    if (row.check == 0){
+      print("Proceed")
+    } else{
+      print("STOP! The number of swapped rows in the tmp_pums dataframe is incorrect.")
+    }
+    
     # Add the original and split households from this year's sample (and cumulative samples) to the standard PUMS dataset.
     # This simulates the formation of new households.
     done_pums <- bind_rows(tmp_pums, og, adj)  |>
@@ -1351,6 +1387,15 @@ for (i in years) {
     
     # Remove unsplit original and split households from standard PUMS dataset by SERIALNO
     tmp_pums <- pums |> filter(!SERIALNO %in% sn)
+    
+    # QC - Check that the numbers of swapped the rows is correct. 
+    row.check <- as.numeric((nrow(pums) - nrow(tmp_pums)) - (nrow(og) + nrow(adj)))
+    
+    if (row.check == 0){
+      print("Proceed")
+    } else{
+      print("STOP! The number of swapped rows in the tmp_pums dataframe is incorrect.")
+    }
     
     # Add the original and split households from this year's sample (and cumulative samples) to the standard PUMS dataset.
     # This simulates the formation of new households.

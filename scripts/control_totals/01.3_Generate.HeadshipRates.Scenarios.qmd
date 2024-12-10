@@ -1143,8 +1143,12 @@ for (i in years) {
     # Creates a list of SERIALNO to include from the split household data (both the newly create households and the original household which is now smaller).
     sn <- pums.sample |>
       filter(sample == i) |>
-      select(SERIALNO) |>
-      distinct(SERIALNO) |> 
+      select(SERIALNO) |> 
+      pull()
+    
+    sn.adj <- pums.sample |>
+      filter(sample == i) |>
+      select(SERIALNO.adj) |> 
       pull()
     
     # Create a dataframe of original households that had subfamilies split out from it.
@@ -1155,36 +1159,16 @@ for (i in years) {
     # Create a dataframe of split households.
     adj <- full.pums_data.adj |> 
       filter(TYPEHUGQ == 1 & (subset.flag.1 != 0 | subset.flag.2 !=0) & adj.flag >= 1) |>
-      filter(SERIALNO %in% sn)
+      filter(SERIALNO.adj %in% sn.adj)
     
-    # # QC - 
-      adj.test <- adj |> filter(SPORDER.adj == 1)
-    #  adj.test.distinct <- adj |> filter(SPORDER.adj == 1) |> distinct(SERIALNO, .keep_all = TRUE)
-    # # adj.test.sn <- adj |> filter(SPORDER.adj == 1) |> select(SERIALNO, SPORDER)
-      sample.test <- pums.sample |> filter(sample == i) |> filter(SPORDER.adj == 1)
-    # sample.test.sn <- pums.sample |> filter(sample == i) |> filter(SPORDER.adj == 1) |> select(SERIALNO, SPORDER)
-    # 
-    # x <- full_join(
-    #   adj.test.sn,
-    #   sample.test.sn,
-    #   by = c("SERIALNO")
-    # )
-    # 
-    # y <- duplicated(sn)
-    # z <- unique(sn)
-    # 
-    # 
-    # print(base::union(base::setdiff(adj.test.sn, sample.test.sn), base::setdiff(sample.test.sn, adj.test.sn)))
-    # 
-    # print(base::setdiff(base::union(adj.test.sn, sample.test.sn), base::intersect(adj.test.sn, sample.test.sn)))
-    # 
-    # 
-    # # 
-    #  sample.test2 <- pums.sample_2030 |> filter(SPORDER.adj == 1)
-     print(sum(adj.test$WGTP))
-    # print(sum(adj.test.distinct$WGTP))
-     print(sum(sample.test$WGTP))
-    # print(sum(sample.test2$WGTP))
+    # # QC -
+    og.test <- og |> filter(SPORDER.adj == 1)
+    adj.test <- adj |> filter(SPORDER.adj == 1)
+    sample.test <- pums.sample |> filter(sample == i) |> filter(SPORDER.adj == 1)
+    
+    print(sum(og.test$WGTP))
+    print(sum(adj.test$WGTP))
+    print(sum(sample.test$WGTP))
     
     # Remove unsplit original and split households from standard PUMS dataset by SERIALNO
     tmp_pums <- pums |> filter(!SERIALNO %in% sn)
@@ -1236,8 +1220,12 @@ for (i in years) {
     # Creates a list of SERIALNO to include from the split household data (both the newly create households and the original household which is now smaller).
     sn <- pums.sample |>
       filter(sample == i | sample == (i - 5)) |>
-      select(SERIALNO) |>
-      distinct(SERIALNO) |> 
+      select(SERIALNO) |> 
+      pull()
+    
+    sn.adj <- pums.sample |>
+      filter(sample == i | sample == (i - 5)) |>
+      select(SERIALNO.adj) |> 
       pull()
     
     # Create a dataframe of original households that had subfamilies split out from it.
@@ -1248,15 +1236,16 @@ for (i in years) {
     # Create a dataframe of split households.
     adj <- full.pums_data.adj |> 
       filter(TYPEHUGQ == 1 & (subset.flag.1 != 0 | subset.flag.2 !=0) & adj.flag >= 1) |>
-      filter(SERIALNO %in% sn)
+      filter(SERIALNO.adj %in% sn.adj)
     
+    # # QC -
+    og.test <- og |> filter(SPORDER.adj == 1)
     adj.test <- adj |> filter(SPORDER.adj == 1)
-    print(sum(adj.test$WGTP))
+    sample.test <- pums.sample |> filter(sample == i | sample == (i - 5)) |> filter(SPORDER.adj == 1)
     
-     sample.test <- pums.sample |>
-     filter(sample == i | sample == (i - 5) | sample == (i - 10) | sample == (i - 15) | sample == (i - 20)) |> filter(SPORDER.adj == 1)
-     
-     print(sum(sample.test$WGTP))
+    print(sum(og.test$WGTP))
+    print(sum(adj.test$WGTP))
+    print(sum(sample.test$WGTP))
     
     # Remove unsplit original and split households from standard PUMS dataset by SERIALNO
     tmp_pums <- pums |> filter(!SERIALNO %in% sn)
@@ -1304,8 +1293,12 @@ for (i in years) {
     # Creates a list of SERIALNO to include from the split household data (both the newly create households and the original household which is now smaller).
     sn <- pums.sample |>
       filter(sample == i | sample == (i - 5) | sample == (i - 10)) |>
-      select(SERIALNO) |>
-      distinct(SERIALNO) |> 
+      select(SERIALNO) |> 
+      pull()
+    
+    sn.adj <- pums.sample |>
+      filter(sample == i | sample == (i - 5) | sample == (i - 10)) |>
+      select(SERIALNO.adj) |> 
       pull()
     
     # Create a dataframe of original households that had subfamilies split out from it.
@@ -1318,13 +1311,14 @@ for (i in years) {
       filter(TYPEHUGQ == 1 & (subset.flag.1 != 0 | subset.flag.2 !=0) & adj.flag >= 1) |>
       filter(SERIALNO %in% sn)
     
+    # # QC -
+    og.test <- og |> filter(SPORDER.adj == 1)
     adj.test <- adj |> filter(SPORDER.adj == 1)
-    print(sum(adj.test$WGTP))
+    sample.test <- pums.sample |> filter(sample == i | sample == (i - 5) | sample == (i - 10)) |> filter(SPORDER.adj == 1)
     
-     sample.test <- pums.sample |>
-     filter(sample == i | sample == (i - 5) | sample == (i - 10) | sample == (i - 15) | sample == (i - 20)) |> filter(SPORDER.adj == 1)
-     
-     print(sum(sample.test$WGTP))
+    print(sum(og.test$WGTP))
+    print(sum(adj.test$WGTP))
+    print(sum(sample.test$WGTP))
     
     # Remove unsplit original and split households from standard PUMS dataset by SERIALNO
     tmp_pums <- pums |> filter(!SERIALNO %in% sn)
@@ -1372,8 +1366,12 @@ for (i in years) {
     # Creates a list of SERIALNO to include from the split household data (both the newly create households and the original household which is now smaller).
     sn <- pums.sample |>
       filter(sample == i | sample == (i - 5) | sample == (i - 10) | sample == (i - 15)) |>
-      select(SERIALNO) |>
-      distinct(SERIALNO) |> 
+      select(SERIALNO) |> 
+      pull()
+    
+    sn.adj <- pums.sample |>
+      filter(sample == i | sample == (i - 5) | sample == (i - 10) | sample == (i - 15)) |>
+      select(SERIALNO.adj) |> 
       pull()
     
     # Create a dataframe of original households that had subfamilies split out from it.
@@ -1386,13 +1384,14 @@ for (i in years) {
       filter(TYPEHUGQ == 1 & (subset.flag.1 != 0 | subset.flag.2 !=0) & adj.flag >= 1) |>
       filter(SERIALNO %in% sn)
     
+    # # QC -
+    og.test <- og |> filter(SPORDER.adj == 1)
     adj.test <- adj |> filter(SPORDER.adj == 1)
-    print(sum(adj.test$WGTP))
+    sample.test <- pums.sample |> filter(sample == i | sample == (i - 5) | sample == (i - 10) | sample == (i -15)) |> filter(SPORDER.adj == 1)
     
-     sample.test <- pums.sample |>
-     filter(sample == i | sample == (i - 5) | sample == (i - 10) | sample == (i - 15) | sample == (i - 20)) |> filter(SPORDER.adj == 1)
-     
-     print(sum(sample.test$WGTP))
+    print(sum(og.test$WGTP))
+    print(sum(adj.test$WGTP))
+    print(sum(sample.test$WGTP))
     
     # Remove unsplit original and split households from standard PUMS dataset by SERIALNO
     tmp_pums <- pums |> filter(!SERIALNO %in% sn)
@@ -1441,7 +1440,11 @@ for (i in years) {
     sn <- pums.sample |>
       filter(sample == i | sample == (i - 5) | sample == (i - 10) | sample == (i - 15) | sample == (i - 20)) |>
       select(SERIALNO) |>
-      distinct(SERIALNO) |> 
+      pull()
+    
+    sn <- pums.sample |>
+      filter(sample == i | sample == (i - 5) | sample == (i - 10) | sample == (i - 15) | sample == (i - 20)) |>
+      select(SERIALNO.adj) |>
       pull()
     
     # Create a dataframe of original households that had subfamilies split out from it.
@@ -1454,13 +1457,14 @@ for (i in years) {
       filter(TYPEHUGQ == 1 & (subset.flag.1 != 0 | subset.flag.2 !=0) & adj.flag >= 1) |>
       filter(SERIALNO %in% sn)
     
+    # # QC -
+    og.test <- og |> filter(SPORDER.adj == 1)
     adj.test <- adj |> filter(SPORDER.adj == 1)
-    print(sum(adj.test$WGTP))
+    sample.test <- pums.sample |> filter(sample == i | sample == (i - 5) | sample == (i - 10) | sample == (i-15) | sample == (i - 20)) |> filter(SPORDER.adj == 1)
     
-     sample.test <- pums.sample |>
-     filter(sample == i | sample == (i - 5) | sample == (i - 10) | sample == (i - 15) | sample == (i - 20)) |> filter(SPORDER.adj == 1)
-     
-     print(sum(sample.test$WGTP))
+    print(sum(og.test$WGTP))
+    print(sum(adj.test$WGTP))
+    print(sum(sample.test$WGTP))
     
     # Remove unsplit original and split households from standard PUMS dataset by SERIALNO
     tmp_pums <- pums |> filter(!SERIALNO %in% sn)

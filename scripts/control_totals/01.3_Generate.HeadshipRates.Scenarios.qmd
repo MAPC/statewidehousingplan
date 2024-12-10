@@ -838,6 +838,7 @@ partial.pums_data.subset2 <- full.pums_data.adj |>
   filter(SPORDER.adj == 1 & TYPEHUGQ == 1 & subset.flag.1 != 1 & subset.flag.2 == 1 & adj.flag == 2)
 
 # QC - Ensure total number of households in the split data sets matches the correct number identified in the script.
+print(sum(partial.pums_data.og$WGTP))
 print(sum(sum(partial.pums_data.subset1$WGTP), sum(partial.pums_data.subset2$WGTP)))
 
 
@@ -1309,7 +1310,7 @@ for (i in years) {
     # Create a dataframe of split households.
     adj <- full.pums_data.adj |> 
       filter(TYPEHUGQ == 1 & (subset.flag.1 != 0 | subset.flag.2 !=0) & adj.flag >= 1) |>
-      filter(SERIALNO %in% sn)
+      filter(SERIALNO.adj %in% sn.adj)
     
     # # QC -
     og.test <- og |> filter(SPORDER.adj == 1)
@@ -1382,7 +1383,7 @@ for (i in years) {
     # Create a dataframe of split households.
     adj <- full.pums_data.adj |> 
       filter(TYPEHUGQ == 1 & (subset.flag.1 != 0 | subset.flag.2 !=0) & adj.flag >= 1) |>
-      filter(SERIALNO %in% sn)
+      filter(SERIALNO.adj %in% sn.adj)
     
     # # QC -
     og.test <- og |> filter(SPORDER.adj == 1)
@@ -1455,7 +1456,7 @@ for (i in years) {
     # Create a dataframe of split households.
     adj <- full.pums_data.adj |> 
       filter(TYPEHUGQ == 1 & (subset.flag.1 != 0 | subset.flag.2 !=0) & adj.flag >= 1) |>
-      filter(SERIALNO %in% sn)
+      filter(SERIALNO.adj %in% sn.adj)
     
     # # QC -
     og.test <- og |> filter(SPORDER.adj == 1)

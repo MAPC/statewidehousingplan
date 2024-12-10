@@ -601,6 +601,9 @@ full.pums_data.adj <- full.pums_data.adj |>
 subset.1.og.test <- full.pums_data.adj |> 
   filter(SPORDER.adj == 1 & TYPEHUGQ == 1 & subset.flag.1 == 1 & adj.flag == 0)
 
+# Print the number of original households that have been altered by the household split code for Subset #1.
+print(sum(subset.1.og.test$WGTP))
+
 # Filter for the subset of subfamily members from the split household (the "original" household).
 subset.1.adj.test <- full.pums_data.adj |> 
   filter(SPORDER.adj == 1 & TYPEHUGQ == 1 & subset.flag.1 == 1 & adj.flag == 1)
@@ -614,12 +617,18 @@ print(sum(subset.1.adj.test$WGTP))
 subset.2.og.test <- full.pums_data.adj |> 
   filter(SPORDER.adj == 1 & TYPEHUGQ == 1 & subset.flag.2 == 1 & adj.flag == 0)
 
+# Print the number of original households that have been altered by the household split code for Subset #2.
+print(sum(subset.2.og.test$WGTP))
+
 # Filter for the subset of subfamily members from the split household (the "original" household).
 subset.2.adj.test <- full.pums_data.adj |> 
   filter(SPORDER.adj == 1 & TYPEHUGQ == 1 & subset.flag.2 == 1 & adj.flag == 2)
 
 # Print the number of households created by the household split code for Subset #2.
 print(sum(subset.2.adj.test$WGTP))
+
+# Print the sum of original households altered by the household split code for both subsets #1 and #2.
+print(sum(sum(subset.1.og.test$WGTP), sum(subset.2.og.test$WGTP)))
 
 # Print the sum of households created by the household split code for both subsets #1 and #2.
 print(sum(sum(subset.1.adj.test$WGTP), sum(subset.2.adj.test$WGTP)))
@@ -645,12 +654,6 @@ if(sum(sum(subset.1$new.hhds), sum(subset.2$new.hhds)) != sum(sum(subset.1.adj.t
   
   print("Proceed!")
 }
-
-test2 <- subset.2.adj.test |> 
-  filter(SPORDER.adj == "1") |> 
-  group_by(HHtype.adj) |> 
-  summarise(hh = sum(WGTP)) |> 
-  ungroup()
 
 ```
 
@@ -840,16 +843,6 @@ partial.pums_data.subset2 <- full.pums_data.adj |>
 # QC - Ensure total number of households in the split data sets matches the correct number identified in the script.
 print(sum(partial.pums_data.og$WGTP))
 print(sum(sum(partial.pums_data.subset1$WGTP), sum(partial.pums_data.subset2$WGTP)))
-
-
-test <- partial.pums_data.subset1 |> select(SERIALNO, SPORDER, SERIALNO.adj, SPORDER.adj) |> 
-  mutate(
-    SERIALNO.adj.test = str_sub(SERIALNO.adj, start = 1, end = 13),
-    
-  )
-
-length(unique(test$SERIALNO))
-length(unique(test$SERIALNO.adj))
 
 ```
 
@@ -1162,7 +1155,7 @@ for (i in years) {
       filter(TYPEHUGQ == 1 & (subset.flag.1 != 0 | subset.flag.2 !=0) & adj.flag >= 1) |>
       filter(SERIALNO.adj %in% sn.adj)
     
-    # # QC -
+    # # QC - 
     og.test <- og |> filter(SPORDER.adj == 1)
     adj.test <- adj |> filter(SPORDER.adj == 1)
     sample.test <- pums.sample |> filter(sample == i) |> filter(SPORDER.adj == 1)
@@ -1192,10 +1185,6 @@ for (i in years) {
         HHtype.adj = coalesce(HHtype.adj, HHtype)
       )
     
-    # # QC - Household Type Check
-    # ht.check <- done_pums |> 
-    #   filter(SPORDER.adj == "1")
-    
     # Calculate headship rates for this projection year.
     hdsp.r <- create_hdsp.r(df = done_pums)
     
@@ -1212,8 +1201,8 @@ for (i in years) {
     assign(paste0("ten.r_", i), ten.r)
     
     # save year-specific PUMS dataset for generating baselines.
-    # fwrite(done_pums, paste0(rwt_path,'PUMS_data/PUMS2021_Scenario_2_',i,'.csv'))
-        # Remove dataframes that will be recreated in the next loop to avoid accidentally using residual data.
+    fwrite(done_pums, paste0(rwt_path,'PUMS_data/PUMS2021_Scenario_2_',i,'.csv'))
+    # Remove dataframes that will be recreated in the next loop to avoid accidentally using residual data.
     rm(sn, og, tmp_pums, done_pums, hdsp.r)
     
   } else if (i == 2035){
@@ -1285,7 +1274,7 @@ for (i in years) {
     assign(paste0("ten.r_", i), ten.r)
   
     # save year-specific PUMS dataset for generating baselines.
-    # fwrite(done_pums, paste0(rwt_path,'PUMS_data/PUMS2021_Scenario_2_',i,'.csv'))
+    fwrite(done_pums, paste0(rwt_path,'PUMS_data/PUMS2021_Scenario_2_',i,'.csv'))
     # Remove dataframes that will be recreated in the next loop to avoid accidentally using residual data.
     rm(sn, og, tmp_pums, done_pums, hdsp.r)
     
@@ -1358,7 +1347,7 @@ for (i in years) {
     assign(paste0("ten.r_", i), ten.r)
     
     # save year-specific PUMS dataset for generating baselines.
-    # fwrite(done_pums, paste0(rwt_path,'PUMS_data/PUMS2021_Scenario_2_',i,'.csv'))
+    fwrite(done_pums, paste0(rwt_path,'PUMS_data/PUMS2021_Scenario_2_',i,'.csv'))
     # Remove dataframes that will be recreated in the next loop to avoid accidentally using residual data.
     rm(sn, og, tmp_pums, done_pums, hdsp.r)
     
@@ -1443,7 +1432,7 @@ for (i in years) {
       select(SERIALNO) |>
       pull()
     
-    sn <- pums.sample |>
+    sn.adj <- pums.sample |>
       filter(sample == i | sample == (i - 5) | sample == (i - 10) | sample == (i - 15) | sample == (i - 20)) |>
       select(SERIALNO.adj) |>
       pull()

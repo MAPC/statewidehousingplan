@@ -76,9 +76,9 @@ mortgage_calculator <- function(df, down_payment, loan_term, ho_insurance, condo
     monthly_payment = ifelse(proptype == 'RCD', 
                              mortgage_interest_tax + ho_insurance + condo_fee,
                              mortgage_interest_tax + ho_insurance)
-    ) #|> 
+    ) |> 
     # remove interim fields
-    #select(-c(proptaxrate, mortgage_rate_30, property_tax_m, mortgage_interest_tax))
+    select(-c(proptaxrate, mortgage_rate_30, property_tax_m, mortgage_interest_tax))
     
   return(mortgage_df)
 }

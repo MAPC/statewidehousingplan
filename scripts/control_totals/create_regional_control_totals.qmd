@@ -22,7 +22,7 @@ hdshp <- 'scen2'
 
 # Base root. Toggle between S: and K: drive depedning on mapped paths on your computer
 base <- "K:/DataServices/Projects/Current_Projects/"
-# base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
+#base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
 
 # General K drive filepath
 root <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/")
@@ -819,61 +819,61 @@ gc()
 
 ```{r}
 # Create a municipality to county crosswalk with {mapcdatakeys}
-muni_county.xw <- mapcdatakeys::all_muni_data_keys |> 
-  select(muni_id,muni_name,county_id,county) |> 
-  # Make all variables characters
-  mutate(across(everything(), ~as.character(.)))
-
-# Join the municipal level population data to the county to muni crosswalk
-qc.population.df <- left_join(
-  population.df,
-  muni_county.xw,
-  by = c("muni_id")
-) |> 
-  group_by(
-    county_id,
-    Sex,
-    ageCAT6
-  ) |> 
-  # Aggregate municipal level calculated group quarters to the county level
-  summarise(
-    calc.GQPopulation.10 = sum(GQPopulation.10),
-    calc.GQPopulation.20 = sum(GQPopulation.20)
-  ) |> 
-  ungroup()
-
-# Join gq population calculated in from the population - household population data
-# aggregated to county level to the gq population data pulled directly from the Census
-qc.population.df <- purrr::reduce(
-  list(qc.population.df, gqpop.10, gqpop.20),
-  dplyr::left_join, by = c("county_id", "Sex", "ageCAT6")
-) |> 
-  dplyr::rename(
-    GQPopulation.10 = GQPopulation.x,
-    GQPopulation.20 = GQPopulation.y,
-  ) |> 
-  # Calculate the difference between the calculated gq population and the available gq population
-  mutate(
-    gq.check.10 = calc.GQPopulation.10 - GQPopulation.10,
-    gq.check.20 = calc.GQPopulation.20 - GQPopulation.20
-  )
-
-# Print terms to automatically tell the user if they have passed the QC check.
-if (sum(qc.population.df$gq.check.10 > 0)){
-  print("STOP! Please check 2010 Census data queries and Group Quarters population calculations.")
-} else{
-  print("PROCEED!")
-}
-
-if(sum(qc.population.df$gq.check.20 > 0)){
-  print("STOP! Please check 2020 Census data queries and Group Quarters population calculations.")
-} else{
-  print("PROCEED!")
-  
-  # Remove unneeded dataframes
-  rm(qc.population.df, muni_county.xw, gqpop.10, gqpop.20, gqpop.df, hhpop.10, hhpop.20,
-     pop.10, pop.20)
-}
+# muni_county.xw <- mapcdatakeys::all_muni_data_keys |> 
+#   select(muni_id,muni_name,county_id,county) |> 
+#   # Make all variables characters
+#   mutate(across(everything(), ~as.character(.)))
+# 
+# # Join the municipal level population data to the county to muni crosswalk
+# qc.population.df <- left_join(
+#   population.df,
+#   muni_county.xw,
+#   by = c("muni_id")
+# ) |> 
+#   group_by(
+#     county_id,
+#     Sex,
+#     ageCAT6
+#   ) |> 
+#   # Aggregate municipal level calculated group quarters to the county level
+#   summarise(
+#     calc.GQPopulation.10 = sum(GQPopulation.10),
+#     calc.GQPopulation.20 = sum(GQPopulation.20)
+#   ) |> 
+#   ungroup()
+# 
+# # Join gq population calculated in from the population - household population data
+# # aggregated to county level to the gq population data pulled directly from the Census
+# qc.population.df <- purrr::reduce(
+#   list(qc.population.df, gqpop.10, gqpop.20),
+#   dplyr::left_join, by = c("county_id", "Sex", "ageCAT6")
+# ) |> 
+#   dplyr::rename(
+#     GQPopulation.10 = GQPopulation.x,
+#     GQPopulation.20 = GQPopulation.y,
+#   ) |> 
+#   # Calculate the difference between the calculated gq population and the available gq population
+#   mutate(
+#     gq.check.10 = calc.GQPopulation.10 - GQPopulation.10,
+#     gq.check.20 = calc.GQPopulation.20 - GQPopulation.20
+#   )
+# 
+# # Print terms to automatically tell the user if they have passed the QC check.
+# if (sum(qc.population.df$gq.check.10 > 0)){
+#   print("STOP! Please check 2010 Census data queries and Group Quarters population calculations.")
+# } else{
+#   print("PROCEED!")
+# }
+# 
+# if(sum(qc.population.df$gq.check.20 > 0)){
+#   print("STOP! Please check 2020 Census data queries and Group Quarters population calculations.")
+# } else{
+#   print("PROCEED!")
+#   
+#   # Remove unneeded dataframes
+#   rm(qc.population.df, muni_county.xw, gqpop.10, gqpop.20, gqpop.df, hhpop.10, hhpop.20,
+#      pop.10, pop.20)
+# }
 
 ```
 
@@ -1209,7 +1209,7 @@ gc()
 
 ```{r}
 # Load PUMA to RPA Crosswalk
-xw <- read_csv(paste0(output_path, 'PUMA10_RPA_crosswalk.csv')) |> 
+xw <- fread(paste0(root, 'PUMA10_RPA_crosswalk.csv')) |> 
   mutate(
     # Change the data type and pad the string with a leading zero.
     PUMA = as.character(PUMA),
@@ -1423,6 +1423,9 @@ if (scen == "Scenario_1"){
 # 6.3 Create Headship rates from this PUMS vintage
 
 ```{r}
+
+pums_data <- fread(paste0(rwt_path, '/PUMS_data/PUMS2021_formatted.csv'))
+
 # Generating headship rates by RPA, 5-year Age Group, and Household Type for the ACS 2017-2021 PUMS
 headship_rates <- pums_data |> 
   # Inclues only observations for people in households (omits GQ)                   
@@ -1583,25 +1586,15 @@ lfpr <- pums_data |>
 
 # 7.1 - Generate the ACS 2017-2021 PUMS Baseline data for each of our categories
 
+# 7.1.1 - Scenario 1
+
 ```{r}
 # Determine which PUMS data to use as the baseline for the targeting files
 if (scen == "Scenario_1"){
   # Reads in the 2017-2021 PUMS data.
   pums_data <- read_csv(paste0(rwt_path, '/PUMS_data/PUMS', vintage, '_formatted.csv'))
   
-} else if (scen == "Scenario_2"){
-  # Reads in the 2017-2021 PUMS Split Household data.
-  pums_data <- read_csv(paste0(rwt_path, '/PUMS_data/PUMS', vintage, '.Split_formatted.csv'))
-  
-} else if (scen == "Scenario_3"){
-  # Reads in the 2017-2021 PUMS Split Household data.
-  pums_data <- read_csv(paste0(rwt_path, '/PUMS_data/PUMS', vintage, '.Split_formatted.csv'))
-  
-} else if (scen == "Scenario_4"){
-  
-}
-
-#===============================================================================
+  #===============================================================================
 # 7.1.1-3 - Generate BASELINE data for the reweighter targeting files for non 2020 years
 # 7.1.1 -Baseline of people in Households
 hhpop_baseline <- pums_data |>  
@@ -1871,6 +1864,179 @@ write.csv(
   paste0(output_path,"type_baseline.",hdshp,".csv"), 
   row.names = FALSE
 )
+} 
+```
+
+# 7.1.2 - Scenario 2/3/4
+
+```{r}
+if(scen %in% c("Scenario_2","Scenario_3","Scenario_4")){
+  ten.20 <- tenure_rates |> 
+    mutate(
+      year = 2020
+    )
+  ten.25 <- tenure_rates |> 
+    mutate(
+      year = 2025
+    )
+  ten.r <- rbind(ten.20,ten.25)
+  
+  for (yr in seq(2030,2050,5)){
+  x2 <- xw |> mutate(PUMA = as.numeric(PUMA))
+    pums_data <- fread(paste0(rwt_path,'PUMS_data/PUMS2021_Scenario_2_',yr,'.csv')) |>
+      left_join(x2,by = c('PUMA'))
+    pums_data[!is.na(SPORDER.adj),SPORDER:=SPORDER.adj]
+    pums_data[!is.na(HHtype.adj),HHtype:=HHtype.adj]
+    pums_data[!is.na(SERIALNO.adj),SERIALNO:=SERIALNO.adj]
+    
+  hhpop_baseline <- pums_data |>
+    # Filter for households.
+    filter(TYPEHUGQ == "1") |>
+    mutate(RPA = rpa_acr) |>
+    group_by(RPA) |>
+    # Sum the person weights in the PUMS data.
+    dplyr::count(
+      var = AgeCat,
+      wt = PWGTP
+    ) |>
+    dplyr::rename(
+      AgeCat = var,
+      BASELINE = n
+    ) |>
+    # Rename variables to match the reweigher input requirements.
+    mutate(
+      AgeCat = paste0("x == ", AgeCat),
+      INTER = BASELINE
+    )
+  
+  # 7.1.2 - Baseline of Households by Household Type by Tenure
+  hhtype_baseline <- pums_data |>
+    # Filter for households and the head of household for each SERIALNO
+    filter(TYPEHUGQ == "1" & SPORDER == 1) |>
+    mutate(RPA = rpa_acr) |>
+    group_by(RPA, AgeCat) |>
+    # Sum the household weights in the PUMS data.
+    dplyr::count(
+      var = HHtype,
+      wt = WGTP
+    ) |>
+    ungroup() |>
+    dplyr::rename(
+      HHtype = var,
+      BASELINE = n,
+      AgeCat = AgeCat
+    ) |>
+    # Rename variables to match the reweighter input requirements.
+    mutate(
+      HHtype = paste0("x == ", HHtype),
+      AgeCat = paste0("x == ", AgeCat),
+      INTER = BASELINE
+    ) |>
+    dplyr::filter(HHtype == "x == 1" |HHtype == "x == 3" | HHtype == "x == 5")
+  
+  # 7.1.3 Tenure baseline
+  tenure_baseline <- pums_data |>
+    # Filter for households and the head of household for each SERIALNO
+    filter(TYPEHUGQ == "1" & SPORDER == 1) |>
+    mutate(RPA = rpa_acr) |>
+    group_by(RPA, AgeCat) |>
+    # Sum the household weights in the PUMS data.
+    dplyr::count(
+      var = tenure,
+      wt = WGTP
+    ) |>
+    ungroup() |>
+    dplyr::rename(
+      tenure = var,
+      BASELINE = n
+    ) |>
+    # Rename variables to match the reweigher input requirements.
+    mutate(
+      AgeCat = paste0("x == ", AgeCat),
+      tenure = paste0("x == ", tenure),
+      INTER = BASELINE
+    ) |>
+    relocate(AgeCat, .after = RPA)
+  
+  # 7.1.4 - Baseline of People in the laborforce
+  lf_baseline <- pums_data |>
+    # Filter for households and people in the labor force
+    filter(TYPEHUGQ == "1" & lf == "1") |>
+    mutate(
+      AgeCat = as.factor(ageCAT6),
+      RPA = as.factor(rpa_acr),
+      eduattn = as.factor(eduattn)
+    ) |>
+    group_by(RPA, AgeCat) |>
+    # Sum the person weights in the PUMS data.
+    dplyr::count(
+      var = eduattn,
+      wt = PWGTP) |>
+    ungroup() |>
+    rename(
+      eduattn = var,
+      BASELINE = n,
+      AgeCat = AgeCat
+    ) |>
+    # Rename variables to match the reweighter input requirements.
+    mutate(
+      eduattn = paste0("x == ", eduattn),
+      AgeCat = paste0("x == ", AgeCat),
+      INTER = BASELINE
+    )
+  
+  #===============================================================================
+  # QC for baseline files. Compare total household baseline for HHtype and Tenure baseline files.
+  if (sum(hhtype_baseline$BASELINE) != sum(tenure_baseline$BASELINE)) {
+    print("STOP! Please review scripts which create the baseline data for the targeting files.")
+  } else {
+    print("Proceed!")
+  }
+  
+  # Generate tenure rates for each year
+  
+  tenure_rates <- pums_data |> 
+  # Inclues only observations for people in households (omits GQ)                
+  filter(TYPEHUGQ == "1" & SPORDER == 1 & !ageCAT6 %in% c("1","2","3")) |>                     
+  #Groups by variables in the dataframe necessary to getting the granularity of
+  #data we're interested in.
+  group_by(rpa_acr, ageCAT6) |> 
+  #Computes the weighted sum of individuals in each HH type category by the groups
+  #assigned above.
+  count(var = tenure, wt = WGTP) |>
+  mutate(
+    freq = (n/sum(n))) |> 
+  # Removes the level of aggregation set earlier by group_by()
+  ungroup() |>
+  dplyr::rename(tenure = var) |> 
+  mutate(
+    AgeCat = paste0("x == ", ageCAT6),
+    tenure = paste0("x == ", tenure),
+    year = yr
+  ) |>  
+  select(-c(n, ageCAT6))
+  
+  ten.r <- rbind(ten.r,tenure_rates)
+  #===============================================================================
+  # Write baseline files
+  # Output the baseline file for Household Population aggregations
+  write.csv(hhpop_baseline, paste0(output_path, "hhpop_baseline.", hdshp, ".", yr, ".csv"), row.names = FALSE)
+  
+  # Output the baseline file for Household Type aggregations
+  write.csv(hhtype_baseline, paste0(output_path, "hhtype_baseline.", hdshp, ".", yr, ".csv"), row.names = FALSE)
+  
+  # Output the baseline file for Age of Householder by tenure aggregations
+  write.csv(tenure_baseline ,paste0(output_path, "tenure_baseline.", hdshp, ".", yr, ".csv"), row.names = FALSE)
+  
+  # Output the baseline file for Laborforce aggregations
+  write.csv(lf_baseline, paste0(output_path, "lf_baseline.", hdshp, ".", yr, ".csv"), row.names = FALSE)
+  }
+    # Output the baseline file for Laborforce aggregations
+  write.csv(ten.r, paste0(output_path, "tenure_rates.", scen, ".csv"), row.names = FALSE)
+  #===============================================================================
+  
+}
+
 ```
 
 # 7.2 Create 2020 control total targets using Decennial Census 2020 DHC
@@ -2033,41 +2199,31 @@ if (scen == "Scenario_1"){ # Scenario 1
   # hdsp.r_read(scenario = scen, file = "/headship_rates.1721.csv")
 
 
-} else if (scen == "Scenario_2"){ # Scenario 2
+} else if (scen %in% c("Scenario_2","Scenario_3","Scenario_4")){ # Scenario 2
   
-  print("Using Headship Rates for Scenario 2.")
+  print("Using Headship Rates for Scenario 2/3/4.")
   
-  hdsp.r <- hdsp.r_read(scenario = scen, file = "headship.rates.comparison_2000.hsr_to_1721.household.split.hsr.csv") |> 
-    select(rpa_acr, ageCAT6, var, year, freq.scenario2) |> 
-    dplyr::rename(freq = freq.scenario2) |> 
+  headship_rates.25 <- headship_rates |> 
     mutate(
-      ageCAT6 = as.factor(ageCAT6)
+      year = 2025
     )
+   
+  hdsp.r <- fread(paste0(root,"Scenario_2/headship.rates.comparison_2000.hsr_to_1721.household.split.hsr.csv")) |> 
+    filter(var %in% c('single','hhderchild','hhdernochild')) |> 
+    dplyr::rename(freq=freq.scenario2)
   
-  hdsp.r <- bind_rows(headship_rates, hdsp.r)
+  hdsp.r <- bind_rows(headship_rates, headship_rates.25, hdsp.r)
   
-} else if (scen == "Scenario_3"){ # Scenario 3
-  
-  print("Using Headship Rates for Scenario 3.")
-  
-  hdsp.r_read(scenario = scen, file = "")
-  
-} else {  #Scenario 4
-  
-  print("Using Headship Rates for Scenario 4.")
-  
-  hdsp.r_read(scenario = scen, file = "")
-  
+  # Use tenure rates from Scenario 2
+  ten.r <- fread(paste0(root, "Scenario_2/tenure_rates.Scenario_2.csv"))
 }
-
 ```
 
 # 7.4 Join Headship Rates to Projected Population in Households by Age Group and RPA
 
 ```{r}
 # Load in Population in Households for MAPC101
-umdi.pop.MAPC101 <- fread(paste0(output_path,'pop.in.hhds.MAPC101_by.RPA.ageCAT6.csv')) |> 
-  mutate(ageCAT6 = as.factor(ageCAT6))
+umdi.pop.MAPC101 <- fread(paste0(output_path,'pop.in.hhds.MAPC101_by.RPA.ageCAT6.csv'))
 
 # Household Projections by RPA (MAPC101) and Household Type
 proj.hh.MAPC101_by.rpa.hhtype <- left_join(
@@ -2096,24 +2252,23 @@ hhds.MAPC101 <- proj.hh.MAPC101_by.rpa.hhtype |>
   ungroup()
 
 proj.hh.MAPC101_by.rpa.tenure <- left_join(
-   tenure_rates,
+   ten.r,
    hhds.MAPC101,
-   by = c("rpa_acr", "AgeCat"), 
+   by = c("rpa_acr", "AgeCat", "year"), 
    relationship = "many-to-many"
   ) |> 
   rowwise() |>
   # Calculating the number of households in each RPA and age category
   mutate(
-    hh = round(hh * freq, 0),
-    hh = if_else(rpa_acr == "NPEDC" & AgeCat == "x == 6" & tenure == "x == 2" & year == 2030, hh - 1, hh)
+    hh = round(hh * freq, 0)
+    # hh = if_else(rpa_acr == "NPEDC" & AgeCat == "x == 6" & tenure == "x == 2" & year == 2030, hh - 1, hh)
   ) |>
   select(-c(freq)) |>
   relocate(rpa_acr, AgeCat, tenure, hh, year)
 
 #===============================================================================
 # Load in Population in Households for MAPC97
-umdi.pop.MAPC97 <- fread(paste0(output_path,'pop.in.hhds.MAPC97_by.RPA.ageCAT6.csv')) |> 
-  mutate(ageCAT6 = as.factor(ageCAT6))
+umdi.pop.MAPC97 <- fread(paste0(output_path,'pop.in.hhds.MAPC97_by.RPA.ageCAT6.csv'))
 
 # Household Projections by MPO (MAPC97) and Household Type
 proj.hh.MAPC97_by.mpo.hhtype <- hdsp.r |>
@@ -2145,41 +2300,65 @@ hhds.MAPC97 <- proj.hh.MAPC97_by.mpo.hhtype |>
   ungroup()
  
 # Household Projections by MPO (MAPC97), 5-Year Age Groups, and Tenure 
-proj.hh.MAPC97_by.mpo.tenure <- left_join(
-   tenure_rates,
+proj.hh.MAPC97_by.mpo.tenure <- ten.r |> 
+  left_join(
    hhds.MAPC97,
-   by = c("rpa_acr" = "mpo", "AgeCat"), 
+   by = c("rpa_acr" = "mpo", "AgeCat", "year"), 
    relationship = "many-to-many"
   ) |> 
+   dplyr::rename(
+    mpo = rpa_acr
+  ) |>
   rowwise() |>
   # Calculating the number of households in each RPA and age category
   mutate(
     hh = round(
-      hh * freq, 0),
-      hh = if_else(rpa_acr == "NPEDC" & AgeCat == "x == 6" & tenure == "x == 2"  & year == 2030, hh - 1, hh)
+      hh * freq, 0)
+      #hh = if_else(rpa_acr == "NPEDC" & AgeCat == "x == 6" & tenure == "x == 2"  & year == 2030, hh - 1, hh)
   ) |>
   select(-c(freq)) |>
-  relocate(rpa_acr, AgeCat, tenure, hh, year)
+  relocate(mpo, AgeCat, tenure, hh, year)
 
 ```
 
-
 # 7.5 QA Total Households in Each Projection Year Match
+
 ```{r}
 # QA Total Households in Each Projection Year
 tmp.1 <- proj.hh.MAPC101_by.rpa.hhtype |>
-  group_by(year) |>
+  group_by(year,rpa_acr,AgeCat) |>
   summarise(hh = sum(hh)) |>
   ungroup()
 
 tmp.2 <- proj.hh.MAPC101_by.rpa.tenure  |>
-  group_by(year) |>
+  group_by(year,rpa_acr,AgeCat) |>
+  summarise(hh = sum(hh)) |>
+  ungroup()
+# 
+tt <- tmp.1 |> left_join(tmp.2, by=c('year','rpa_acr','AgeCat')) |> setDT()
+tt[,diff:=hh.x-hh.y]
+tt[diff!=0]
+low.diff <- tt[diff==-1,paste(year,rpa_acr,AgeCat)]
+hi.diff <- tt[diff==1,paste(year,rpa_acr,AgeCat)]
+
+setDT(proj.hh.MAPC101_by.rpa.tenure)
+proj.hh.MAPC101_by.rpa.tenure[paste(year,rpa_acr,AgeCat)==low.diff & tenure=='x == 1', hh:=hh-1]
+proj.hh.MAPC101_by.rpa.tenure[paste(year,rpa_acr,AgeCat)==hi.diff & tenure=='x == 1', hh:=hh+1]
+
+# QC for baseline files. Compare total households for HHtype and Tenure projection files.
+
+tmp.3 <- proj.hh.MAPC101_by.rpa.hhtype |>
+  group_by(year,rpa_acr,AgeCat) |>
   summarise(hh = sum(hh)) |>
   ungroup()
 
-# QC for baseline files. Compare total households for HHtype and Tenure projection files.
+tmp.4 <- proj.hh.MAPC101_by.rpa.tenure  |>
+  group_by(year,rpa_acr,AgeCat) |>
+  summarise(hh = sum(hh)) |>
+  ungroup()
+# 
 # There is a small rounding error.
-if (sum(tmp.1$hh) != sum(tmp.2$hh)-1) {
+if (sum(tmp.3$hh) != sum(tmp.4$hh)) {
   print("STOP! Please review scripts which create the target files.")
 } else {
   print("Proceed!")
@@ -2187,20 +2366,343 @@ if (sum(tmp.1$hh) != sum(tmp.2$hh)-1) {
  # rm(tmp.1, tmp.2)
 }
 
+
+tmp.1 <- proj.hh.MAPC97_by.mpo.hhtype |>
+  group_by(year,mpo,AgeCat) |>
+  summarise(hh = sum(hh)) |>
+  ungroup()
+
+tmp.2 <- proj.hh.MAPC97_by.mpo.tenure  |>
+  group_by(year,mpo,AgeCat) |>
+  summarise(hh = sum(hh)) |>
+  ungroup()
+# 
+tt <- tmp.1 |> left_join(tmp.2, by=c('year','mpo','AgeCat')) |> setDT()
+tt[,diff:=hh.x-hh.y]
+tt[diff!=0]
+low.diff <- tt[diff==-1,paste(year,mpo,AgeCat)]
+hi.diff <- tt[diff==1,paste(year,mpo,AgeCat)]
+
+setDT(proj.hh.MAPC97_by.mpo.tenure)
+proj.hh.MAPC97_by.mpo.tenure[paste(year,mpo,AgeCat)==low.diff & tenure=='x == 1', hh:=hh-1]
+proj.hh.MAPC97_by.mpo.tenure[paste(year,mpo,AgeCat)==hi.diff & tenure=='x == 1', hh:=hh+1]
+
+# QC for baseline files. Compare total households for HHtype and Tenure projection files.
+
+tmp.3 <- proj.hh.MAPC97_by.mpo.hhtype |>
+  group_by(year,mpo,AgeCat) |>
+  summarise(hh = sum(hh)) |>
+  ungroup()
+
+tmp.4 <- proj.hh.MAPC97_by.mpo.tenure  |>
+  group_by(year,mpo,AgeCat) |>
+  summarise(hh = sum(hh)) |>
+  ungroup()
+# 
+# There is a small rounding error.
+if (sum(tmp.3$hh) != sum(tmp.4$hh)) {
+  print("STOP! Please review scripts which create the target files.")
+} else {
+  print("Proceed!")
+  
+ # rm(tmp.1, tmp.2)
+}
 ```
 
 # 7.6 Create Reweighter Template Files for Household Projections by RPA/MPO and Household Type
 
 ------------------------------------------------------------------------
 
+# 7.6.1 Scenario 1
+
 ```{r}
 #===============================================================================
 # Iterate through household projections to create reweighter targeting files for households
 # MAPC101/RPA Versions
-for (i in yrs) {
-  if (i != 2020) {
-    # Record when the process has finished for each year in the year list.
+if (scen == 'Scenario_1') {
+  for (i in yrs) {
+    if (i != 2020) {
+      # Record when the process has finished for each year in the year list.
+      print(paste0("Generating MAPC101 Reweighter Target Files for ", i, "."))
+      
+      # Filter the projected households dataframe by year i
+      tmp1 <- proj.hh.MAPC101_by.rpa.hhtype |>
+        filter(year == i) |>
+        select(-c(year))
+      
+      # Join the projected households by year to the baseline file.
+      target.file1 <- full_join(hhtype_baseline,
+                                tmp1,
+                                by = c("RPA" = "rpa_acr", "AgeCat", "HHtype")) |>
+        # Baseline files may not have every age group, household type segment that the projections have.
+        # Need to fill in places in the baseline where there are zeros for those segments.
+        mutate(across(everything(), ~ replace_na(., 0))) |>
+        dplyr::rename(TARGET = hh)
+      
+      # Join the projected households by year to the baseline file.
+      tmp2 <- proj.hh.MAPC101_by.rpa.tenure |>
+        filter(year == i) |>
+        select(-c(year))
+      
+      target.file2 <- full_join(tenure_baseline,
+                                tmp2,
+                                by = c("RPA" = "rpa_acr", "AgeCat", "tenure")) |>
+        # Baseline files may not have every age group, household type segment that the projections have.
+        # Need to fill in places in the baseline where there are zeros for those segments.
+        mutate(across(everything(), ~ replace_na(., 0))) |>
+        dplyr::rename(TARGET = hh)
+      
+      # QC print statements confirming total households are equivalent between Household type and Tenure targets.
+      if (sum(target.file1$TARGET) != sum(target.file2$TARGET)) {
+        print("STOP! Please review target file creation code.")
+      } else{
+        print("Proceed.")
+      }
+      
+      # Write the reweighter targeting file to .csv by year i.
+      write.csv(
+        target.file1,
+        paste0(
+          output_path,
+          "hhtype.targetfile.MAPC101.",
+          scen,
+          '.hdshp.',
+          hdshp,
+          '.y',
+          i,
+          ".csv"
+        ),
+        row.names = FALSE
+      )
+      
+      # Write the reweighter targeting file to .csv by year i.
+      write.csv(
+        target.file2,
+        paste0(
+          output_path,
+          "tenure.targetfile.MAPC101.",
+          scen,
+          '.hdshp.',
+          hdshp,
+          '.y',
+          i,
+          ".csv"
+        ),
+        row.names = FALSE
+      )
+      
+      # Remove files that will be re-written in each loop.
+      rm(tmp1, tmp2, target.file1, target.file2)
+      
+    } else if (i == 2020) {
+      # Record when the process has finished for each year in the year list.
+      print(paste0("Generating MAPC101 Reweighter Target Files for ", i, "."))
+      
+      # Join the projected households by year to the baseline file.
+      target.age <- left_join(age_baseline,
+                              age20_mapc101,
+                              by = c("RPA" = "rpa_acr", "ageCAT4", "tenure"))
+      
+      target.type <- left_join(type_baseline,
+                               type20_mapc101,
+                               by = c("RPA" = "rpa_acr", "HHtype"))
+      
+      target.size <- left_join(size_baseline,
+                               size20_mapc101,
+                               by = c("RPA" = "rpa_acr", "size"))
+      
+      # Write the reweighter targeting file to .csv by year i.
+      fwrite(
+        target.age,
+        paste0(
+          output_path,
+          "age.targetfile.MAPC101.",
+          scen,
+          '.hdshp.',
+          hdshp,
+          '.y',
+          i,
+          ".csv"
+        )
+      )
+      fwrite(
+        target.type,
+        paste0(
+          output_path,
+          "type.targetfile.MAPC101.",
+          scen,
+          '.hdshp.',
+          hdshp,
+          '.y',
+          i,
+          ".csv"
+        )
+      )
+      fwrite(
+        target.size,
+        paste0(
+          output_path,
+          "size.targetfile.MAPC101.",
+          scen,
+          '.hdshp.',
+          hdshp,
+          '.y',
+          i,
+          ".csv"
+        )
+      )
+      
+    }
+  }
+  #===============================================================================
+  # MAPC97/MPO Versions
+  for (i in yrs) {
+    if (i != 2020) {
+      # Record when the process has finished for each year in the year list.
+      print(paste0("Generating MAPC101 Reweighter Target Files for ", i, "."))
+      
+      #cFilter the projected households dataframe by year i
+      tmp1 <- proj.hh.MAPC97_by.mpo.hhtype |>
+        filter(year == i) |>
+        select(-c(year))
+      
+      #cJoin the projected households by year to the baseline file.
+      target.file1 <- full_join(hhtype_baseline,
+                                tmp1,
+                                by = c("RPA" = "mpo", "AgeCat", "HHtype")) |>
+        # Baseline files may not have every age group, household type segment that the projections have.
+        # Need to fill in places in the baseline where there are zeros for those segments.
+        mutate(across(everything(), ~ replace_na(., 0))) |>
+        dplyr::rename(TARGET = hh)
+      
+      # Join the projected households by year to the baseline file.
+      tmp2 <- proj.hh.MAPC97_by.mpo.tenure |>
+        filter(year == i) |>
+        select(-c(year))
+      
+      target.file2 <- left_join(tenure_baseline,
+                                tmp2,
+                                by = c("RPA" = "mpo", "AgeCat", "tenure")) |>
+        # Baseline files may not have every age group, household type segment that the projections have.
+        # Need to fill in places in the baseline where there are zeros for those segments.
+        mutate(across(everything(), ~ replace_na(., 0))) |>
+        dplyr::rename(TARGET = hh)
+      
+      # QC print statements confirming total households are equivalent between Household type and Tenure targets.
+      if (sum(target.file1$TARGET) != sum(target.file2$TARGET)) {
+        print("STOP! Please review target file creation code.")
+      } else{
+        print("Proceed.")
+      }
+      
+      # Write the reweighter targeting file to .csv by year i.
+      write.csv(
+        target.file1,
+        paste0(
+          output_path,
+          "hhtype.targetfile.MAPC97.",
+          scen,
+          '.hdshp.',
+          hdshp,
+          '.y',
+          i,
+          ".csv"
+        ),
+        row.names = FALSE
+      )
+      
+      # Write the reweighter targeting file to .csv by year i.
+      write.csv(
+        target.file2,
+        paste0(
+          output_path,
+          "tenure.targetfile.MAPC97.",
+          scen,
+          '.hdshp.',
+          hdshp,
+          '.y',
+          i,
+          ".csv"
+        ),
+        row.names = FALSE
+      )
+      
+      # Remove files that will be re-written in each loop.
+      rm(tmp1, tmp2, target.file1, target.file2)
+      
+    }
+    if (i == 2020) {
+      # Record when the process has finished for each year in the year list.
+      print(paste0("Generating MAPC101 Reweighter Target Files for ", i, "."))
+      
+      # Join the projected households by year to the baseline file.
+      target.age <- left_join(age_baseline,
+                              age20_mapc97,
+                              by = c("RPA" = "mpo", "ageCAT4", "tenure"))
+      
+      target.type <- left_join(type_baseline,
+                               type20_mapc97,
+                               by = c("RPA" = "mpo", "HHtype"))
+      
+      target.size <- left_join(size_baseline, size20_mapc97, by = c("RPA" = "mpo", "size"))
+      
+      # Write the reweighter targeting file to .csv by year i.
+      fwrite(
+        target.age,
+        paste0(
+          output_path,
+          "age.targetfile.MAPC97.",
+          scen,
+          '.hdshp.',
+          hdshp,
+          '.y',
+          i,
+          ".csv"
+        )
+      )
+      fwrite(
+        target.type,
+        paste0(
+          output_path,
+          "type.targetfile.MAPC97.",
+          scen,
+          '.hdshp.',
+          hdshp,
+          '.y',
+          i,
+          ".csv"
+        )
+      )
+      fwrite(
+        target.size,
+        paste0(
+          output_path,
+          "size.targetfile.MAPC97.",
+          scen,
+          '.hdshp.',
+          hdshp,
+          '.y',
+          i,
+          ".csv"
+        )
+      )
+      
+    }
+  }
+} 
+```
+
+------------------------------------------------------------------------
+
+# 7.6.2 Scenario 2/3/4
+
+```{r}
+if (scen %in% c('Scenario_2', 'Scenario_3', 'Scenario_4')) {
+  for (i in seq(2030, 2050, 5)) {
     print(paste0("Generating MAPC101 Reweighter Target Files for ", i, "."))
+    
+    hhtype.base <- fread(paste0(output_path, "hhtype_baseline.", hdshp, ".", i, ".csv"))
+    ten.base <- fread(paste0(output_path, "tenure_baseline.", hdshp, ".", i, ".csv"))
     
     # Filter the projected households dataframe by year i
     tmp1 <- proj.hh.MAPC101_by.rpa.hhtype |>
@@ -2208,14 +2710,12 @@ for (i in yrs) {
       select(-c(year))
     
     # Join the projected households by year to the baseline file.
-    target.file1 <- full_join(
-      hhtype_baseline,
-      tmp1,
-      by = c("RPA" = "rpa_acr", "AgeCat", "HHtype")
-    ) |> 
+    target.file1 <- full_join(hhtype.base,
+                              tmp1,
+                              by = c("RPA" = "rpa_acr", "AgeCat", "HHtype")) |>
       # Baseline files may not have every age group, household type segment that the projections have.
       # Need to fill in places in the baseline where there are zeros for those segments.
-      mutate(across(everything(), ~ replace_na(., 0))) |> 
+      mutate(across(everything(), ~ replace_na(., 0))) |>
       dplyr::rename(TARGET = hh)
     
     # Join the projected households by year to the baseline file.
@@ -2223,14 +2723,10 @@ for (i in yrs) {
       filter(year == i) |>
       select(-c(year))
     
-    target.file2 <- full_join(
-      tenure_baseline,
-      tmp2,
-      by = c("RPA" = "rpa_acr", "AgeCat", "tenure")
-    ) |> 
+    target.file2 <- full_join(ten.base, tmp2, by = c("RPA" = "rpa_acr", "AgeCat", "tenure")) |>
       # Baseline files may not have every age group, household type segment that the projections have.
       # Need to fill in places in the baseline where there are zeros for those segments.
-      mutate(across(everything(), ~ replace_na(., 0))) |> 
+      mutate(across(everything(), ~ replace_na(., 0))) |>
       dplyr::rename(TARGET = hh)
     
     # QC print statements confirming total households are equivalent between Household type and Tenure targets.
@@ -2243,144 +2739,116 @@ for (i in yrs) {
     # Write the reweighter targeting file to .csv by year i.
     write.csv(
       target.file1,
-      paste0(output_path,"hhtype.targetfile.MAPC101.",scen,'.hdshp.',hdshp,'.y',i,".csv"),
+      paste0(
+        output_path,
+        "hhtype.targetfile.MAPC101.",
+        scen,
+        '.hdshp.',
+        hdshp,
+        '.y',
+        i,
+        ".csv"
+      ),
       row.names = FALSE
     )
     
     # Write the reweighter targeting file to .csv by year i.
     write.csv(
       target.file2,
-      paste0(output_path,"tenure.targetfile.MAPC101.",scen,'.hdshp.',hdshp,'.y',i,".csv"),
+      paste0(
+        output_path,
+        "tenure.targetfile.MAPC101.",
+        scen,
+        '.hdshp.',
+        hdshp,
+        '.y',
+        i,
+        ".csv"
+      ),
       row.names = FALSE
     )
     
     # Remove files that will be re-written in each loop.
     rm(tmp1, tmp2, target.file1, target.file2)
-    
-  } else if (i == 2020) {
-    # Record when the process has finished for each year in the year list.
-    print(paste0("Generating MAPC101 Reweighter Target Files for ", i, "."))
-   
-    # Join the projected households by year to the baseline file.
-    target.age <- left_join(
-      age_baseline,
-      age20_mapc101,
-      by = c("RPA" = "rpa_acr", "ageCAT4", "tenure")
-    )
-    
-    target.type <- left_join(
-      type_baseline,
-      type20_mapc101,
-      by = c("RPA" = "rpa_acr", "HHtype")
-    )
-    
-    target.size <- left_join(
-      size_baseline,
-      size20_mapc101,
-      by = c("RPA" = "rpa_acr", "size")
-    )
-    
-    # Write the reweighter targeting file to .csv by year i.
-    fwrite(target.age, paste0(output_path,"age.targetfile.MAPC101.", scen,'.hdshp.',hdshp,'.y',i,".csv"))
-    fwrite(target.type, paste0(output_path, "type.targetfile.MAPC101.", scen,'.hdshp.',hdshp,'.y',i,".csv"))
-    fwrite(target.size,paste0(output_path,"size.targetfile.MAPC101.",scen,'.hdshp.',hdshp,'.y',i,".csv"))
-    
   }
-}
-#===============================================================================
-# MAPC97/MPO Versions
-for (i in yrs) {
-  if(i!=2020){
-    # Record when the process has finished for each year in the year list.
-    print(paste0("Generating MAPC101 Reweighter Target Files for ", i, "."))  
-  
-    #cFilter the projected households dataframe by year i
-    tmp1 <- proj.hh.MAPC97_by.mpo.hhtype |>
-      filter(year == i) |>
-      select(-c(year))
-  
-    #cJoin the projected households by year to the baseline file.
-    target.file1 <- full_join(
-      hhtype_baseline,
-      tmp1,
-      by = c("RPA" = "mpo", "AgeCat", "HHtype")
-    )|>
-      # Baseline files may not have every age group, household type segment that the projections have.
-      # Need to fill in places in the baseline where there are zeros for those segments.
-      mutate(across(everything(), ~ replace_na(., 0))) |>
-      dplyr::rename(TARGET = hh)
-  
-    # Join the projected households by year to the baseline file.
-    tmp2 <- proj.hh.MAPC97_by.mpo.tenure |> 
-      filter(
-        year == i
-      ) |> 
-      select(-c(year))   
- 
-    target.file2 <- left_join(
-      tenure_baseline,
-      tmp2,
-      by = c("RPA" = "mpo", "AgeCat", "tenure")
-    ) |>
-      # Baseline files may not have every age group, household type segment that the projections have.
-      # Need to fill in places in the baseline where there are zeros for those segments.
-      mutate(across(everything(), ~ replace_na(., 0))) |>
-      dplyr::rename(TARGET = hh)
-    
-    # QC print statements confirming total households are equivalent between Household type and Tenure targets.
-    if (sum(target.file1$TARGET) != sum(target.file2$TARGET)) {
-      print("STOP! Please review target file creation code.")
-    } else{
-      print("Proceed.")
+  #===============================================================================
+  # MAPC97/MPO Versions
+  for (i in seq(2030, 2050, 5)){
+      
+      # Record when the process has finished for each year in the year list.
+      print(paste0("Generating MAPC97 Reweighter Target Files for ", i, "."))
+      
+      hhtype.base <- fread(paste0(output_path, "hhtype_baseline.", hdshp, ".", i, ".csv"))
+      ten.base <- fread(paste0(output_path, "tenure_baseline.", hdshp, ".", i, ".csv"))
+      
+      #Filter the projected households dataframe by year i
+      tmp1 <- proj.hh.MAPC97_by.mpo.hhtype |>
+        filter(year == i) |>
+        select(-c(year))
+      
+      #cJoin the projected households by year to the baseline file.
+      target.file1 <- full_join(hhtype.base, tmp1, by = c("RPA" = "mpo", "AgeCat", "HHtype")) |>
+        # Baseline files may not have every age group, household type segment that the projections have.
+        # Need to fill in places in the baseline where there are zeros for those segments.
+        mutate(across(everything(), ~ replace_na(., 0))) |>
+        dplyr::rename(TARGET = hh)
+      
+      # Join the projected households by year to the baseline file.
+      tmp2 <- proj.hh.MAPC97_by.mpo.tenure |>
+        filter(year == i) |>
+        select(-c(year))
+      
+      target.file2 <- left_join(ten.base, tmp2, by = c("RPA" = "mpo", "AgeCat", "tenure")) |>
+        # Baseline files may not have every age group, household type segment that the projections have.
+        # Need to fill in places in the baseline where there are zeros for those segments.
+        mutate(across(everything(), ~ replace_na(., 0))) |>
+        dplyr::rename(TARGET = hh)
+      
+      # QC print statements confirming total households are equivalent between Household type and Tenure targets.
+      if (sum(target.file1$TARGET) != sum(target.file2$TARGET)) {
+        
+        setDT(proj.hh.MAPC97_by.mpo.tenure)
+        
+        print("STOP! Please review target file creation code.")
+      } else{
+        print("Proceed.")
+      }
+      
+      # Write the reweighter targeting file to .csv by year i.
+      write.csv(
+        target.file1,
+        paste0(
+          output_path,
+          "hhtype.targetfile.MAPC97.",
+          scen,
+          '.hdshp.',
+          hdshp,
+          '.y',
+          i,
+          ".csv"
+        ),
+        row.names = FALSE
+      )
+      
+      # Write the reweighter targeting file to .csv by year i.
+      write.csv(
+        target.file2,
+        paste0(
+          output_path,
+          "tenure.targetfile.MAPC97.",
+          scen,
+          '.hdshp.',
+          hdshp,
+          '.y',
+          i,
+          ".csv"
+        ),
+        row.names = FALSE
+      )
+      
+      # Remove files that will be re-written in each loop.
+      rm(tmp1, tmp2, target.file1, target.file2)
     }
-  
-    # Write the reweighter targeting file to .csv by year i.
-    write.csv(
-      target.file1,
-      paste0(output_path, "hhtype.targetfile.MAPC97.",scen,'.hdshp.',hdshp,'.y',i,".csv"),
-      row.names = FALSE
-    )
-  
-    # Write the reweighter targeting file to .csv by year i.
-    write.csv(
-      target.file2,
-      paste0(output_path, "tenure.targetfile.MAPC97.",scen,'.hdshp.',hdshp,'.y',i,".csv"),
-      row.names = FALSE
-    )
-  
-    # Remove files that will be re-written in each loop.
-    rm(tmp1, tmp2, target.file1, target.file2)
-
-}
-  if (i==2020){
-    # Record when the process has finished for each year in the year list.
-    print(paste0("Generating MAPC101 Reweighter Target Files for ", i, ".")) 
-    
-    # Join the projected households by year to the baseline file.
-    target.age <- left_join(
-      age_baseline,
-      age20_mapc97,
-      by = c("RPA" = "mpo", "ageCAT4", "tenure")
-    )
-  
-    target.type <- left_join(
-      type_baseline,
-      type20_mapc97,
-      by = c("RPA" = "mpo", "HHtype")
-    )
-  
-    target.size <- left_join(
-      size_baseline,
-      size20_mapc97,
-      by = c("RPA" = "mpo", "size")
-    )
-  
-    # Write the reweighter targeting file to .csv by year i.
-    fwrite(target.age,paste0(output_path, "age.targetfile.MAPC97.",scen,'.hdshp.',hdshp,'.y',i,".csv"))
-    fwrite(target.type,paste0(output_path, "type.targetfile.MAPC97.",scen,'.hdshp.',hdshp,'.y',i,".csv"))
-    fwrite(target.size,paste0(output_path, "size.targetfile.MAPC97.",scen,'.hdshp.',hdshp,'.y',i,".csv"))
-    
-  }
 }
 
 ```

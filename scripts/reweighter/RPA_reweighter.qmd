@@ -32,8 +32,8 @@ reb <- 'MAPC101'
 # reb <- 'MAPC97'
 
 # Root Directory
-root <- 'S:/Network Shares/K Drive/DataServices/Projects/'
-#root <- 'K:/DataServices/Projects/'
+#root <- 'S:/Network Shares/K Drive/DataServices/Projects/'
+root <- 'K:/DataServices/Projects/'
 
 ctrltotal.path <- paste0(root, 'Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/', scen, '/')
 
@@ -70,40 +70,127 @@ mpos <- unlist(c(mapcdatakeys::all_muni_data_keys |> select(mpo) |> unique()))
 
 Formatted PUMS data is created by the *create_regional_control_totals.qmd* in section 6.2
 
+# 2.1 - Scenario 1
+
 ```{r}
-if(scen=='Scenario_1'){
-pums_data <- fread(paste0(workpath, 'PUMS_data/PUMS', vintage, '_formatted.csv')) |> filter(TYPEHUGQ == "1") |> 
-  mutate(AgeCat = ageCAT6)
-} else if(scen=='Scenario_2'){
-  pums_data <- fread(paste0(workpath, 'PUMS_data/PUMS', vintage, '.Split_formatted.csv')) |> filter(TYPEHUGQ == "1") |> 
-  mutate(AgeCat = ageCAT6)
+if(scen=='Scenario_1') {
+  pums_data <- fread(paste0(workpath, 'PUMS_data/PUMS', vintage, '_formatted.csv')) |> filter(TYPEHUGQ == "1") |>
+    mutate(AgeCat = ageCAT6)
+  dir.create(paste0(workpath, scen, '/Input_Files/'), showWarnings = F)
+  dir.create(paste0(workpath, scen, '/Output_Files/'), showWarnings = F)
+  for (m in mpos) {
+    dir.create(paste0(workpath, scen, '/Input_Files/', m), showWarnings = F)
+    dir.create(paste0(workpath, scen, '/Output_Files/', m), showWarnings = F)
+  }
+  mapc.pumas <- pums_data[rpa_acr == 'MAPC', unique(PUMA)]
+  swm.pumas <- pums_data[rpa_acr != 'MAPC', .(rpa_acr, PUMA)] |>
+    unique()
+  # MAPC 101 subset
+  fwrite(
+    pums_data[PUMA %in% mapc.pumas],
+    paste0(
+      workpath,
+      scen,
+      '/Input_Files/MAPC/PUMS2021_',
+      scen,
+      '_MAPC_',
+      yr,
+      '.csv'
+    )
+  )
+  message(paste0('MAPC 101 PUMS export complete ', yr))
+  # SWM join PUMA and export subsets
+  for (m in unique(swm.pumas$rpa_acr)) {
+    pums_data |>
+      filter(rpa_acr == m) |>
+      fwrite(
+        paste0(
+          workpath,
+          scen,
+          '/Input_Files/',
+          m,
+          '/PUMS2021_',
+          scen,
+          '_',
+          m,
+          '_',
+          yr,
+          '.csv'
+        )
+      )
+    message(paste0(m, ' PUMS export complete ', yr))
+  }
 }
-# Make Input folders for reweighter by RPA
-dir.create(paste0(workpath, scen, '/Input_Files/'), showWarnings = F)
-dir.create(paste0(workpath, scen, '/Output_Files/'), showWarnings = F)
- 
-for (m in mpos) {
-  dir.create(paste0(workpath, scen, '/Input_Files/', m), showWarnings = F)
-  dir.create(paste0(workpath, scen, '/Output_Files/', m), showWarnings = F)
+```
+
+# 2.2 - Scenario 2/3/4
+
+```{r}
+if(scen %in% c('Scenario_2', 'Scenario_3', 'Scenario_4')) {
+  for (yr in seq(2030, 2050, 5)) {
+    x2 <- fread(paste0(workpath, 'PUMS_data/PUMA10_RPA_crosswalk.csv')) |> 
+      mutate(PUMA = as.numeric(PUMA))
+    pums_data <- fread(paste0(workpath, 'PUMS_data/PUMS2021_Scenario_2_', yr, '.csv')) |>
+      left_join(x2, by = c('PUMA')) |>
+      filter(TYPEHUGQ == "1") |>
+      mutate(AgeCat = ageCAT6)
+    pums_data[!is.na(SPORDER.adj), SPORDER := SPORDER.adj]
+    pums_data[!is.na(HHtype.adj), HHtype := HHtype.adj]
+    pums_data[!is.na(SERIALNO.adj), SERIALNO := SERIALNO.adj]
+    
+    # Make Input folders for reweighter by RPA
+    dir.create(paste0(workpath, scen, '/Input_Files/'), showWarnings = F)
+    dir.create(paste0(workpath, scen, '/Output_Files/'), showWarnings = F)
+    
+    for (m in mpos) {
+      dir.create(paste0(workpath, scen, '/Input_Files/', m),
+                 showWarnings = F)
+      dir.create(paste0(workpath, scen, '/Output_Files/', m),
+                 showWarnings = F)
+    }
+    
+    mapc.pumas <- pums_data[rpa_acr == 'MAPC', unique(PUMA)]
+    swm.pumas <- pums_data[rpa_acr != 'MAPC', .(rpa_acr, PUMA)] |>
+      unique()
+    
+    # MAPC 101 subset
+    fwrite(
+      pums_data[PUMA %in% mapc.pumas],
+      paste0(
+        workpath,
+        scen,
+        '/Input_Files/MAPC/PUMS2021_',
+        scen,
+        '_MAPC_',
+        yr,
+        '.csv'
+      )
+    )
+    message(paste0('MAPC 101 PUMS export complete ', yr))
+    
+    # SWM join PUMA and export subsets
+    for (m in unique(swm.pumas$rpa_acr)) {
+      pums_data |>
+        filter(rpa_acr == m) |>
+        fwrite(
+          paste0(
+            workpath,
+            scen,
+            '/Input_Files/',
+            m,
+            '/PUMS2021_',
+            scen,
+            '_',
+            m,
+            '_',
+            yr,
+            '.csv'
+          )
+        )
+      message(paste0(m, ' PUMS export complete ', yr))
+    }
+  }
 }
-
-mapc.pumas <- pums_data[rpa_acr == 'MAPC', unique(PUMA)]
-swm.pumas <- pums_data[rpa_acr != 'MAPC', .(rpa_acr, PUMA)] |> 
-  unique()
-
-# MAPC 101 subset
-fwrite(pums_data[PUMA %in% mapc.pumas],
-       paste0(workpath, scen, '/Input_Files/MAPC/PUMS', vintage, '_MAPC.csv'))
-message(paste0('MAPC 101 PUMS export complete'))
-
-# SWM join PUMA and export subsets
-for (m in unique(swm.pumas$rpa_acr)) {
-  pums_data |>
-    filter(rpa_acr==m) |>
-    fwrite(paste0(workpath, scen, '/Input_Files/', m, '/PUMS', vintage, '_', m, '.csv'))
-  message(paste0(m, ' PUMS export complete'))
-}
-
 ```
 
 # 3 - Create RPA config JSON files for reweighter configuration
@@ -139,7 +226,7 @@ source('algo_hh.R')
 # Set Targets and run reweighter loop
 
 # Different configuration for 2020 base year
-
+if(scen == 'Scenario_1'){
 for (yr in c(2020)) {
   #for (mid in c('MAPC')) {
   for (mid in mpos) {
@@ -218,10 +305,8 @@ for (yr in c(2020)) {
     fwrite(mess, paste0(outpath, mid, '_', yr, '_complete.txt'))
   }
 }
-
-for (yr in c(2025, 2030, 2035, 2040, 2045, 2050)) {
+for (yr in 2025) {
   for (mid in mpos) {
-    
     # Set config
     inpath <- paste0(workpath, scen, '/Input_Files/', mid, '/')
     source(here('scripts/reweighter/read_config_RPA.R'))
@@ -257,7 +342,62 @@ for (yr in c(2025, 2030, 2035, 2040, 2045, 2050)) {
     message(paste0(mid, ' targets set'))
     
     pums <- fread(paste0(inpath, 'PUMS', vintage, '_', mid, '.csv'))
-    if(scen=='Scenario 2'){pums[,SPORDER:=SPORDER.adj][,SERIALNO:=SERIALNO.adj]}
+    if(scen=='Scenario_2'){pums[,SPORDER:=SPORDER.adj][,SERIALNO:=SERIALNO.adj]}
+    
+    source(here('scripts/reweighter/Manage_Scenario_RPA.R'))
+    message(paste0(mid, ' reweighter complete'))
+    
+    mess <- data.table(txt = paste0(mid, ' reweighter complete'))
+    fwrite(mess, paste0(outpath, mid, '_', yr, '_complete.txt'))
+  }
+}
+}
+
+for (yr in c(2030, 2035, 2040, 2045, 2050)) {
+  for (mid in mpos) {
+    if(scen %in% c('Scenario_2','Scenario_3','Scenario_4')){
+      infile1 <- paste0(workpath, 'Templates/reweighting_config_2021.json')
+      outfile1 <- paste0(workpath, scen, '/Input_Files/', mid, '/reweighting_config_2021_', mid, '.json')
+      cfig1 = readLines(infile1)
+      cfig1 = gsub('PUMS2021.csv', paste0('PUMS2021_',scen,'_',mid,'_',yr,'.csv'), cfig1)
+      writeLines(cfig1, outfile1)
+    }
+    # Set config
+    inpath <- paste0(workpath, scen, '/Input_Files/', mid, '/')
+    source(here('scripts/reweighter/read_config_RPA.R'))
+    message(paste0(mid, ' configuration complete'))
+    
+    # Set targets
+    outpath <- paste0(workpath, scen, '/Output_Files/', mid, '/')
+    dir.create(outpath, showWarnings = F)
+    template <- fread(paste0(workpath, 'Templates/AgeHHder_HHtype_template.csv')) |>
+      select(-BASELINE, -TARGET)
+    target <- fread(paste0(ctrltotal.path, 'hhtype.targetfile.', reb, '.', scen,'.hdshp.',hdshp,'.y',yr, '.csv')) |>
+      filter(RPA == mid) |>
+      select(-RPA) |> right_join(template, by = c('AgeCat', 'HHtype')) |> setDT()
+    target[AgeCat %in% c('x == 1', 'x == 2', 'x == 3'), `:=`(BASELINE =
+                                                               0,
+                                                             INTER = 0,
+                                                             TARGET = 0)]
+    target[is.na(BASELINE),`:=`(BASELINE =0, INTER = 0, TARGET = 0)]
+    setorder(target, AgeCat, HHtype)
+    fwrite(target, paste0(inpath, '/AgeHHder_HHtype.csv'))
+    
+    template2 <- fread(paste0(workpath, 'Templates/age_tenure_template.csv'))
+    target2 <- fread(paste0(ctrltotal.path, "tenure.targetfile.",reb,".",scen,'.hdshp.',hdshp,".y",yr,".csv")) |>
+      filter(RPA == mid) |> 
+      select(-RPA) |> 
+      right_join(template2, by=c('AgeCat','tenure')) |> 
+      setDT()
+
+    target2[is.na(BASELINE),`:=`(BASELINE =0, INTER = 0, TARGET = 0)]
+    setorder(target2, AgeCat, tenure)
+    fwrite(target2, paste0(inpath, '/age_tenure.csv'))
+    
+    message(paste0(mid, ' targets set'))
+    
+    pums <- fread(paste0(inpath,'PUMS2021_',scen,'_',mid,'_',yr,'.csv'))
+
     source(here('scripts/reweighter/Manage_Scenario_RPA.R'))
     message(paste0(mid, ' reweighter complete'))
     
@@ -270,10 +410,43 @@ for (yr in c(2025, 2030, 2035, 2040, 2045, 2050)) {
 
 # 5 - Create reweighted PUMS files and QC the reweighter Outputs
 
+# 5.0 - Check that all years/RPAs successfully converged
+
+```{r}
+  
+log.comp <- c()
+for (mid in mpos) {
+  outpath <- paste0(workpath, scen, '/Output_Files/', mid, '/')
+  logs <- list.files(path = outpath, pattern ='logfile*')
+  for (f in logs){
+    df <- readLines(paste0(outpath,f))
+    log.comp <- c(log.comp, if (length(
+      grep("Maximum deviation from target stopping condition achieved", df)
+    ) != 0) {
+      print(paste0(f, ' success'))
+    } else if (length(grep("Maximum number of iterations reached", df)) !=
+               0) {
+      print(paste0(f, ' failed to converge'))
+    } else if (length(grep(
+      "No change in weights stopping condition met", df
+    )) != 0) {
+      print(paste0(f, ' failed to converge'))
+    })
+  }
+}
+fwrite(as.data.table(log.comp),paste0(workpath,scen,'/reweighter_convergence_check.txt'))
+
+
+
+
+```
+
+# 5.1 - Scenario 1
+
 ```{r}
 
 comp.dt <- data.table()
-
+if(scen=='Scenario_1'){
 for (yr in 2020){
   for (mid in mpos) {
     inpath <- paste0(workpath, scen, '/Input_Files/', mid, '/')
@@ -290,16 +463,13 @@ for (yr in 2020){
     # Calculate total households from the reweighter outputs
     pums <- fread(paste0(inpath, 'PUMS', vintage, '_', mid, '.csv'))
     setkey(pums, SERIALNO, SPORDER)
-    
-    rw <- data.table()
-    
+
     x <- fread(paste0(outpath, 'weights_final_', scen, '_', mid, '_', yr, '.csv')) |> select(SERIALNO, SPORDER, new_WGTP) |> mutate(mpo = mid) |> setDT()
     setkey(x, SERIALNO, SPORDER)
     xp <- pums[x]
     fwrite(xp, paste0(outpath, '/reweighted_PUMS_', scen, '_', reb, '_', mid, '_', hdshp, '_', yr, '.csv'))
-    xsum <- xp[SPORDER == 1, lapply(.SD, sum), .(mpo), .SDcols = c('WGTP', 'new_WGTP')]
-    xsum[, rw_HH := round(new_WGTP)][, pums_baseline_hh := round(WGTP)]
-    rw <- rbind(rw, xsum)
+    rw <- xp[SPORDER == 1, lapply(.SD, sum), .(mpo), .SDcols = c('WGTP', 'new_WGTP')]
+    rw[, rw_HH := round(new_WGTP)][, pums_baseline_hh := round(WGTP)]
     setkey(rw, mpo)
     comp <- tsum[rw]
     comp.out <- comp[,.(year,mpo,pums_baseline_hh, TARGET,rw_HH)]
@@ -322,52 +492,83 @@ for (yr in c(2025,2030,2035,2040,2045,2050)){
     setkey(tsum, mpo)
     
     # Calculate total households from the reweighter outputs
-    if (scen=='Scenario_1'){
     pums <- fread(paste0(inpath, 'PUMS', vintage, '_', mid, '.csv'))
     setkey(pums, SERIALNO, SPORDER)
-    
-    rw <- data.table()
-    
+
     x <- fread(paste0(outpath, 'weights_final_', scen, '_', mid, '_', yr, '.csv')) |> select(SERIALNO, SPORDER, new_WGTP) |> mutate(mpo = mid) |> setDT()
     setkey(x, SERIALNO, SPORDER)
     xp <- pums[x]
     fwrite(xp, paste0(outpath, '/reweighted_PUMS_', scen, '_', reb, '_', mid, '_', hdshp, '_', yr, '.csv'))
-    xsum <- xp[SPORDER == 1, lapply(.SD, sum), .(mpo), .SDcols = c('WGTP', 'new_WGTP')]
-    xsum[, rw_HH := round(new_WGTP)][, pums_baseline_hh := round(WGTP)]
-    rw <- rbind(rw, xsum)
+    rw <- xp[SPORDER == 1, lapply(.SD, sum), .(mpo), .SDcols = c('WGTP', 'new_WGTP')]
+    rw[, rw_HH := round(new_WGTP)][, pums_baseline_hh := round(WGTP)]
     setkey(rw, mpo)
     comp <- tsum[rw]
     comp.out <- comp[,.(year,mpo,pums_baseline_hh, TARGET,rw_HH)]
     comp.out[,diff:= TARGET - rw_HH]
     fwrite(comp.out,paste0(outpath,'reweighter_QC_', scen, '_', reb, '_', mid, '_', hdshp, '_', yr,' .csv'))
     comp.dt <- rbind(comp.dt,comp.out)
-    } else if (scen=='Scenario_2'){
-      pums <- fread(paste0(inpath, 'PUMS', vintage, '_', mid, '.csv'))
-    setkey(pums, SERIALNO, SPORDER.adj)
-    
-    rw <- data.table()
-    
-    x <- fread(paste0(outpath, 'weights_final_', scen, '_', mid, '_', yr, '.csv')) |> select(SERIALNO, SPORDER.adj, new_WGTP) |> mutate(mpo = mid) |> setDT()
-    setkey(x, SERIALNO, SPORDER.adj)
-    xp <- pums[x]
-    fwrite(xp, paste0(outpath, '/reweighted_PUMS_', scen, '_', reb, '_', mid, '_', hdshp, '_', yr, '.csv'))
-    xsum <- xp[SPORDER.adj == 1, lapply(.SD, sum), .(mpo), .SDcols = c('WGTP', 'new_WGTP')]
-    xsum[, rw_HH := round(new_WGTP)][, pums_baseline_hh := round(WGTP)]
-    rw <- rbind(rw, xsum)
-    setkey(rw, mpo)
-    comp <- tsum[rw]
-    comp.out <- comp[,.(year,mpo,pums_baseline_hh, TARGET,rw_HH)]
-    comp.out[,diff:= TARGET - rw_HH]
-    fwrite(comp.out,paste0(outpath,'reweighter_QC_', scen, '_', reb, '_', mid, '_', hdshp, '_', yr,' .csv'))
-    comp.dt <- rbind(comp.dt,comp.out)
-    }
+
   }
 }
 
 fwrite(comp.dt,paste0(workpath, scen, '/Output_Files/reweighter_QC_all_RPAs_all_years_', scen, '_', hdshp,' .csv'))
 
 comp.dt[abs(diff)>1]
+}
+```
 
+# 5.2 - Scenario 2/3/4
+
+```{r}
+
+comp.dt <- data.table()
+if(scen %in% c('Scenario_2','Scenario_3','Scenario_4')){
+for (yr in c(2020,2025)){
+  for (mid in mpos) {
+    inpath <- paste0(workpath, scen, '/Input_Files/', mid, '/')
+    outpath <- paste0(workpath, scen, '/Output_Files/', mid, '/')
+    
+    # Use Scenario 1 outputs for 2020 and 2025
+    file.copy(paste0(workpath, 'Scenario_1/Output_Files/', mid, '/reweighted_PUMS_Scenario_1_', reb, '_', mid, '_acs1721_', yr, '.csv'),paste0(outpath, '/reweighted_PUMS_', scen, '_', reb, '_', mid, '_', hdshp, '_', yr, '.csv'))
+  }
+}
+for (yr in c(2030,2035,2040,2045,2050)){
+  for (mid in mpos) {
+    inpath <- paste0(workpath, scen, '/Input_Files/', mid, '/')
+    outpath <- paste0(workpath, scen, '/Output_Files/', mid, '/')
+    # Summarize total households by mpo from target inputs to reweighter
+    target <- fread(paste0(ctrltotal.path, 'hhtype.targetfile.', reb, '.', scen, '.hdshp.', hdshp, '.y', yr, '.csv')) |>
+      filter(RPA == mid) |> setDT()
+    
+    tsum <- target[, lapply(.SD, sum), RPA, .SDcols = 'TARGET']
+    tsum[, TARGET := round(TARGET)][,year:=yr]
+    setnames(tsum, 'RPA', 'mpo')
+    setkey(tsum, mpo)
+    
+    # Calculate total households from the reweighter outputs
+  
+      pums <- fread(paste0(inpath, 'PUMS', vintage, '_', scen, '_', mid, '_', yr, '.csv'))
+    setkey(pums, SERIALNO, SPORDER)
+
+    x <- fread(paste0(outpath, 'weights_final_', scen, '_', mid, '_', yr, '.csv')) |> select(SERIALNO, SPORDER, new_WGTP) |> mutate(mpo = mid) |> setDT()
+    setkey(x, SERIALNO, SPORDER)
+    xp <- pums[x]
+    fwrite(xp, paste0(outpath, '/reweighted_PUMS_', scen, '_', reb, '_', mid, '_', hdshp, '_', yr, '.csv'))
+    rw <- xp[SPORDER == 1, lapply(.SD, sum), .(mpo), .SDcols = c('WGTP', 'new_WGTP')]
+    rw[, rw_HH := round(new_WGTP)][, pums_baseline_hh := round(WGTP)]
+    setkey(rw, mpo)
+    comp <- tsum[rw]
+    comp.out <- comp[,.(year,mpo,pums_baseline_hh, TARGET,rw_HH)]
+    comp.out[,diff:= TARGET - rw_HH]
+    fwrite(comp.out,paste0(outpath,'reweighter_QC_', scen, '_', reb, '_', mid, '_', hdshp, '_', yr,' .csv'))
+    comp.dt <- rbind(comp.dt,comp.out)
+  }
+}
+
+fwrite(comp.dt,paste0(workpath, scen, '/Output_Files/reweighter_QC_all_RPAs_all_years_', scen, '_', hdshp,' .csv'))
+
+comp.dt[abs(diff)>1]
+}
 ```
 
 # 6 - Create summary tables of reweighted households
@@ -388,8 +589,11 @@ for (yr in c(2020,2025,2030,2035,2040,2045,2050)){
 
 # 7 - Vacancy and Unit Demand post-model calculations
 
+# 7.1 - Scenario 1
+
 ```{r}
 
+if(scen=='Scenario_1'){
 # Set residential vacancy rate targets
 # Load in the actual 2020 unit counts and vacancy rates from Census 2020 DHC
 
@@ -496,7 +700,6 @@ for (yr in c(2020,2025,2030,2035,2040,2045,2050)){
   dt <- rbind(dt,tmp)
 }
   setorder(dt,rpa_acr,year)
-if(scen=='Scenario_1'){
   hh <- dt |> 
     filter(SPORDER==1) |> 
     mutate(tenure = case_when(
@@ -507,18 +710,6 @@ if(scen=='Scenario_1'){
     ungroup() |> 
     mutate(hh = round(hh)) |> 
     setDT()
-} else if(scen=='Scenario_2'){
-  hh <- dt |> 
-    filter(SPORDER.adj==1) |> 
-    mutate(tenure = case_when(
-      TEN %in% 1:2 ~ 'own',
-      TEN %in% 3:4 ~ 'rent')) |> 
-    group_by(year,mpo,tenure) |> 
-    count(wt=new_WGTP, name='hh') |> 
-    ungroup() |> 
-    mutate(hh = round(hh)) |> 
-    setDT()
-} 
   uw <- hh |> 
     pivot_wider(id_cols = 'mpo', names_from = c('tenure','year'), values_from = 'hh') |>
     left_join(vax, by=c('mpo'='rpa_acr')) |> 
@@ -547,4 +738,165 @@ setnames(outfile,c('total_units','total_owner_units','total_rental_units','total
 
 setnames(outfile,names(outfile),gsub('_',' ',names(outfile)))
 fwrite(outfile, paste0(workpath, scen, '/Output_Files/',scen,'_unit_demand_estimates.csv'))
+}
+```
+
+# 7.2 - Scenario 2/3/4
+
+```{r}
+
+if(scen %in% c('Scenario_2','Scenario_3','Scenario_4')){
+
+  target_rent_rate <- 0.074
+  target_own_rate <- 0.015
+  # Set residential vacancy rate targets
+# Load in the actual 2020 unit counts and vacancy rates from Census 2020 DHC
+
+munis <- mapcdatakeys::all_muni_data_keys |>
+  select(muni_id, muni_name, cosub_cn20, cmtyp08, mapc, mpo, rpa_acr) |>
+  mutate(GEOID = as.character(cosub_cn20)) 
+
+vars <- load_variables(2020, 'dhc') |> setDT()
+vs <- vars[grepl('VACANCY', concept), name]
+ns <- vars[grepl('VACANCY', concept), gsub(':', '', gsub(' ', '_', (gsub(
+  ',', '', gsub(':!!', '_', (gsub(' !!', '', (
+    label
+  ))))
+))))]
+
+ten <- c('H10_002N','H10_010N') # Vacant owner-occupied units, Vacant renter-occupied units
+
+vs <- c('H1_001N', 'P20_001N', vs, ten)
+
+d1 <-
+  get_decennial(
+    year = 2020,
+    sumfile = 'dhc',
+    state = 'MA',
+    geography = 'county subdivision',
+    variables = vs
+  ) |>
+  pivot_wider(names_from = 'variable') |>
+  select(-NAME) |>
+  setDT()
+setnames(d1, c('GEOID', 'total_units', 'total_households', gsub('Total','Vacant',ns), 'own_occ_units', 'rent_occ_units'))
+
+m2 <- munis |> select(GEOID, muni_id, muni_name, mpo, rpa_acr, cmtyp08)
+dhc <- d1 |>
+  left_join(m2, by = 'GEOID') |>
+  filter(!is.na(muni_id)) |> 
+  mutate(
+    total_available_units = total_households + Vacant_For_rent + Vacant_For_sale_only,
+    total_unavailable_units = total_units - total_available_units,
+    total_available_rental_units = Vacant_For_rent + rent_occ_units,
+    total_available_owner_units = Vacant_For_sale_only + own_occ_units,
+    rent_ratio = total_available_rental_units / total_available_units,
+    own_ratio = total_available_owner_units / total_available_units,
+    total_unavailable_rental_units = round(total_unavailable_units * rent_ratio),
+    total_unavailable_owner_units = round(total_unavailable_units * own_ratio),
+    total_rental_units = total_available_rental_units + total_unavailable_rental_units,
+    total_owner_units = total_available_owner_units + total_unavailable_owner_units,
+    total_available_vacant_units = Vacant_For_sale_only + Vacant_For_rent,
+    vac_rate_avail = round(total_available_vacant_units / total_available_units, 3),
+    rent_vac_rate_avail = round(Vacant_For_rent / total_available_rental_units,3),
+    own_vac_rate_avail = round(Vacant_For_sale_only / total_available_owner_units,3),
+    vac_rate_total = round(total_available_vacant_units / total_units, 3),
+    rent_vac_rate_total = round(Vacant_For_rent / total_rental_units,3),
+    own_vac_rate_total = round(Vacant_For_sale_only / total_owner_units,3)
+    ) |> 
+  rename(total_vacant_units=Vacant,
+         vacant_available_to_rent=Vacant_For_rent,
+         vacant_rented_not_occ=Vacant_Rented_not_occupied,
+         vacant_available_to_own=Vacant_For_sale_only,
+         vacant_sold_not_occ=Vacant_Sold_not_occupied,
+         vacant_seasonal=Vacant_For_seasonal_recreational_or_occasional_use,
+         vacant_migrant=Vacant_For_migrant_workers,
+         vacant_other=Vacant_Other_vacant)
+ 
+cs <- c(
+  'total_units',
+  'total_households',
+  'total_vacant_units',
+  'total_available_units',
+  'total_available_vacant_units',
+  'own_occ_units',
+  'rent_occ_units',
+  'vacant_sold_not_occ',
+  'vacant_rented_not_occ',
+  'total_rental_units',
+  'total_owner_units',
+  'total_available_rental_units',
+  'vacant_available_to_rent',
+  'total_available_owner_units',
+  'vacant_available_to_own'
+)
+
+
+dsum101 <- dhc[,lapply(.SD,sum),rpa_acr,.SDcols=(cs)] |> 
+  mutate(
+    vac_rate_avail = round(total_available_vacant_units / total_available_units, 3),
+    rent_vac_rate_avail = round(vacant_available_to_rent / total_available_rental_units,3),
+    own_vac_rate_avail = round(vacant_available_to_own / total_available_owner_units,3),
+    vac_rate_total = round(total_available_vacant_units / total_units, 3),
+    rent_vac_rate_total = round(vacant_available_to_rent / total_rental_units,3),
+    own_vac_rate_total = round(vacant_available_to_own / total_owner_units,3),
+    all_unit_rental_vac_rate = round(1 - (rent_occ_units / total_rental_units),3),
+    all_unit_owner_vac_rate = round(1 - (own_occ_units / total_owner_units),3)
+    )
+fwrite(dsum101,paste0(workpath,'MAPC101_all_RPA_available_vacancy_rates_by_tenure.csv'))
+
+vax <- dsum101[,.(rpa_acr,total_units, total_households, own_occ_units,rent_occ_units,total_owner_units, total_available_owner_units, vacant_available_to_own, total_rental_units, total_available_rental_units, vacant_available_to_rent, own_vac_rate_total, rent_vac_rate_total, vac_rate_total)]
+
+# Load reweighted future households data
+dt <- data.table()
+
+for (yr in c(2020,2025,2030,2035,2040,2045,2050)){
+  tmp <- fread(paste0(workpath,scen,'/Output_Files/reweighted_PUMS_', scen, '_', reb, '_',hdshp,'_', yr, '.csv')) |> 
+    select(year,reb,hdshp,scen,mpo,SERIALNO,SPORDER,tenure,TEN,new_WGTP)
+  dt <- rbind(dt,tmp)
+}
+  setorder(dt,mpo,year)
+  hh <- dt |> 
+    filter(SPORDER==1) |> 
+    mutate(tenure = case_when(
+      TEN %in% 1:2 ~ 'own',
+      TEN %in% 3:4 ~ 'rent')) |> 
+    group_by(year,mpo,tenure) |> 
+    count(wt=new_WGTP, name='hh') |> 
+    ungroup() |> 
+    mutate(hh = round(hh)) |> 
+    setDT()
+
+  uw <- hh |> 
+    pivot_wider(id_cols = 'mpo', names_from = c('tenure','year'), values_from = 'hh') |>
+    left_join(vax, by=c('mpo'='rpa_acr')) |> 
+    setDT()
+nm <- names(uw)[grepl('_20',names(uw))]
+setnames(uw,nm,paste0('households_',nm))
+
+uw[,rent_target:=target_rent_rate][,own_target:=target_own_rate]
+
+uw[, own_units_needed_in_2035 := round(households_own_2035 / (1 - own_target))]
+uw[, own_units_needed_in_2050 := round(households_own_2050 / (1 - own_target))]
+uw[, rent_units_needed_in_2035 := round(households_rent_2035 / (1 - rent_target))]
+uw[, rent_units_needed_in_2050 := round(households_rent_2050 / (1 - rent_target))]
+
+uw[,new_owner_units_needed_2020_to_2035 := own_units_needed_in_2035 - total_available_owner_units,mpo]
+uw[,new_rental_units_needed_2020_to_2035 := rent_units_needed_in_2035 - total_available_rental_units,mpo]
+uw[,new_owner_units_needed_2020_to_2050 := own_units_needed_in_2050 - total_available_owner_units,mpo]
+uw[,new_rental_units_needed_2020_to_2050 := rent_units_needed_in_2050 - total_available_rental_units,mpo]
+uw[,total_new_units_needed_2020_to_2035 := new_owner_units_needed_2020_to_2035+new_rental_units_needed_2020_to_2035]
+uw[,total_new_units_needed_2020_to_2050 := new_owner_units_needed_2020_to_2050+new_rental_units_needed_2020_to_2050]
+uw[,scenario:=scen]
+setnames(uw,'vac_rate_total','combined_vacancy_rate_2020')
+
+outfile <- uw[,.(scenario,mpo,total_units,total_owner_units,total_rental_units,total_available_owner_units,total_available_rental_units,vacant_available_to_own,vacant_available_to_rent,own_vac_rate_total,rent_vac_rate_total,own_target,rent_target,combined_vacancy_rate_2020,own_occ_units,rent_occ_units,households_own_2020,households_rent_2020,households_own_2025,households_rent_2025,households_own_2030,households_rent_2030,households_own_2035,households_rent_2035,households_own_2040,households_rent_2040,households_own_2045,households_rent_2045,households_own_2050,households_rent_2050,own_units_needed_in_2035,own_units_needed_in_2050,rent_units_needed_in_2035,rent_units_needed_in_2050,new_owner_units_needed_2020_to_2035,new_rental_units_needed_2020_to_2035,new_owner_units_needed_2020_to_2050,new_rental_units_needed_2020_to_2050,total_new_units_needed_2020_to_2035,total_new_units_needed_2020_to_2050)]
+
+setnames(outfile,c('own_target','rent_target','total_units','total_owner_units','total_rental_units','total_available_owner_units','total_available_rental_units','vacant_available_to_own','vacant_available_to_rent','own_vac_rate_total','rent_vac_rate_total'),c('own_target_vacancy_rate','rent_target_vacancy_rate','total_units_2020','total_owner_units_2020','total_rental_units_2020','total_available_owner_units_2020','total_available_rental_units_2020','vacant_available_to_own_2020','vacant_available_to_rent_2020','owner_unit_vacancy_rate_2020','rental_unit_vacancy_rate_2020'))
+
+setnames(outfile,names(outfile),gsub('_',' ',names(outfile)))
+fwrite(outfile, paste0(workpath, scen, '/Output_Files/',scen,'_unit_demand_estimates.csv'))
+}
+
+
 ```

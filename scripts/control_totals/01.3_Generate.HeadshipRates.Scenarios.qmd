@@ -45,7 +45,7 @@ library(mapcdatakeys)
 library(janitor)
 library(readxl)
 library(here)
-library(RPostgreSQL)
+#library(RPostgreSQL)
 
 # Remove scientific notation
 options(scipen = 999)
@@ -55,19 +55,11 @@ set.seed(351)
 # Load Libraries for PUMS Analysis and PUMS API query functions
 # Sets seed and removes scientific notation
 source(here("PUMS_Analysis/PUMS_Helper_Functions.R"))
-# source(file = "C:/Project_Work/Local_Data/General/census.data_connection.R")
-#source(file = "C:/Project_Work/housing/dbConnections.R")
 
 # Load PUMA x RPA Crosswalk
 xw <- read.csv(paste0(rwt_path, "PUMS_data/PUMA10_RPA_crosswalk.csv")) |> 
   mutate(PUMA = str_pad(PUMA, 5, "left", pad = 0))
 
-# # Pull AMI Table for 2021
-# ami_table <- get_mapc_database(
-#   db.table_name = "hous_section8_income_limits_by_year_m",
-#   year = 2021,
-#   vars = "*"
-# )
 
 ```
 
@@ -91,6 +83,7 @@ variable_list <- c('RT', 'PUMA', 'ADJHSG','ADJINC','NP','TYPEHUGQ','BDSP','RMSP'
 # Query {tidycensus} for 2017-2021 5-Year PUMS data
 pums_data <- pums_query(var.list = variable_list, yr = vintage, srvy = "acs5") |>
   # General Data Cleaning
+
   mutate(
     # Generate five-year age groupings to match UMDI population projections data.
     ageCAT6 = cut(AGEP, breaks = c(-Inf, seq(4, 84, 5), Inf), labels = 1:18),
@@ -516,9 +509,9 @@ full.pums_data.adj <- full.pums_data.adj |>
     # Adjust income data to 2021 dollars
     HINCP.adj.2021USD = as.numeric(HINCP.adj)*as.numeric(ADJINC),
     # Sum the total number of workers in the household
-    Worker_Total.adj = sum(worker),
+    Worker_Total.adj = sum(worker.adj),
     # Sum the total number of children in the household
-    Child_Total.adj = sum(child)
+    Child_Total.adj = sum(child.adj)
   ) |> 
   ungroup() |> 
   mutate(
@@ -595,7 +588,8 @@ full.pums_data.adj <- full.pums_data.adj |>
 # 1. Tenure remains the same. A split subfamily lived in a house owned by the householder, we assume they've also purchased a home. If they were in a rental household, they rent.
 # 2. Number of rooms in the house remain the same, even if the number of rooms and bedrooms doesn't necessarily make sense for the split subfamily household. Easier to not make assumptions about the types of housing they rent or buy after splitting out.
 # 3. Household income is the sum of incomes of the individuals within the household. Incomes are recalculated for the original household and the new split subfamily household.
-# 4. 
+# 4.
+
 ```
 
 # 3.4 QA/QC - Check Split Households are Equal to The Number of Households We Expect to Be Split
@@ -606,6 +600,9 @@ full.pums_data.adj <- full.pums_data.adj |>
 # Filter for the subset of non-subfamily members from the split household (the "original" household).
 subset.1.og.test <- full.pums_data.adj |> 
   filter(SPORDER.adj == 1 & TYPEHUGQ == 1 & subset.flag.1 == 1 & adj.flag == 0)
+
+# Print the number of original households that have been altered by the household split code for Subset #1.
+print(sum(subset.1.og.test$WGTP))
 
 # Filter for the subset of subfamily members from the split household (the "original" household).
 subset.1.adj.test <- full.pums_data.adj |> 
@@ -620,12 +617,18 @@ print(sum(subset.1.adj.test$WGTP))
 subset.2.og.test <- full.pums_data.adj |> 
   filter(SPORDER.adj == 1 & TYPEHUGQ == 1 & subset.flag.2 == 1 & adj.flag == 0)
 
+# Print the number of original households that have been altered by the household split code for Subset #2.
+print(sum(subset.2.og.test$WGTP))
+
 # Filter for the subset of subfamily members from the split household (the "original" household).
 subset.2.adj.test <- full.pums_data.adj |> 
   filter(SPORDER.adj == 1 & TYPEHUGQ == 1 & subset.flag.2 == 1 & adj.flag == 2)
 
 # Print the number of households created by the household split code for Subset #2.
 print(sum(subset.2.adj.test$WGTP))
+
+# Print the sum of original households altered by the household split code for both subsets #1 and #2.
+print(sum(sum(subset.1.og.test$WGTP), sum(subset.2.og.test$WGTP)))
 
 # Print the sum of households created by the household split code for both subsets #1 and #2.
 print(sum(sum(subset.1.adj.test$WGTP), sum(subset.2.adj.test$WGTP)))
@@ -651,44 +654,6 @@ if(sum(sum(subset.1$new.hhds), sum(subset.2$new.hhds)) != sum(sum(subset.1.adj.t
   
   print("Proceed!")
 }
-
-```
-
-# 3.5 Create PUMS Extract for Reweighter
-
-```{r}
-# Create a check to see if the file has already been written.
-file_check = paste0(rwt_path, '/PUMS_data/PUMS2021.Split_formatted.csv')
-
-if (!file.exists(file_check)){
-  
-  # Creating the PUMS data extract for Scenario 2
-  pums_data.adj.rwt <- full.pums_data.adj |>
-    left_join(
-      xw,
-      by = c("PUMA"),
-      relationship = "many-to-many"
-    )
-  
-  # Write PUMS extract to reweighter input folder for Scenario 2
-  write.csv(
-    pums_data.adj.rwt,
-    file = paste0(rwt_path, '/PUMS_data/PUMS2021.Split_formatted.csv'),
-    row.names = FALSE
-  )
-  
-} else if (file.exists(file_check)){
-  
-  print("File already exists!")
-  
-}
-
-test <- pums_data.adj.rwt |> 
-  filter(
-    rpa_acr == "OCPC",
-    ageCAT6 == "4",
-    HHtype == '1' 
-  )
 
 ```
 
@@ -859,7 +824,9 @@ write.csv(tbl.12, file = paste0(root,scen,"/Analysis/tbl.12_persons.by.eduattain
 ```
 
 # 4.0 Subset Sampling
+
 # 4.1 Create Subsets of PUMS Records
+
 ```{r}
 # Subset of unsplit that do not need to be reordered
 partial.pums_data.og <- full.pums_data.adj |> 
@@ -867,17 +834,20 @@ partial.pums_data.og <- full.pums_data.adj |>
 
 # Subset of Subset 1 split households.
 partial.pums_data.subset1 <- full.pums_data.adj |> 
-  filter(SPORDER.adj == 1 & TYPEHUGQ == 1 & subset.flag.1 == 1 & adj.flag == 1)
+  filter(SPORDER.adj == 1 & TYPEHUGQ == 1 & subset.flag.1 == 1 & subset.flag.2 != 1 & adj.flag == 1)
 
 # Subset of Subset 2 split households.
 partial.pums_data.subset2 <- full.pums_data.adj |> 
-  filter(SPORDER.adj == 1 & TYPEHUGQ == 1 & subset.flag.2 == 1 & adj.flag == 2)
+  filter(SPORDER.adj == 1 & TYPEHUGQ == 1 & subset.flag.1 != 1 & subset.flag.2 == 1 & adj.flag == 2)
 
-#
+# QC - Ensure total number of households in the split data sets matches the correct number identified in the script.
+print(sum(partial.pums_data.og$WGTP))
 print(sum(sum(partial.pums_data.subset1$WGTP), sum(partial.pums_data.subset2$WGTP)))
+
 ```
 
 # 4.2 Sample PUMS Records from the Subsets for each Year
+
 ```{r}
 # Create the list of years for which we want to create a sample of subset households.
 years <- c(2030,2035,2040,2045,2050)
@@ -887,6 +857,9 @@ total_split.hhds <- as.numeric(sum(nrow(partial.pums_data.subset1), nrow(partial
 
 # Calculate the sample size of rows we want to pull from the subsets in each year.
 sample.size <- round(total_split.hhds*0.25, 0)
+
+# Test the 
+sample_sum <- 0
 
 for (i in years){
   
@@ -912,6 +885,10 @@ for (i in years){
       )
     # Print the number of households that have been sampled.
     print(sum(tmp$WGTP))
+    
+    # And add them up to an object to record the total number of households as QC.
+    sample_sum <- sample_sum + as.numeric(sum(tmp$WGTP))
+    
     # Remove sampled households from the subset.
     partial.pums_data.subset1 <- partial.pums_data.subset1 |> 
       filter(!SERIALNO.adj %in% tmp$SERIALNO.adj)
@@ -940,6 +917,9 @@ for (i in years){
     # Print the number of households that have been sampled.
     print(sum(sum(tmp.1$WGTP), sum(tmp.2$WGTP)))
     
+    # And add them up to an object to record the total number of households as QC.
+    sample_sum <- sample_sum + as.numeric(sum(tmp$WGTP))
+    
     # Remove sampled households from the subset.
     partial.pums_data.subset1 <- partial.pums_data.subset1 |> 
       filter(!SERIALNO.adj %in% tmp.1$SERIALNO.adj)
@@ -962,6 +942,10 @@ for (i in years){
       )
     # Print the number of households that have been sampled.
     print(sum(tmp$WGTP))
+    
+    # And add them up to an object to record the total number of households as QC.
+    sample_sum <- sample_sum + as.numeric(sum(tmp$WGTP))
+    
     # Remove sampled households from the subset.
     partial.pums_data.subset2 <- partial.pums_data.subset2 |> 
       filter(!SERIALNO.adj %in% tmp$SERIALNO.adj)
@@ -984,6 +968,10 @@ for (i in years){
       )
     # Print the number of households that have been sampled.
     print(sum(tmp$WGTP))
+    
+    # And add them up to an object to record the total number of households as QC.
+    sample_sum <- sample_sum + as.numeric(sum(tmp$WGTP))
+    
     # Remove sampled households from the subset.
     partial.pums_data.subset2 <- partial.pums_data.subset2 |> 
       filter(!SERIALNO.adj %in% tmp$SERIALNO.adj)
@@ -993,6 +981,10 @@ for (i in years){
     
     # Remove dataframes that need to be recycled in the next loop.
     rm(tmp)
+    
+    # Recalculate df.row to pass QC print statement.
+    df.row.1 <- as.numeric(nrow(partial.pums_data.subset1))
+    df.row.2 <- as.numeric(nrow(partial.pums_data.subset2))
     
   }
   
@@ -1005,12 +997,20 @@ if (sum(df.row.1, df.row.2) == 0){
   print("STOP! Data still exist in the subset dataframes. Please review sampling script.")
 }
 
+# QC Check - tell us if the number of households in the samples matches the number of households we started with.
+if (sample_sum == 15371){
+  print("Finished sampling PUMS subsets.")
+} else{
+  print("STOP! Data still exist in the subset dataframes. Please review sampling script.")
+}
+
 # Put all the samples together for ease in the subsequent sections
 pums.sample <- bind_rows(pums.sample_2030, pums.sample_2035,pums.sample_2040, pums.sample_2045, pums.sample_2050)
 
 ```
 
 # 5.0 Calculate Headship Rates
+
 # 5.1 Create Headship rate calculation function
 
 ```{r}
@@ -1052,6 +1052,35 @@ create_hdsp.r <- function(df){
     mutate(ageCAT6 = as.factor(ageCAT6))
   
   return(hdsp.r)
+  
+}
+
+create_tenure.r <- function(df){
+  # Generating headship rates by RPA and 5-year age group for the ACS 2017-2022 PUMS
+  ten.r <- df |>
+    # Join the PUMA to RPA ceosswalk to the PUMS data
+    left_join(
+      xw,
+      by = c('PUMA')
+    ) |>
+    # Includes only observations for people in households (omits GQ)
+    filter(SPORDER.adj == "1" & TYPEHUGQ == "1") |>
+    # Groups by variables in the dataframe necessary to getting the granularity of
+    # data we're interested in.
+    group_by(rpa_acr, ageCAT6) |>
+    # Computes the weighted sum of individuals in each HH type category by the groups
+    # assigned above.
+    count(var = TEN_Group, wt = WGTP) |>
+    ungroup() |>
+    group_by(rpa_acr, ageCAT6) |>
+    # Converts numbers into frequencies.
+    mutate(freq = (n / sum(n))) |>
+    # Removes the level of aggregation set earlier by group_by()
+    ungroup() |>
+    select(-c(n)) |>
+    mutate(ageCAT6 = as.factor(ageCAT6))
+  
+  return(ten.r)
   
 }
 
@@ -1108,7 +1137,12 @@ for (i in years) {
     # Creates a list of SERIALNO to include from the split household data (both the newly create households and the original household which is now smaller).
     sn <- pums.sample |>
       filter(sample == i) |>
-      select(SERIALNO) |>
+      select(SERIALNO) |> 
+      pull()
+    
+    sn.adj <- pums.sample |>
+      filter(sample == i) |>
+      select(SERIALNO.adj) |> 
       pull()
     
     # Create a dataframe of original households that had subfamilies split out from it.
@@ -1118,34 +1152,70 @@ for (i in years) {
     
     # Create a dataframe of split households.
     adj <- full.pums_data.adj |> 
-      filter(TYPEHUGQ == 1 & (subset.flag.1 != 0 | subset.flag.2 !=0) & adj.flag == 1) |>
-      filter(SERIALNO %in% sn)
+      filter(TYPEHUGQ == 1 & (subset.flag.1 != 0 | subset.flag.2 !=0) & adj.flag >= 1) |>
+      filter(SERIALNO.adj %in% sn.adj)
+    
+    # # QC - 
+    og.test <- og |> filter(SPORDER.adj == 1)
+    adj.test <- adj |> filter(SPORDER.adj == 1)
+    sample.test <- pums.sample |> filter(sample == i) |> filter(SPORDER.adj == 1)
+    
+    print(sum(og.test$WGTP))
+    print(sum(adj.test$WGTP))
+    print(sum(sample.test$WGTP))
     
     # Remove unsplit original and split households from standard PUMS dataset by SERIALNO
     tmp_pums <- pums |> filter(!SERIALNO %in% sn)
     
+    # QC - Check that the numbers of swapped the rows is correct. 
+    row.check <- as.numeric((nrow(pums) - nrow(tmp_pums)) - (nrow(og) + nrow(adj)))
+    
+    if (row.check == 0){
+      print("Proceed")
+    } else{
+      print("STOP! The number of swapped rows in the tmp_pums dataframe is incorrect.")
+    }
+    
     # Add the original and split households from this year's sample (and cumulative samples) to the standard PUMS dataset.
     # This simulates the formation of new households.
-    done_pums <- bind_rows(tmp_pums, og, adj) |> mutate(SERIALNO.adj = coalesce(SERIALNO), HHtype.adj = coalesce(HHtype))
+    done_pums <- bind_rows(tmp_pums, og, adj) |>
+      mutate(
+        SERIALNO.adj = coalesce(SERIALNO.adj, SERIALNO),
+        SPORDER.adj = coalesce(SPORDER.adj, SPORDER),
+        HHtype.adj = coalesce(HHtype.adj, HHtype)
+      )
     
     # Calculate headship rates for this projection year.
     hdsp.r <- create_hdsp.r(df = done_pums)
     
-    # QC check for headship rates
+    # Calculate tenure rates for this projection year.
+    ten.r <- create_tenure.r(df = done_pums)
+    
+    # QC - check headship rates do not exceed 1
     check_hdsp.r(hdsp.r)
     
     # Assign the headship rate object to a year specific object name.
     assign(paste0("hdsp.r_", i), hdsp.r)
     
-        # Remove dataframes that will be recreated in the next loop to avoid accidentally using residual data.
+    # Assign the tenure rate object to a year specific object name.
+    assign(paste0("ten.r_", i), ten.r)
+    
+    # save year-specific PUMS dataset for generating baselines.
+    fwrite(done_pums, paste0(rwt_path,'PUMS_data/PUMS2021_Scenario_2_',i,'.csv'))
+    # Remove dataframes that will be recreated in the next loop to avoid accidentally using residual data.
     rm(sn, og, tmp_pums, done_pums, hdsp.r)
     
   } else if (i == 2035){
     
     # Creates a list of SERIALNO to include from the split household data (both the newly create households and the original household which is now smaller).
     sn <- pums.sample |>
-      filter(sample == i| sample == (i - 5)) |>
-      select(SERIALNO) |>
+      filter(sample == i | sample == (i - 5)) |>
+      select(SERIALNO) |> 
+      pull()
+    
+    sn.adj <- pums.sample |>
+      filter(sample == i | sample == (i - 5)) |>
+      select(SERIALNO.adj) |> 
       pull()
     
     # Create a dataframe of original households that had subfamilies split out from it.
@@ -1155,25 +1225,56 @@ for (i in years) {
     
     # Create a dataframe of split households.
     adj <- full.pums_data.adj |> 
-      filter(TYPEHUGQ == 1 & (subset.flag.1 != 0 | subset.flag.2 !=0) & adj.flag == 1) |>
-      filter(SERIALNO %in% sn)
+      filter(TYPEHUGQ == 1 & (subset.flag.1 != 0 | subset.flag.2 !=0) & adj.flag >= 1) |>
+      filter(SERIALNO.adj %in% sn.adj)
+    
+    # # QC -
+    og.test <- og |> filter(SPORDER.adj == 1)
+    adj.test <- adj |> filter(SPORDER.adj == 1)
+    sample.test <- pums.sample |> filter(sample == i | sample == (i - 5)) |> filter(SPORDER.adj == 1)
+    
+    print(sum(og.test$WGTP))
+    print(sum(adj.test$WGTP))
+    print(sum(sample.test$WGTP))
     
     # Remove unsplit original and split households from standard PUMS dataset by SERIALNO
     tmp_pums <- pums |> filter(!SERIALNO %in% sn)
     
+    # QC - Check that the numbers of swapped the rows is correct. 
+    row.check <- as.numeric((nrow(pums) - nrow(tmp_pums)) - (nrow(og) + nrow(adj)))
+    
+    if (row.check == 0){
+      print("Proceed")
+    } else{
+      print("STOP! The number of swapped rows in the tmp_pums dataframe is incorrect.")
+    }
+    
     # Add the original and split households from this year's sample (and cumulative samples) to the standard PUMS dataset.
     # This simulates the formation of new households.
-    done_pums <- bind_rows(tmp_pums, og, adj) |> mutate(SERIALNO.adj = coalesce(SERIALNO), HHtype.adj = coalesce(HHtype))
+    done_pums <- bind_rows(tmp_pums, og, adj)  |>
+      mutate(
+        SERIALNO.adj = coalesce(SERIALNO.adj, SERIALNO),
+        SPORDER.adj = coalesce(SPORDER.adj, SPORDER),
+        HHtype.adj = coalesce(HHtype.adj, HHtype)
+      )
     
     # Calculate headship rates for this projection year.
     hdsp.r <- create_hdsp.r(df = done_pums)
+    
+    # Calculate tenure rates for this projection year.
+    ten.r <- create_tenure.r(df = done_pums)
     
     # QC check for headship rates
     check_hdsp.r(hdsp.r)
     
     # Assign the headship rate object to a year specific object name.
     assign(paste0("hdsp.r_", i), hdsp.r)
+    
+    # Assign the tenure rate object to a year specific object name.
+    assign(paste0("ten.r_", i), ten.r)
   
+    # save year-specific PUMS dataset for generating baselines.
+    fwrite(done_pums, paste0(rwt_path,'PUMS_data/PUMS2021_Scenario_2_',i,'.csv'))
     # Remove dataframes that will be recreated in the next loop to avoid accidentally using residual data.
     rm(sn, og, tmp_pums, done_pums, hdsp.r)
     
@@ -1182,7 +1283,12 @@ for (i in years) {
     # Creates a list of SERIALNO to include from the split household data (both the newly create households and the original household which is now smaller).
     sn <- pums.sample |>
       filter(sample == i | sample == (i - 5) | sample == (i - 10)) |>
-      select(SERIALNO) |>
+      select(SERIALNO) |> 
+      pull()
+    
+    sn.adj <- pums.sample |>
+      filter(sample == i | sample == (i - 5) | sample == (i - 10)) |>
+      select(SERIALNO.adj) |> 
       pull()
     
     # Create a dataframe of original households that had subfamilies split out from it.
@@ -1192,18 +1298,44 @@ for (i in years) {
     
     # Create a dataframe of split households.
     adj <- full.pums_data.adj |> 
-      filter(TYPEHUGQ == 1 & (subset.flag.1 != 0 | subset.flag.2 !=0) & adj.flag == 1) |>
-      filter(SERIALNO %in% sn)
+      filter(TYPEHUGQ == 1 & (subset.flag.1 != 0 | subset.flag.2 !=0) & adj.flag >= 1) |>
+      filter(SERIALNO.adj %in% sn.adj)
+    
+    # # QC -
+    og.test <- og |> filter(SPORDER.adj == 1)
+    adj.test <- adj |> filter(SPORDER.adj == 1)
+    sample.test <- pums.sample |> filter(sample == i | sample == (i - 5) | sample == (i - 10)) |> filter(SPORDER.adj == 1)
+    
+    print(sum(og.test$WGTP))
+    print(sum(adj.test$WGTP))
+    print(sum(sample.test$WGTP))
     
     # Remove unsplit original and split households from standard PUMS dataset by SERIALNO
     tmp_pums <- pums |> filter(!SERIALNO %in% sn)
     
+    # QC - Check that the numbers of swapped the rows is correct. 
+    row.check <- as.numeric((nrow(pums) - nrow(tmp_pums)) - (nrow(og) + nrow(adj)))
+    
+    if (row.check == 0){
+      print("Proceed")
+    } else{
+      print("STOP! The number of swapped rows in the tmp_pums dataframe is incorrect.")
+    }
+    
     # Add the original and split households from this year's sample (and cumulative samples) to the standard PUMS dataset.
     # This simulates the formation of new households.
-    done_pums <- bind_rows(tmp_pums, og, adj) |> mutate(SERIALNO.adj = coalesce(SERIALNO), HHtype.adj = coalesce(HHtype))
+    done_pums <- bind_rows(tmp_pums, og, adj)  |>
+      mutate(
+        SERIALNO.adj = coalesce(SERIALNO.adj, SERIALNO),
+        SPORDER.adj = coalesce(SPORDER.adj, SPORDER),
+        HHtype.adj = coalesce(HHtype.adj, HHtype)
+      )
     
     # Calculate headship rates for this projection year.
     hdsp.r <- create_hdsp.r(df = done_pums)
+    
+    # Calculate tenure rates for this projection year.
+    ten.r <- create_tenure.r(df = done_pums)
     
     # QC check for headship rates
     check_hdsp.r(hdsp.r)
@@ -1211,6 +1343,11 @@ for (i in years) {
     # Assign the headship rate object to a year specific object name.
     assign(paste0("hdsp.r_", i), hdsp.r)
     
+    # Assign the tenure rate object to a year specific object name.
+    assign(paste0("ten.r_", i), ten.r)
+    
+    # save year-specific PUMS dataset for generating baselines.
+    fwrite(done_pums, paste0(rwt_path,'PUMS_data/PUMS2021_Scenario_2_',i,'.csv'))
     # Remove dataframes that will be recreated in the next loop to avoid accidentally using residual data.
     rm(sn, og, tmp_pums, done_pums, hdsp.r)
     
@@ -1219,7 +1356,12 @@ for (i in years) {
     # Creates a list of SERIALNO to include from the split household data (both the newly create households and the original household which is now smaller).
     sn <- pums.sample |>
       filter(sample == i | sample == (i - 5) | sample == (i - 10) | sample == (i - 15)) |>
-      select(SERIALNO) |>
+      select(SERIALNO) |> 
+      pull()
+    
+    sn.adj <- pums.sample |>
+      filter(sample == i | sample == (i - 5) | sample == (i - 10) | sample == (i - 15)) |>
+      select(SERIALNO.adj) |> 
       pull()
     
     # Create a dataframe of original households that had subfamilies split out from it.
@@ -1229,18 +1371,44 @@ for (i in years) {
     
     # Create a dataframe of split households.
     adj <- full.pums_data.adj |> 
-      filter(TYPEHUGQ == 1 & (subset.flag.1 != 0 | subset.flag.2 !=0) & adj.flag == 1) |>
-      filter(SERIALNO %in% sn)
+      filter(TYPEHUGQ == 1 & (subset.flag.1 != 0 | subset.flag.2 !=0) & adj.flag >= 1) |>
+      filter(SERIALNO.adj %in% sn.adj)
+    
+    # # QC -
+    og.test <- og |> filter(SPORDER.adj == 1)
+    adj.test <- adj |> filter(SPORDER.adj == 1)
+    sample.test <- pums.sample |> filter(sample == i | sample == (i - 5) | sample == (i - 10) | sample == (i -15)) |> filter(SPORDER.adj == 1)
+    
+    print(sum(og.test$WGTP))
+    print(sum(adj.test$WGTP))
+    print(sum(sample.test$WGTP))
     
     # Remove unsplit original and split households from standard PUMS dataset by SERIALNO
     tmp_pums <- pums |> filter(!SERIALNO %in% sn)
     
+   # QC - Check that the numbers of swapped the rows is correct. 
+    row.check <- as.numeric((nrow(pums) - nrow(tmp_pums)) - (nrow(og) + nrow(adj)))
+    
+    if (row.check == 0){
+      print("Proceed")
+    } else{
+      print("STOP! The number of swapped rows in the tmp_pums dataframe is incorrect.")
+    }
+    
     # Add the original and split households from this year's sample (and cumulative samples) to the standard PUMS dataset.
     # This simulates the formation of new households.
-    done_pums <- bind_rows(tmp_pums, og, adj) |> mutate(SERIALNO.adj = coalesce(SERIALNO), HHtype.adj = coalesce(HHtype))
+    done_pums <- bind_rows(tmp_pums, og, adj)  |>
+      mutate(
+        SERIALNO.adj = coalesce(SERIALNO.adj, SERIALNO),
+        SPORDER.adj = coalesce(SPORDER.adj, SPORDER),
+        HHtype.adj = coalesce(HHtype.adj, HHtype)
+      )
     
     # Calculate headship rates for this projection year.
     hdsp.r <- create_hdsp.r(df = done_pums)
+    
+    # Calculate tenure rates for this projection year.
+    ten.r <- create_tenure.r(df = done_pums)
     
     # QC check for headship rates
     check_hdsp.r(hdsp.r)
@@ -1248,6 +1416,11 @@ for (i in years) {
     # Assign the headship rate object to a year specific object name.
     assign(paste0("hdsp.r_", i), hdsp.r)
     
+    # Assign the tenure rate object to a year specific object name.
+    assign(paste0("ten.r_", i), ten.r)
+    
+    # save year-specific PUMS dataset for generating baselines.
+    fwrite(done_pums, paste0(rwt_path,'PUMS_data/PUMS2021_Scenario_2_',i,'.csv'))
     # Remove dataframes that will be recreated in the next loop to avoid accidentally using residual data.
     rm(sn, og, tmp_pums, done_pums, hdsp.r)
     
@@ -1259,6 +1432,11 @@ for (i in years) {
       select(SERIALNO) |>
       pull()
     
+    sn.adj <- pums.sample |>
+      filter(sample == i | sample == (i - 5) | sample == (i - 10) | sample == (i - 15) | sample == (i - 20)) |>
+      select(SERIALNO.adj) |>
+      pull()
+    
     # Create a dataframe of original households that had subfamilies split out from it.
     og <- full.pums_data.adj |> 
       filter(TYPEHUGQ == 1 & (subset.flag.1 != 0 | subset.flag.2 !=0) & adj.flag == 0) |>
@@ -1266,18 +1444,44 @@ for (i in years) {
     
     # Create a dataframe of split households.
     adj <- full.pums_data.adj |> 
-      filter(TYPEHUGQ == 1 & (subset.flag.1 != 0 | subset.flag.2 !=0) & adj.flag == 1) |>
-      filter(SERIALNO %in% sn)
+      filter(TYPEHUGQ == 1 & (subset.flag.1 != 0 | subset.flag.2 !=0) & adj.flag >= 1) |>
+      filter(SERIALNO.adj %in% sn.adj)
+    
+    # # QC -
+    og.test <- og |> filter(SPORDER.adj == 1)
+    adj.test <- adj |> filter(SPORDER.adj == 1)
+    sample.test <- pums.sample |> filter(sample == i | sample == (i - 5) | sample == (i - 10) | sample == (i-15) | sample == (i - 20)) |> filter(SPORDER.adj == 1)
+    
+    print(sum(og.test$WGTP))
+    print(sum(adj.test$WGTP))
+    print(sum(sample.test$WGTP))
     
     # Remove unsplit original and split households from standard PUMS dataset by SERIALNO
     tmp_pums <- pums |> filter(!SERIALNO %in% sn)
     
+    # QC - Check that the numbers of swapped the rows is correct. 
+    row.check <- as.numeric((nrow(pums) - nrow(tmp_pums)) - (nrow(og) + nrow(adj)))
+    
+    if (row.check == 0){
+      print("Proceed")
+    } else{
+      print("STOP! The number of swapped rows in the tmp_pums dataframe is incorrect.")
+    }
+    
     # Add the original and split households from this year's sample (and cumulative samples) to the standard PUMS dataset.
     # This simulates the formation of new households.
-    done_pums <- bind_rows(tmp_pums, og, adj) |> mutate(SERIALNO.adj = coalesce(SERIALNO), HHtype.adj = coalesce(HHtype))
+    done_pums <- bind_rows(tmp_pums, og, adj)  |>
+      mutate(
+        SERIALNO.adj = coalesce(SERIALNO.adj, SERIALNO),
+        SPORDER.adj = coalesce(SPORDER.adj, SPORDER),
+        HHtype.adj = coalesce(HHtype.adj, HHtype)
+      )
     
     # Calculate headship rates for this projection year.
     hdsp.r <- create_hdsp.r(df = done_pums)
+    
+    # Calculate tenure rates for this projection year.
+    ten.r <- create_tenure.r(df = done_pums)
     
     # QC check for headship rates
     check_hdsp.r(hdsp.r)
@@ -1285,6 +1489,11 @@ for (i in years) {
     # Assign the headship rate object to a year specific object name.
     assign(paste0("hdsp.r_", i), hdsp.r)
     
+    # Assign the tenure rate object to a year specific object name.
+    assign(paste0("ten.r_", i), ten.r)
+    
+    # save year-specific PUMS dataset for generating baselines.
+    fwrite(done_pums, paste0(rwt_path,'PUMS_data/PUMS2021_Scenario_2_',i,'.csv'))
     # Remove dataframes that will be recreated in the next loop to avoid accidentally using residual data.
     rm(sn, og, tmp_pums, done_pums, hdsp.r)
     
@@ -1296,6 +1505,7 @@ for (i in years) {
 ```
 
 # 5.3 Merge Headship rate files together and export file
+
 ```{r}
 # Left join all headship rate dataframes to create single file to export.
 hdsp.r_scenario2 <- purrr::reduce(
@@ -1317,5 +1527,25 @@ write.csv(
   paste0(rwt_path,"Headship_rates/hdsp.r.1721_household.split.paced.csv"),
   row.names = FALSE
 )
-```
 
+# Left join all headship rate dataframes to create single file to export.
+ten.r_scenario2 <- purrr::reduce(
+  list(ten.r_2030, ten.r_2035, ten.r_2040, ten.r_2045, ten.r_2050),
+  dplyr::left_join,
+  by = c('rpa_acr','ageCAT6','var')
+) |> 
+  dplyr::rename(
+    freq.split.30 = freq.x,
+    freq.split.35 = freq.y,
+    freq.split.40 = freq.x.x,
+    freq.split.45 = freq.y.y,
+    freq.split.50 = freq,
+  )
+
+# Write .csv file
+write.csv(
+  ten.r_scenario2,
+  paste0(rwt_path,"Headship_rates/ten.r.1721_household.split.paced.csv"),
+  row.names = FALSE
+)
+```

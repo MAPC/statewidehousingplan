@@ -2,11 +2,11 @@
 library(tidycensus)
 library(tidyverse)
 library(data.table)
-library(reticulate)
+
 library(mapcdatakeys)
 library(janitor)
 library(readxl)
-library(gt)
+
 
 #Remove scientific notation
 options(scipen = 999)

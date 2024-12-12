@@ -17,8 +17,8 @@ This set of scripts runs the household reweighter to produce reweighted PUMS dat
 
 #scen <- 'Scenario_1'
 # scen <- 'Scenario_2'
-scen <- 'Scenario_3'
-#scen <- 'Scenario_4'
+# scen <- 'Scenario_3'
+scen <- 'Scenario_4'
 
 # Set ACS / PUMS vintage
 vintage <-  2021
@@ -32,8 +32,8 @@ reb <- 'MAPC101'
 # reb <- 'MAPC97'
 
 # Root Directory
-root <- 'S:/Network Shares/K Drive/DataServices/Projects/'
-#root <- 'K:/DataServices/Projects/'
+#root <- 'S:/Network Shares/K Drive/DataServices/Projects/'
+root <- 'K:/DataServices/Projects/'
 
 ctrltotal.path <- paste0(root, 'Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/', scen, '/')
 
@@ -909,10 +909,23 @@ setnames(uw,'vac_rate_total','combined_vacancy_rate_2020')
 
 outfile <- uw[,.(scenario,mpo,total_units,total_owner_units,total_rental_units,total_available_owner_units,total_available_rental_units,vacant_available_to_own,vacant_available_to_rent,own_vac_rate_total,rent_vac_rate_total,own_target,rent_target,combined_vacancy_rate_2020,own_occ_units,rent_occ_units,households_own_2020,households_rent_2020,households_own_2025,households_rent_2025,households_own_2030,households_rent_2030,households_own_2035,households_rent_2035,households_own_2040,households_rent_2040,households_own_2045,households_rent_2045,households_own_2050,households_rent_2050,own_units_needed_in_2035,own_units_needed_in_2050,rent_units_needed_in_2035,rent_units_needed_in_2050,new_owner_units_needed_2020_to_2035,new_rental_units_needed_2020_to_2035,new_owner_units_needed_2020_to_2050,new_rental_units_needed_2020_to_2050,total_new_units_needed_2020_to_2035,total_new_units_needed_2020_to_2050)]
 
-setnames(outfile,c('own_target','rent_target','total_units','total_owner_units','total_rental_units','total_available_owner_units','total_available_rental_units','vacant_available_to_own','vacant_available_to_rent','own_vac_rate_total','rent_vac_rate_total'),c('own_target_vacancy_rate','rent_target_vacancy_rate','total_units_2020','total_owner_units_2020','total_rental_units_2020','total_available_owner_units_2020','total_available_rental_units_2020','vacant_available_to_own_2020','vacant_available_to_rent_2020','owner_unit_vacancy_rate_2020','rental_unit_vacancy_rate_2020'))
+setnames(outfile,c('own_target','rent_target','total_units','total_owner_units','total_rental_units','total_available_owner_units','total_available_rental_units','vacant_available_to_own','vacant_available_to_rent','own_vac_rate_total','rent_vac_rate_total','own_occ','rent_occ'),c('own_target_vacancy_rate','rent_target_vacancy_rate','total_units_2020','total_owner_units_2020','total_rental_units_2020','total_available_owner_units_2020','total_available_rental_units_2020','vacant_available_to_own_2020','vacant_available_to_rent_2020','owner_unit_vacancy_rate_2020','rental_unit_vacancy_rate_2020','Census 2020 owner-occupied households','Census 2020 renter-occupied households'))
 
 setnames(outfile,names(outfile),gsub('_',' ',names(outfile)))
-fwrite(outfile, paste0(workpath, scen, '/Output_Files/',scen,'_unit_demand_estimates.csv'))
+s2 <- copy(outfile)
+s2[,mpo:=NULL]
+swide <- s2[,lapply(.SD,sum,na.rm=T),scenario]
+swide[,mpo:='Statewide']
+of <- rbind(outfile,swide)
+of[mpo=='Statewide',`owner unit vacancy rate 2020`:=`vacant available to own` / `total available owner units 2020`]
+of[mpo=='Statewide',`rental unit vacancy rate 2020`:=`vacant available to rent` / `total available rental units 2020`]
+of[mpo=='Statewide',`combined vacancy rate 2020`:=(`vacant available to own` + `vacant available to rent`) / (`total available owner units 2020` + `total available rental units 2020`)]
+
+of[,`Change in Households 2020 - 2035`:=(`households own 2035` + `households rent 2035`) - (`households own 2020` + `households rent 2020`)]
+of[,`Change in Households 2020 - 2050`:=(`households own 2050` + `households rent 2050`) - (`households own 2020` + `households rent 2020`)]
+
+
+fwrite(of, paste0(workpath, scen, '/Output_Files/',scen,'_unit_demand_estimates.csv'))
 }
 
 

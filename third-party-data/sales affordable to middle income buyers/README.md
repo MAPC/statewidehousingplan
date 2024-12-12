@@ -32,6 +32,7 @@ methods:
 
 
 `affordable_sales()`
+
 inputs:
 - a dataframe that has gone through the mortgage calculator (must include fields for monthly_payment, number of bedrooms, month, year, and muncipal ID)
 - 'count' or 'percent' depending on the output summary table wanted

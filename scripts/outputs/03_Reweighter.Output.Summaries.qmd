@@ -326,6 +326,17 @@ if(scen == "Scenario_1"){
           tenure == 2 ~ "Rent",
           .default = "Unknown"
         ),
+        # Categorizing worker categories:
+        # (0) no workers
+        # (1) one worker
+        # (2) two workers
+        # (3) three or more workers
+        WRKHH = case_when(
+          Worker_Total == 0 ~ 0,
+          Worker_Total == 1 ~ 1,
+          Worker_Total == 2 ~ 2,
+          Worker_Total >= 3 ~ 3
+        ), 
         # Creates a group designation based on the number of workers in a household.
         WRKHH_Group = case_when(
           WRKHH == 0 ~ "No Workers",

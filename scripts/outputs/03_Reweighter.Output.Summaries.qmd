@@ -62,6 +62,9 @@ options(scipen = 999)
 #Set random seed
 set.seed(351)
 
+# Create RPA list
+rpa.list <- mapcdatakeys::all_muni_data_keys |> select(rpa_acr) |> distinct(rpa_acr) |> pull()
+
 ```
 
 # 1.0 Load Reweighter Output Data
@@ -125,6 +128,51 @@ for (i in c(2030, 2035, 2040, 2045, 2050)) {
   rm(tmp)
   
 }
+
+# read_pums.files <- function(scenario, rpa, year){
+#   read_csv(paste0(base, 'Housing/StatewideHousingPlan/04_Analysis/Data/Working/Reweighter/',scenario,'/Input_Files/',rpa,'/PUMS2021_',scenario,'_',rpa,'_',year,'.csv'))
+# }
+# 
+# pums.df <- NULL
+# 
+# for (j in rpa.list){
+#   for (i in c(2030, 2035, 2040, 2045, 2050)){
+#     
+#     print(paste0("Loading PUMS data for ",j," ", i, "."))
+#     
+#     tmp <- read_pums.files(scenario = scen, rpa = j, year = i) |>
+#       select(SERIALNO.adj, SPORDER.adj, AGEP, HINCP, PINCP, ADJINC) |>
+#       mutate(
+#        PINCP = case_when(
+#          AGEP <= 14 ~ 0,
+#          AGEP > 14 ~ PINCP,
+#          .default = PINCP
+#        ),
+#        year = i,
+#        rpa_acr = j
+#       ) |>
+#       group_by(SERIALNO.adj) |>
+#       mutate(HINCP.adj = sum(PINCP)) |>
+#       ungroup() |>
+#       mutate(
+#         HINCP.adj.2021USD = round((HINCP.adj * ADJINC), 0),
+#         Income_Group = case_when(
+#           HINCP.adj.2021USD <= 35000 ~ "<=$35,000",
+#           HINCP.adj.2021USD > 35000 & HINCP.adj.2021USD <= 75000 ~ "$35,001 - $75,000",
+#           HINCP.adj.2021USD > 75000 & HINCP.adj.2021USD <= 125000 ~ "$75,001 - $125,000",
+#           HINCP.adj.2021USD > 125000 & HINCP.adj.2021USD <= 225000 ~ "$125,001 - $225,000",
+#           HINCP.adj.2021USD > 225000 ~ ">$225,000",
+#           .default = "Unknown"
+#         )
+#       ) |>
+#       select(SERIALNO.adj,SPORDER.adj,HINCP.adj.2021USD,Income_Group,year)
+#     
+#     pums.df <- bind_rows(pums.df, tmp)
+#     
+#     rm(tmp)
+#     
+#   }
+# }
 
 if(scen == "Scenario_1"){
   
@@ -231,7 +279,7 @@ if(scen == "Scenario_1"){
     print(paste0("Finished Loading ", i))
   }
   
-} else if (scen == "Scenario_2"){
+} else if (scen == "Scenario_2" | scen == "Scenario_3"){
   
   for (i in scen) {
     for (j in years) {
@@ -356,9 +404,7 @@ if(scen == "Scenario_1"){
     
   }
   
-} else if (scen == "Scenario_3"){
-  
-} else if (scen == "Scenario_4"){
+}  else if (scen == "Scenario_4"){
   
 }
 
@@ -423,6 +469,17 @@ print(sum(test$new_WGTP))
 -   .3 Household Type
 
 ```{r}
+tbl.0 <- rwt.pums.df.join_Scenario_2 |> 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |>
+  group_by(
+    year
+  ) |> 
+  summarise(
+    hhds = sum(new_WGTP)
+  ) |> 
+  ungroup()
+  
+
 #===============================================================================
 # .1 UrbanSim Household Income Groupings
 tbl.1 <- rwt.pums.df.join_Scenario_2 |> 
@@ -433,9 +490,28 @@ tbl.1 <- rwt.pums.df.join_Scenario_2 |>
     Income_Group
   ) |> 
   summarise(
-    hhds = round(sum(new_WGTP), 0)
+    hhds = sum(new_WGTP)
   ) |> 
   ungroup()
+
+tbl.1.test <- tbl.1 |> 
+  group_by(
+    year
+  ) |> 
+  summarise(
+    hhds = sum(hhds)
+  ) |> 
+  ungroup()
+
+if (sum(tbl.0$hhds) != sum(tbl.1.test$hhds)){
+  
+  print("STOP! Check table!")
+  
+} else {
+  
+  print("Proceed.")
+  
+}
 
 #Write Output tables to K Drive
 write.csv(
@@ -454,11 +530,30 @@ tbl.2 <- rwt.pums.df.join_Scenario_2 |>
     Age_Group
   ) |> 
   summarise(
-    hhds = round(sum(new_WGTP),0)
+    hhds = sum(new_WGTP)
   ) |> 
   ungroup()
 
-#Write Output Tables ot K Drive
+tbl.2.test <- tbl.2 |> 
+  group_by(
+    year
+  ) |> 
+  summarise(
+    hhds = sum(hhds)
+  ) |> 
+  ungroup()
+
+if (sum(tbl.0$hhds) != sum(tbl.2.test$hhds)){
+  
+  print("STOP! Check table!")
+  
+} else {
+  
+  print("Proceed.")
+  
+}
+
+#Write Output Tables to K Drive
 write.csv(
   tbl.2,
   paste0(output_path,"/output.tbl_",scen,"_Households.by.AgeGroups.csv"),
@@ -475,9 +570,28 @@ tbl.3 <- rwt.pums.df.join_Scenario_2  |>
     HHtype_Group
   ) |> 
   summarise(
-    hhds = round(sum(new_WGTP), 0)
+    hhds = sum(new_WGTP)
   ) |> 
   ungroup()
+
+tbl.3.test <- tbl.3 |> 
+  group_by(
+    year
+  ) |> 
+  summarise(
+    hhds = sum(hhds)
+  ) |> 
+  ungroup()
+
+if (sum(tbl.0$hhds) != sum(tbl.3.test$hhds)){
+  
+  print("STOP! Check table!")
+  
+} else {
+  
+  print("Proceed.")
+  
+}
 
 # Write output tables to K drive
 write.csv(
@@ -501,9 +615,28 @@ tbl.4 <- rwt.pums.df.join_Scenario_2  |>
     CHILDHH_Group
   ) |> 
   summarise(
-    hhds = round(sum(new_WGTP), 0)
+    hhds = sum(new_WGTP)
   ) |> 
   ungroup()
+
+tbl.4.test <- tbl.4 |> 
+  group_by(
+    year
+  ) |> 
+  summarise(
+    hhds = sum(hhds)
+  ) |> 
+  ungroup()
+
+if (sum(tbl.0$hhds) != sum(tbl.4.test$hhds)){
+  
+  print("STOP! Check table!")
+  
+} else {
+  
+  print("Proceed.")
+  
+}
 
 # Write output tables to K drive
 write.csv(
@@ -522,9 +655,28 @@ tbl.5 <- rwt.pums.df.join_Scenario_2  |>
     Size_Group
   ) |> 
   summarise(
-    hhds = round(sum(new_WGTP), 0)
+    hhds = sum(new_WGTP)
   ) |> 
   ungroup()
+
+tbl.5.test <- tbl.5 |> 
+  group_by(
+    year
+  ) |> 
+  summarise(
+    hhds = sum(hhds)
+  ) |> 
+  ungroup()
+
+if (sum(tbl.0$hhds) != sum(tbl.5.test$hhds)){
+  
+  print("STOP! Check table!")
+  
+} else {
+  
+  print("Proceed.")
+  
+}
 
 # Write output tables to K drive
 write.csv(
@@ -543,9 +695,28 @@ tbl.6 <- rwt.pums.df.join_Scenario_2  |>
     TEN_Group
   ) |> 
   summarise(
-    hhds = round(sum(new_WGTP), 0)
+    hhds = sum(new_WGTP)
   ) |> 
   ungroup()
+
+tbl.6.test <- tbl.6 |> 
+  group_by(
+    year
+  ) |> 
+  summarise(
+    hhds = sum(hhds)
+  ) |> 
+  ungroup()
+
+if (sum(tbl.0$hhds) != sum(tbl.6.test$hhds)){
+  
+  print("STOP! Check table!")
+  
+} else {
+  
+  print("Proceed.")
+  
+}
 
 # Write output tables to K drive
 write.csv(
@@ -564,9 +735,28 @@ tbl.7 <- rwt.pums.df.join_Scenario_2  |>
     WRKHH_Group
   ) |> 
   summarise(
-    hhds = round(sum(new_WGTP), 0)
+    hhds = sum(new_WGTP)
   ) |> 
   ungroup()
+
+tbl.7.test <- tbl.7 |> 
+  group_by(
+    year
+  ) |> 
+  summarise(
+    hhds = sum(hhds)
+  ) |> 
+  ungroup()
+
+if (sum(tbl.0$hhds) != sum(tbl.7.test$hhds)){
+  
+  print("STOP! Check table!")
+  
+} else {
+  
+  print("Proceed.")
+  
+}
 
 # Write output tables to K drive
 write.csv(

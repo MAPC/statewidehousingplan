@@ -126,8 +126,6 @@ for (i in c(2030, 2035, 2040, 2045, 2050)) {
   
 }
 
-
-
 if(scen == "Scenario_1"){
   
   # Loads in reweighted PUMS data for each year and scenario.
@@ -374,7 +372,7 @@ rwt.pums.df.join_Scenario_2 <-
   # Create a unified income group variable which takes the income groups created in 2020 and 2025 by the standard HINCP variable and the 2030-2050 income groups created by reaggregating PINCP to each household to calculate HINCP for split households.
   mutate(
     Income_Group = coalesce(Income_Group.y, Income_Group.x)
-  ) |> 
+  )
 
 ```
 

@@ -254,7 +254,7 @@ if(scen == "Scenario_1"){
     # Join the new weights to the 
     rwt.pums.df.join <-  rwt.pums.df |>
       mutate() |> 
-      group_by(SERIALNO) |> 
+      group_by(SERIALNO, year) |> 
       mutate(
         NP = n(),
         Child_Total = sum(child),
@@ -364,8 +364,17 @@ if(scen == "Scenario_1"){
   
 }
 
-test <- rwt.pums.df |> 
-  filter(str_detect(SERIALNO, "adj"))
+# Join the Income data from the PUMS reweighter inputs to the outputs
+rwt.pums.df.join_Scenario_2 <- 
+  left_join(
+    rwt.pums.df.join_Scenario_2,
+    pums.df,
+    by = c("SERIALNO" = "SERIALNO.adj", "SPORDER" = "SPORDER.adj", "year")
+  ) |> 
+  # Create a unified income group variable which takes the income groups created in 2020 and 2025 by the standard HINCP variable and the 2030-2050 income groups created by reaggregating PINCP to each household to calculate HINCP for split households.
+  mutate(
+    Income_Group = coalesce(Income_Group.y, Income_Group.x)
+  ) |> 
 
 ```
 

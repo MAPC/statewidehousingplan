@@ -12,10 +12,10 @@ editor: visual
 # Set Scenario Names
 
 # Population Scenario
-scen <- 'Scenario_2'
+scen <- 'Scenario_1'
 # Headship rate Scenario
-# hdshp <- 'acs1721'
-hdshp <- 'scen2'
+hdshp <- 'acs1721'
+#hdshp <- 'scen2'
 
 # Use when Rproject is open
 # root <- '../../../../Data/Working/Regional_Control_Totals/'
@@ -2196,10 +2196,9 @@ if (scen == "Scenario_1"){ # Scenario 1
   print("Using Headship Rates for Scenario 1.")
   
   hdsp.r <- headship_rates
-  # hdsp.r_read(scenario = scen, file = "/headship_rates.1721.csv")
+  ten.r <- fread(paste0(output_path, "tenure_rates.pums.",hdshp,".csv"))
 
-
-} else if (scen %in% c("Scenario_2","Scenario_3","Scenario_4")){ # Scenario 2
+} else if (scen %in% c("Scenario_2","Scenario_3","Scenario_4")){
   
   print("Using Headship Rates for Scenario 2/3/4.")
   

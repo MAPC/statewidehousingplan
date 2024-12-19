@@ -38,6 +38,40 @@ affordable_counts <- affordable_sales(warren_res_monthly, 'count')
 affordable_percents <- affordable_sales(warren_res_monthly, 'percent')
 ```
 
+# Get RPA aggregations 
+```{r}
+affordable_rpa <- affordable_counts |> 
+  ungroup() |> 
+  left_join(mapcdatakeys::rpa_data_keys, by = c("municipal" = "muni_name")) |> 
+  select(-c(mpo, mpo_id, mpo_name))
+
+#aggregate counts to RPA level
+rpa_counts <- affordable_rpa |> 
+  group_by(rpa_acr, fy_year, hh_size) |> 
+  mutate(
+    # get total transactions that were available to a hh at the given size
+    total_transactions = sum(total_transactions),
+    # get count of affordable transactions at different income levels
+    across(starts_with('affordable_'), sum)
+      ) |> 
+  select(rpa_acr, fy_year, hh_size, total_transactions, affordable_30, affordable_50, affordable_80, affordable_100, affordable_120) |> 
+  distinct()
+
+#aggregate percents to rpa level
+rpa_percents <- affordable_rpa |> 
+  group_by(rpa_acr, fy_year, hh_size) |> 
+  mutate(
+    # get total transactions that were available to a hh at the given size
+    total_transactions = sum(total_transactions),
+    # get percent of affordable transactions at different income levels
+    across(starts_with('affordable_'), function(x){round(sum(x)/total_transactions, digits = 3)})
+      ) |> 
+  select(rpa_acr, fy_year, hh_size, total_transactions, affordable_30, affordable_50, affordable_80, affordable_100, affordable_120) |> 
+  distinct()
+```
+
+
+
 # Write summary tables to project folder
 
 ```{r}
@@ -55,4 +89,15 @@ write.csv(
   row.names = FALSE
 )
 
+write.csv(
+  rpa_counts,
+  paste0(output_path, "rpa_counts.csv"),
+  row.names = FALSE
+)
+
+write.csv(
+  rpa_percents,
+  paste0(output_path, "rpa_percents.csv"),
+  row.names = FALSE
+)
 ```

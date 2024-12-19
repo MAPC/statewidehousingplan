@@ -127,7 +127,7 @@ affordable_sales <- function(df, output_type) {
       across(.cols = -c(seq_id, muni_id, municipal, countyname, areaname, fy_year, median), function(x){(x/12)*0.3})
     ) 
   #close db connection
-  dbDisconnect(ch.ds)
+  dbDisconnect(db_connection)
   
   # create blank output table to write to
   output <- NULL

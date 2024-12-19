@@ -22,7 +22,7 @@ editor: visual
 
 ### Set Scenario Names ###
 #Population Scenario
-scen <- 'Scenario_2'
+scen <- 'Scenario_3'
 #Headship rate Scenario
 hdshp <- 'scen2'
 
@@ -74,7 +74,7 @@ rpa.list <- mapcdatakeys::all_muni_data_keys |> select(rpa_acr) |> distinct(rpa_
 years <- c(2020,2025,2030,2035,2040,2045,2050)
 
 #Set a list of Scenarios to be processed
-scen <- c("Scenario_2")
+scen <- c("Scenario_3")
 
 # Create null objects for each scenario's full reweighted PUMS dataset. 
 # One will be used per script run depending on the value given to "scen" at the outset of the script.
@@ -409,9 +409,9 @@ if(scen == "Scenario_1"){
 }
 
 # Join the Income data from the PUMS reweighter inputs to the outputs
-rwt.pums.df.join_Scenario_2 <- 
+rwt.pums.df.join_Scenario_3 <- 
   left_join(
-    rwt.pums.df.join_Scenario_2,
+    rwt.pums.df.join_Scenario_3,
     pums.df,
     by = c("SERIALNO" = "SERIALNO.adj", "SPORDER" = "SPORDER.adj", "year")
   ) |> 
@@ -469,7 +469,7 @@ print(sum(test$new_WGTP))
 -   .3 Household Type
 
 ```{r}
-tbl.0 <- rwt.pums.df.join_Scenario_2 |> 
+tbl.0 <- rwt.pums.df.join_Scenario_3 |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>
   group_by(
     year
@@ -482,7 +482,7 @@ tbl.0 <- rwt.pums.df.join_Scenario_2 |>
 
 #===============================================================================
 # .1 UrbanSim Household Income Groupings
-tbl.1 <- rwt.pums.df.join_Scenario_2 |> 
+tbl.1 <- rwt.pums.df.join_Scenario_3 |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   group_by(
     rpa_acr,
@@ -522,7 +522,7 @@ write.csv(
 
 #===============================================================================
 # .2 5-year Age Groupings (ageCAT6)
-tbl.2 <- rwt.pums.df.join_Scenario_2 |> 
+tbl.2 <- rwt.pums.df.join_Scenario_3 |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   group_by(
     rpa_acr,
@@ -562,7 +562,7 @@ write.csv(
 
 #===============================================================================
 # .3 Household Type
-tbl.3 <- rwt.pums.df.join_Scenario_2  |> 
+tbl.3 <- rwt.pums.df.join_Scenario_3  |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   group_by(
     rpa_acr,
@@ -607,7 +607,7 @@ write.csv(
 ```{r}
 #===============================================================================
 # .4 Number of Children in a Household
-tbl.4 <- rwt.pums.df.join_Scenario_2  |>
+tbl.4 <- rwt.pums.df.join_Scenario_3  |>
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
     rpa_acr,
@@ -647,7 +647,7 @@ write.csv(
 
 #===============================================================================
 # .5 Size of Household
-tbl.5 <- rwt.pums.df.join_Scenario_2  |> 
+tbl.5 <- rwt.pums.df.join_Scenario_3  |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   group_by(
     rpa_acr,
@@ -687,7 +687,7 @@ write.csv(
 
 #===============================================================================
 # .6 Tenure
-tbl.6 <- rwt.pums.df.join_Scenario_2  |> 
+tbl.6 <- rwt.pums.df.join_Scenario_3  |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   group_by(
     rpa_acr,
@@ -727,7 +727,7 @@ write.csv(
 
 #===============================================================================
 # .7 Number of Workers in a Household
-tbl.7 <- rwt.pums.df.join_Scenario_2  |> 
+tbl.7 <- rwt.pums.df.join_Scenario_3  |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   group_by(
     rpa_acr,
@@ -785,7 +785,7 @@ write.csv(
 # 7.0 Full Crosstab
 
 ```{r}
-full.crosstab <- rwt.pums.df.join_Scenario_2  |> 
+full.crosstab <- rwt.pums.df.join_Scenario_3  |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>
   group_by(
     rpa_acr,

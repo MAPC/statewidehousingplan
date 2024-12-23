@@ -1,0 +1,270 @@
+---
+title: "01.5_EA.PUMS.Subset"
+format: html
+editor: visual
+---
+
+## Quarto
+
+Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+
+# 0.1 - Set knitr path + root for inputs
+
+```{r}
+#Use when Rproject is open
+#root <- '../../../../Data/Working/Regional_Control_Totals/'
+
+# Base root. Toggle between S: and K: drive depending on mapped paths on your computer
+base <- "K:/DataServices/Projects/Current_Projects/"
+# base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
+
+#General K drive filepath
+root <- paste0(base, "/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/")
+
+# Reweighter files path
+rwt_path <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Reweighter/")
+
+#PUMS K drive filepath
+pums_path <- paste0(base, "/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS/ipums_2021/")
+
+#Set output filepath
+output_path <- paste0(base, "/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS/outputs/")
+
+#Set knitr path
+knitr::opts_knit$set(root.dir = pums_path)
+```
+
+# 0.2 - Set package dependencies, set environment, set up data keys
+
+```{r}
+library(tidycensus)
+library(tidyverse)
+library(data.table)
+library(mapcdatakeys)
+library(janitor)
+library(readxl)
+library(here)
+
+# Remove scientific notation
+options(scipen = 999)
+# Set random seed
+set.seed(351)
+
+# Load Libraries for PUMS Analysis and PUMS API query functions
+# Sets seed and removes scientific notation
+source(here("PUMS_Analysis/PUMS_Helper_Functions.R"))
+# source("C:/Project_Work/statewidehousingplan/PUMS_Analysis/PUMS_Helper_Functions.R")
+
+# Load PUMA x RPA Crosswalk
+xw <- read.csv(paste0(rwt_path, "PUMS_data/PUMA10_RPA_crosswalk.csv")) |> 
+  mutate(PUMA = str_pad(PUMA, 5, "left", pad = 0))
+
+```
+# 1.0 - Load and process PUMS Data
+
+NOTE: We use the CPI deflator time series to adjust PUMS income to 2013 dollars (for UrbanSim). ACS uses the Consumer Price Index for All Urban Consumers Retroactive Series (R-CPI-U-RS, details here: <https://www.bls.gov/cpi/research-series/r-cpi-u-rs-home.htm>) as opposed to the ASEC/Census which uses C-CPI-U (details here: [*https://www.census.gov/topics/income-poverty/income/guidance/current-vs-constant-dollars.html*](https://www.census.gov/topics/income-poverty/income/guidance/current-vs-constant-dollars.html){.uri}*)*
+
+```{r}
+# Set PUMS vintage final year for {tidycensus} API query.
+vintage <- 2021
+
+# List of PUMS variables
+variable_list <- c('RT', 'PUMA', 'ADJHSG','ADJINC','NP','TYPEHUGQ','HHLDRAGEP',
+                   'HHLDRRAC1P','HHLDRHISP', 'HHT', 'HHT2', 'HINCP','LNGI', 'NR', 'PARTNER', 'PSF','R18',
+                   'AGEP','RELSHIPP','RAC1P','OC','TEN', "SEX", "PINCP", "ESR", 'HISP', 'WKHP', 'HHLANP')
+
+# SEMP bottom coding has changed from $1 to $4 like WAGP
+
+# Query {tidycensus} for 2017-2021 5-Year PUMS data
+pums_data <- pums_query(var.list = variable_list, yr = vintage, srvy = "acs5") |>
+  # General Data Cleaning
+  mutate(
+    # Generate five-year age groupings to match UMDI population projections data.
+    ageCAT6 = cut(AGEP, breaks = c(-Inf, seq(4, 84, 5), Inf), labels = 1:18),
+    # Renaming the 5-year age group variable.
+    AgeCat = ageCAT6,
+    # Generate a custom age grouping
+    # Levels are (0) 0-14; (4) 15 to 19; (5) 20 to 24; (6) 25 to 34; (7) 35 to 44; (8) 45 to 54; (9) 55 to 64 (10) 65 to 74 (11) 75+
+    PAGEC2 = cut(AGEP, breaks = c(-Inf, 14, 19, 24, 34, 44, 54, 64, 74, 79, 84, Inf), labels = c(0, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13)),
+    # Generate ten-year age groupings 
+    # ageCAT4 is the 2020 decennial census age breaks for age of householder - used for 2020 base year control total reweighter targets
+    ageCAT4 = case_when(
+      AGEP %in% 15:24 ~ 1,
+      AGEP %in% 25:34 ~ 2,
+      AGEP %in% 35:44 ~ 3,
+      AGEP %in% 45:54 ~ 4,
+      AGEP %in% 55:59 ~ 5,
+      AGEP %in% 60:64 ~ 6,
+      AGEP %in% 65:74 ~ 7,
+      AGEP %in% 75:84 ~ 8,
+      AGEP >= 85 ~ 9
+    ), 
+    # Creates a tenure grouping for reweighter file:
+    tenure = case_when(# Owned with a mortgage or free and clear -> "1"
+      TEN %in% c('1', '2') ~ 1,
+      # Rented or occupied without payment of rent -> "2"
+      TEN %in% c('3', '4') ~ 2,
+      .default = 999
+    ), 
+    # Creates a tenure grouping for:
+    TEN_Group = case_when(# Owned with a mortgage or free and clear -> "Own"
+      TEN %in% c('1', '2') ~ "Own",
+      # Rented or occupied without payment of rent -> "Rent"
+      TEN %in% c('3', '4') ~ "Rent",
+      .default = "Unknown"
+    ), 
+    # Counts as Worker
+    # NOTE - Categories are:
+    # (0) under 16 or not in labor force
+    # (1) in labor force or non-civilian worker
+    worker = case_when(
+      (ESR == "b" | ESR == 6) ~ 0,
+      (ESR == 1 | ESR == 2 | ESR == 3 | ESR == 4 | ESR == 5) ~ 1,
+      is.na(ESR) ~ 0
+    ),
+    # Categorizing Civilian Labor Force or not
+    # NOTE: Categories ar
+    # (0) under 16 or non-civilian
+    # (1) in labor force
+    # (2) not in labor force
+    lf = case_when(
+      ESR == "b" | ESR == 4 | ESR == 5  ~ 0,
+      ESR == 1 | ESR == 2 | ESR == 3  ~ 1,
+      ESR == 6 ~ 2,
+      is.na(ESR) ~ 0
+    ),
+    # Counts as person
+    person = case_when(
+      SPORDER != 0 ~ 1,
+      SPORDER == 0 ~ 0
+    ),
+    # Create a household flag for whether there is a child in a household.
+    child = case_when(
+      AGEP < 18 ~ 1,
+      AGEP >= 18 ~ 0,
+      .default = 0
+    ),
+    # Householder Race Groupings.
+    RACE_Group = case_when(
+      RAC1P == "1" ~ "White Alone",
+      RAC1P == "2" ~ "Black or African American Alone",
+      RAC1P %in% c("3", "4", "5") ~ "AIAN Alone",
+      RAC1P == "6" ~ "Asian Alone",
+      RAC1P == "7" ~ "NHPI Alone",
+      RAC1P == "8" ~ "Some Other Race Alone",
+      RAC1P == "9" ~ "Two or More Races Alone",
+      .default = "Unknown"
+    ),
+    # Householder Hispanic/Non-Hispanic Groupings
+    HISP_Group = case_when(
+      HISP == "01" ~ "Non-Hispanic",
+      HISP != "01" ~ "Hispanic",
+      .default = "Unknown"
+    ),
+    # Educational Attainment Groupings
+    # NOTE - Categories are:
+    # (1) High school degree or less
+    # (2) Associate's degree or some college
+    # (3) Bachelor's
+    # (4) MA or higher
+    SCHL = as.numeric(SCHL),
+    eduattn = case_when(
+      SCHL <= 17 ~ 1,
+      SCHL %in% 18:20 ~ 2,
+      SCHL == 21 ~ 3,
+      SCHL >= 22 ~ 4,
+      is.na(SCHL) ~ 0,
+      .default = 0
+    ),
+    # Create a grouping variable for types of relationships to the householder.
+    RELSHIPP_TYPE = case_when(
+      # 1 indicates a person in a household that is related in some way to the householder.
+      RELSHIPP %in% c(21,22,23,24,25,26,27,28,29,30,31,32,33) ~ 0,
+      # 2 indicates a person in a household unrelated to the householder.
+      RELSHIPP %in% c(34,35,36) ~ 1,
+      # Set a default flag for householders.
+      .default = 0
+    ),
+    # Create a "Studio/Non-Defined Bedroom" variable to denote where households do
+    # not have a bedroom number.
+    studio_flag = case_when(
+      BDSP == 0 ~ "Studio/No Defined Bedroom",
+      BDSP != 0 ~ "Defined Bedroom",
+      .default = "Unknown"
+    ),
+    # Redefine BDSP to label studios/non-defined bedroom units as One-Bedrooms
+    # For purpose of calculating the number of people per bedrooms.
+    BDSP = if_else(BDSP == 0, 1, BDSP),
+    # Calculate the number of people per bedroom in a housing unit.
+    PPB = NP/BDSP,
+    # Categorize each housing unit as overcrowded or not based on PPB.
+    overcrowded.ppb = case_when(
+      PPB > 2.0 ~ "1",
+      PPB <= 2.0 ~ "0"
+    ),
+    # Convert SFN into a numeric column. Introduces NAs for people not in subfamilies
+    SFN = as.numeric(SFN),
+    # Replace the NA for non-subfamily members with 0.
+    SFN = replace_na(SFN, 0)
+  ) |>
+  # Creating household flags for person variables.
+  group_by(SERIALNO) |> 
+  mutate(
+    # Create a variable which denotes the presence of subfamilies for a household.
+    SFN.num = sum(SFN),
+    # Create a variable which denotes the total number of subfamilies in a household.
+    SFN.max = max(SFN),
+    # Sum the total number of workers in the household
+    Worker_Total = sum(worker),
+    # Sum the total number of children in the household
+    Child_Total = sum(child)
+  ) |> 
+  ungroup() |> 
+  mutate(
+  # Create a variable that is a household flag for whether or not a household has children. 
+   child_flag = case_when(
+      Child_Total > 0 ~ "1",
+      Child_Total == 0 ~ "0",
+      .default = "0"
+    ),
+   # Create a household flag for whether or not the household contains a subfamily.
+   SFN.flag = if_else(SFN.num > 0, 1, 0),
+   # Categorizing worker categories:
+   # (0) no workers
+   # (1) one worker
+   # (2) two workers
+   # (3) three or more workers
+   WRKHH = case_when(
+     Worker_Total == 0 ~ 0,
+     Worker_Total == 1 ~ 1,
+     Worker_Total == 2 ~ 2,
+     Worker_Total >= 3 ~ 3
+    ),
+  # Determine if person is not hhder vs hhder of:
+  # (0) No Workers
+  # (1) One Worker 
+  # (2) Two Workers
+  # (3) Three or more workers
+   HHder = case_when(
+     SPORDER == 1 & WRKHH == 0 ~ 0,
+     SPORDER == 1 & WRKHH == 1 ~ 1,
+     SPORDER == 1 & WRKHH == 2 ~ 2,
+     SPORDER == 1 & WRKHH == 3 ~ 3,
+     SPORDER > 1 ~ 99
+   ),
+   # Determine what type of household the person is heading or not heading:
+   # (1) Householder of Household with Children
+   # (2) Non-Householder in a Household with Children
+   # (3) Householder of a Household with Multiple Adults and no children
+   # (4) Non-Householder in a Household with no children
+   # (5) Householder of a Single Person Household
+   HHtype = case_when(
+     Child_Total >= 1 & NP > 1 & HHder != 99 ~ 1,
+     Child_Total >= 1 & NP > 1 & HHder == 99 ~ 2,
+     Child_Total == 0 & NP > 1 & HHder != 99 ~ 3,
+     Child_Total == 0 & NP > 1 & HHder == 99 ~ 4,
+     NP == 1 & HHder != 99 ~ 5
+   )
+  )
+
+```

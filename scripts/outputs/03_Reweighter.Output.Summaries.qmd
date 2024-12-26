@@ -22,7 +22,7 @@ editor: visual
 
 ### Set Scenario Names ###
 #Population Scenario
-scen <- 'Scenario_3'
+scen <- 'Scenario_2'
 #Headship rate Scenario
 hdshp <- 'scen2'
 
@@ -74,7 +74,7 @@ rpa.list <- mapcdatakeys::all_muni_data_keys |> select(rpa_acr) |> distinct(rpa_
 years <- c(2020,2025,2030,2035,2040,2045,2050)
 
 #Set a list of Scenarios to be processed
-scen <- c("Scenario_3")
+scen <- c("Scenario_2")
 
 # Create null objects for each scenario's full reweighted PUMS dataset. 
 # One will be used per script run depending on the value given to "scen" at the outset of the script.
@@ -300,7 +300,7 @@ if(scen == "Scenario_1"){
     # Join the new weights to the 
     rwt.pums.df.join <-  rwt.pums.df |>
       mutate() |> 
-      group_by(SERIALNO, year) |> 
+      group_by(SERIALNO, rpa_acr, year) |> 
       mutate(
         NP = n(),
         Child_Total = sum(child),
@@ -409,9 +409,9 @@ if(scen == "Scenario_1"){
 }
 
 # Join the Income data from the PUMS reweighter inputs to the outputs
-rwt.pums.df.join_Scenario_3 <- 
+rwt.pums.df.join_Scenario_2 <- 
   left_join(
-    rwt.pums.df.join_Scenario_3,
+    rwt.pums.df.join_Scenario_2,
     pums.df,
     by = c("SERIALNO" = "SERIALNO.adj", "SPORDER" = "SPORDER.adj", "year")
   ) |> 
@@ -785,7 +785,7 @@ write.csv(
 # 7.0 Full Crosstab
 
 ```{r}
-full.crosstab <- rwt.pums.df.join_Scenario_3  |> 
+full.crosstab <- rwt.pums.df.join_Scenario_2  |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>
   group_by(
     rpa_acr,

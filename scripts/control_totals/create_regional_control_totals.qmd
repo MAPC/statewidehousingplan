@@ -2202,6 +2202,11 @@ if (scen == "Scenario_1"){ # Scenario 1
   
   print("Using Headship Rates for Scenario 2/3/4.")
   
+  headship_rates.20 <- headship_rates |> 
+    mutate(
+      year = 2020
+    )
+  
   headship_rates.25 <- headship_rates |> 
     mutate(
       year = 2025
@@ -2211,7 +2216,7 @@ if (scen == "Scenario_1"){ # Scenario 1
     filter(var %in% c('single','hhderchild','hhdernochild')) |> 
     dplyr::rename(freq=freq.scenario2)
   
-  hdsp.r <- bind_rows(headship_rates, headship_rates.25, hdsp.r)
+  hdsp.r <- bind_rows(headship_rates.20, headship_rates.25, hdsp.r)
   
   # Use tenure rates from Scenario 2
   ten.r <- fread(paste0(root, "Scenario_2/tenure_rates.Scenario_2.csv"))

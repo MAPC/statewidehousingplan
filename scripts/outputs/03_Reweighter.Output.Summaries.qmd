@@ -80,6 +80,8 @@ scen <- c("Scenario_2")
 # One will be used per script run depending on the value given to "scen" at the outset of the script.
 rwt.pums.df <- NULL
 
+pums.df <- NULL
+
 # Standardized function for reading reweighted PUMS data for each scenario and projection year.
 # - scenario: data that is generated to reflect population and headship rate scenarios. See xx for further detail
 # - year: a year in a list of years created earlier in this code block. Typically in 5-year or 10-year intervals.
@@ -90,8 +92,6 @@ read_rwt.files <- function(scenario, year){
 read_pums.files <- function(year){
   read_csv(paste0(base, 'Housing/StatewideHousingPlan/04_Analysis/Data/Working/Reweighter/PUMS_data/PUMS2021_Scenario_2_',year,'.csv'))
 }
-
-pums.df <- NULL
 
 for (i in c(2030, 2035, 2040, 2045, 2050)) {
   
@@ -128,51 +128,6 @@ for (i in c(2030, 2035, 2040, 2045, 2050)) {
   rm(tmp)
   
 }
-
-# read_pums.files <- function(scenario, rpa, year){
-#   read_csv(paste0(base, 'Housing/StatewideHousingPlan/04_Analysis/Data/Working/Reweighter/',scenario,'/Input_Files/',rpa,'/PUMS2021_',scenario,'_',rpa,'_',year,'.csv'))
-# }
-# 
-# pums.df <- NULL
-# 
-# for (j in rpa.list){
-#   for (i in c(2030, 2035, 2040, 2045, 2050)){
-#     
-#     print(paste0("Loading PUMS data for ",j," ", i, "."))
-#     
-#     tmp <- read_pums.files(scenario = scen, rpa = j, year = i) |>
-#       select(SERIALNO.adj, SPORDER.adj, AGEP, HINCP, PINCP, ADJINC) |>
-#       mutate(
-#        PINCP = case_when(
-#          AGEP <= 14 ~ 0,
-#          AGEP > 14 ~ PINCP,
-#          .default = PINCP
-#        ),
-#        year = i,
-#        rpa_acr = j
-#       ) |>
-#       group_by(SERIALNO.adj) |>
-#       mutate(HINCP.adj = sum(PINCP)) |>
-#       ungroup() |>
-#       mutate(
-#         HINCP.adj.2021USD = round((HINCP.adj * ADJINC), 0),
-#         Income_Group = case_when(
-#           HINCP.adj.2021USD <= 35000 ~ "<=$35,000",
-#           HINCP.adj.2021USD > 35000 & HINCP.adj.2021USD <= 75000 ~ "$35,001 - $75,000",
-#           HINCP.adj.2021USD > 75000 & HINCP.adj.2021USD <= 125000 ~ "$75,001 - $125,000",
-#           HINCP.adj.2021USD > 125000 & HINCP.adj.2021USD <= 225000 ~ "$125,001 - $225,000",
-#           HINCP.adj.2021USD > 225000 ~ ">$225,000",
-#           .default = "Unknown"
-#         )
-#       ) |>
-#       select(SERIALNO.adj,SPORDER.adj,HINCP.adj.2021USD,Income_Group,year)
-#     
-#     pums.df <- bind_rows(pums.df, tmp)
-#     
-#     rm(tmp)
-#     
-#   }
-# }
 
 if(scen == "Scenario_1"){
   

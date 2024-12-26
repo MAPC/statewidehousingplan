@@ -381,7 +381,14 @@ if(scen == "Scenario_1"){
           Worker_Total == 0 ~ 0,
           Worker_Total == 1 ~ 1,
           Worker_Total == 2 ~ 2,
-          Worker_Total >= 3 ~ 3
+          Worker_Total == 3 ~ 3,
+          Worker_Total == 4 ~ 4,
+          Worker_Total == 5 ~ 5,
+          Worker_Total == 6 ~ 6,
+          Worker_Total == 7 ~ 7,
+          Worker_Total == 8 ~ 8,
+          Worker_Total == 9 ~ 9,
+          Worker_Total == 10 ~ 10,
         ), 
         # Creates a group designation based on the number of workers in a household.
         WRKHH_Group = case_when(
@@ -467,8 +474,11 @@ print(sum(test$new_WGTP))
 -   .1 UrbanSim Household Income Groupings
 -   .2 5-year Age Groupings (ageCAT6)
 -   .3 Household Type
+-   .4 Laborforce in Households
 
 ```{r}
+#===============================================================================
+# Creates a reference table for the total number of households in each year to compare to subsequent tables as a QA check.
 tbl.0 <- rwt.pums.df.join_Scenario_3 |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>
   group_by(
@@ -478,7 +488,6 @@ tbl.0 <- rwt.pums.df.join_Scenario_3 |>
     hhds = sum(new_WGTP)
   ) |> 
   ungroup()
-  
 
 #===============================================================================
 # .1 UrbanSim Household Income Groupings
@@ -599,60 +608,49 @@ write.csv(
   paste0(output_path,"/output.tbl_",scen,"_Households.by.HHtypeGroups.csv"),
   row.names = FALSE
 )
+#===============================================================================
+# .4 Laborforce
+# Note: A bit of a roundabout way of calculating labor force. Its based on the number households with a specific number of workers in them. Households with two workers are multiplied by 2 to get the total number of people in that household in the labor force. "Workers" are people in the LF + military service members (a negligible amount of people in MA).
+tbl.4 <- rwt.pums.df.join_Scenario_2  |> 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
+  group_by(
+    rpa_acr,
+    year,
+    WRKHH
+  ) |> 
+  summarise(
+    hhds = sum(new_WGTP)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    lf = WRKHH*hhds
+  ) |> 
+  group_by(year, rpa_acr) |> 
+  summarise(
+    lf = sum(lf)
+  ) |> 
+  ungroup()
+
+# Write output tables to K drive
+write.csv(
+  tbl.4,
+  paste0(output_path,"/output.tbl_",scen,"_Laborforce.in.Households.csv"),
+  row.names = FALSE
+)
 
 ```
 
-#4.0 Univariate Output Tables for Statewide Housing Plan Deliverables - .4 Number of Children in a Household - .5 Size of Household - .6 Tenure - .7 Number of Workers in a Household
+#4.0 Univariate Output Tables for Statewide Housing Plan Deliverables - .5 Number of Children in a Household - .6 Size of Household - .7 Tenure - .8 Number of Workers in a Household
 
 ```{r}
 #===============================================================================
-# .4 Number of Children in a Household
-tbl.4 <- rwt.pums.df.join_Scenario_3  |>
+# .5 Number of Children in a Household
+tbl.5 <- rwt.pums.df.join_Scenario_3  |>
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>  
   group_by(
     rpa_acr,
     year,
     CHILDHH_Group
-  ) |> 
-  summarise(
-    hhds = sum(new_WGTP)
-  ) |> 
-  ungroup()
-
-tbl.4.test <- tbl.4 |> 
-  group_by(
-    year
-  ) |> 
-  summarise(
-    hhds = sum(hhds)
-  ) |> 
-  ungroup()
-
-if (sum(tbl.0$hhds) != sum(tbl.4.test$hhds)){
-  
-  print("STOP! Check table!")
-  
-} else {
-  
-  print("Proceed.")
-  
-}
-
-# Write output tables to K drive
-write.csv(
-  tbl.4,
-  paste0(output_path,"/output.tbl_",scen,"_Households.by.NumberOfChildren.csv"),
-  row.names = FALSE
-)
-
-#===============================================================================
-# .5 Size of Household
-tbl.5 <- rwt.pums.df.join_Scenario_3  |> 
-  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
-  group_by(
-    rpa_acr,
-    year,
-    Size_Group
   ) |> 
   summarise(
     hhds = sum(new_WGTP)
@@ -681,18 +679,18 @@ if (sum(tbl.0$hhds) != sum(tbl.5.test$hhds)){
 # Write output tables to K drive
 write.csv(
   tbl.5,
-  paste0(output_path,"/output.tbl_",scen,"_Households.by.HHsize.csv"),
+  paste0(output_path,"/output.tbl_",scen,"_Households.by.NumberOfChildren.csv"),
   row.names = FALSE
 )
 
 #===============================================================================
-# .6 Tenure
+# .6 Size of Household
 tbl.6 <- rwt.pums.df.join_Scenario_3  |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   group_by(
     rpa_acr,
     year,
-    TEN_Group
+    Size_Group
   ) |> 
   summarise(
     hhds = sum(new_WGTP)
@@ -721,18 +719,18 @@ if (sum(tbl.0$hhds) != sum(tbl.6.test$hhds)){
 # Write output tables to K drive
 write.csv(
   tbl.6,
-  paste0(output_path,"/output.tbl_",scen,"_Households.by.Tenure.csv"),
+  paste0(output_path,"/output.tbl_",scen,"_Households.by.HHsize.csv"),
   row.names = FALSE
 )
 
 #===============================================================================
-# .7 Number of Workers in a Household
+# .7 Tenure
 tbl.7 <- rwt.pums.df.join_Scenario_3  |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   group_by(
     rpa_acr,
     year,
-    WRKHH_Group
+    TEN_Group
   ) |> 
   summarise(
     hhds = sum(new_WGTP)
@@ -761,6 +759,46 @@ if (sum(tbl.0$hhds) != sum(tbl.7.test$hhds)){
 # Write output tables to K drive
 write.csv(
   tbl.7,
+  paste0(output_path,"/output.tbl_",scen,"_Households.by.Tenure.csv"),
+  row.names = FALSE
+)
+
+#===============================================================================
+# .8 Number of Workers in a Household
+tbl.8 <- rwt.pums.df.join_Scenario_3  |> 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
+  group_by(
+    rpa_acr,
+    year,
+    WRKHH_Group
+  ) |> 
+  summarise(
+    hhds = sum(new_WGTP)
+  ) |> 
+  ungroup()
+
+tbl.8.test <- tbl.8 |> 
+  group_by(
+    year
+  ) |> 
+  summarise(
+    hhds = sum(hhds)
+  ) |> 
+  ungroup()
+
+if (sum(tbl.0$hhds) != sum(tbl.8.test$hhds)){
+  
+  print("STOP! Check table!")
+  
+} else {
+  
+  print("Proceed.")
+  
+}
+
+# Write output tables to K drive
+write.csv(
+  tbl.8,
   paste0(output_path,"/output.tbl_",scen,"_Households.by.NumberOfWorkers.csv"),
   row.names = FALSE
 )
@@ -785,6 +823,8 @@ write.csv(
 # 7.0 Full Crosstab
 
 ```{r}
+# Creates a table which is a full crosstab of variables from previously generated tables.
+# Households is unrounded to avoid rounding error.
 full.crosstab <- rwt.pums.df.join_Scenario_2  |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>
   group_by(

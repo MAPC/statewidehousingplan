@@ -4,10 +4,6 @@ format: html
 editor: visual
 ---
 
-## Quarto
-
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
-
 # 0.1 - Set knitr path + root for inputs
 
 ```{r}
@@ -53,7 +49,7 @@ set.seed(351)
 # Load Libraries for PUMS Analysis and PUMS API query functions
 # Sets seed and removes scientific notation
 source(here("PUMS_Analysis/PUMS_Helper_Functions.R"))
-# source("C:/Project_Work/statewidehousingplan/PUMS_Analysis/PUMS_Helper_Functions.R")
+source("C:/Project_Work/statewidehousingplan/PUMS_Analysis/PUMS_Helper_Functions.R")
 
 # Load PUMA x RPA Crosswalk
 xw <- read.csv(paste0(rwt_path, "PUMS_data/PUMA10_RPA_crosswalk.csv")) |> 
@@ -69,9 +65,9 @@ NOTE: We use the CPI deflator time series to adjust PUMS income to 2013 dollars 
 vintage <- 2021
 
 # List of PUMS variables
-variable_list <- c('RT', 'PUMA', 'ADJHSG','ADJINC','NP','TYPEHUGQ','HHLDRAGEP',
-                   'HHLDRRAC1P','HHLDRHISP', 'HHT', 'HHT2', 'HINCP','LNGI', 'NR', 'PARTNER', 'PSF','R18',
-                   'AGEP','RELSHIPP','RAC1P','OC','TEN', "SEX", "PINCP", "ESR", 'HISP', 'WKHP', 'HHLANP')
+variable_list <- c('RT', 'PUMA', 'ADJINC','NP','TYPEHUGQ','HHLDRAGEP','CIT',
+                   'HHLDRRAC1P','HHLDRHISP', 'HHT', 'HHT2', 'HINCP','LNGI', 'NR', 'PSF','R18',
+                   'AGEP','RAC1P','OC','TEN', "SEX", "ESR", 'HISP', 'WKHP', 'HHLANP', 'LANP')
 
 # SEMP bottom coding has changed from $1 to $4 like WAGP
 
@@ -266,5 +262,66 @@ pums_data <- pums_query(var.list = variable_list, yr = vintage, srvy = "acs5") |
      NP == 1 & HHder != 99 ~ 5
    )
   )
+
+
+# Baseline Sample of 
+pums_EA <- pums_data |> 
+  mutate(
+    HINCP.adj = HINCP*as.numeric(ADJINC),
+    household.size = case_when(
+      NP == 1 ~ 1,
+      NP == 2 ~ 2,
+      NP == 3 ~ 3, 
+      NP == 4 ~ 4,
+      NP >= 5 ~ 5
+    ),
+    citizenship.status = case_when(
+      CIT %in% c(1,2,3,4) ~ 1,
+      CIT %in% c(5) ~ 0
+    )
+  ) |> 
+  filter(
+    TYPEHUGQ == 1 &
+    TEN %in% c(3,4) &
+    HINCP.adj <= 35000 
+  )
+
+test.EA <- pums_EA |> 
+  filter(SPORDER == 1)
+
+print(sum(test.EA$WGTP))
+# Households in the sample - 392,140
+
+tbl.language <- pums_EA |> 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
+  group_by(HHLANP) |> 
+  summarise(hh = sum(WGTP)) |> 
+  ungroup()
+
+# Underestimates English pums(61%) v. expected(67.5%)
+# Overestimates Spanish pums(21%) v. expected(17.875%)
+# Underestimates Haitian pums(2%) v. expected(7.5%)
+
+tbl.hhsize.citizen <- pums_EA |> 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
+  group_by(citizenship.status, household.size) |> 
+  summarise(hh = sum(WGTP)) |> 
+  ungroup()
+
+# Gets the distribution of Citizen and Non-Citizen pretty close: pums(88%/12%) v. expected(83%/17%)
+# Non-Citizens:
+# One Person HH = pums(38%) v. expected(7%)
+# Two Person HH = pums(25%) v. expected(22%)
+# Three Person HH = pums(18.5%) v. expected(40%)
+# Four Person HH = pums(12.6%) v. expected(21%)
+# Five Person HH = pums(5.2%) v. expected(10%)
+
+# Citizens:
+# One Person HH = pums(63%) v. expected(18%)
+# Two Person HH = pums(19.6%) v. expected(32%)
+# Three Person HH = pums(9.2%) v. expected(27%)
+# Four Person HH = pums(5.3%) v. expected(14%)
+# Five Person HH = pums(2.7%) v. expected(9%)
+
 
 ```

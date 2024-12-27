@@ -48,7 +48,7 @@ set.seed(351)
 
 # Load Libraries for PUMS Analysis and PUMS API query functions
 # Sets seed and removes scientific notation
-source(here("PUMS_Analysis/PUMS_Helper_Functions.R"))
+# source(here("PUMS_Analysis/PUMS_Helper_Functions.R"))
 source("C:/Project_Work/statewidehousingplan/PUMS_Analysis/PUMS_Helper_Functions.R")
 
 # Load PUMA x RPA Crosswalk
@@ -286,12 +286,16 @@ pums_EA <- pums_data |>
     HINCP.adj <= 35000 
   )
 
-test.EA <- pums_EA |> 
-  filter(SPORDER == 1)
+# Need to know how many people are in the sample
+print(sum(pums_EA$PWGTP))
+# Persons in the sample - 689,526
 
+# Need to know how many households are in the sample
+test.EA <- pums_EA |> filter(SPORDER == 1)
 print(sum(test.EA$WGTP))
 # Households in the sample - 392,140
 
+# Some tables to understand the filtered subset of PUMS records
 tbl.language <- pums_EA |> 
   filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   group_by(HHLANP) |> 
@@ -323,5 +327,139 @@ tbl.hhsize.citizen <- pums_EA |>
 # Four Person HH = pums(5.3%) v. expected(14%)
 # Five Person HH = pums(2.7%) v. expected(9%)
 
+# Determine the RPA distribution of EA applicants
+munis <- mapcdatakeys::all_muni_data_keys |> select(muni_name, rpa_acr)
+
+EA.pop <- read_xlsx(
+  "C:/Project_Work/Local_Data/Housing/SWHP/Scenarios/Scenario_4/AdditionalMigrants_2020-2024_MCD level shares.xlsx",
+  sheet = 1
+  )
+
+EA.pop <- EA.pop |> 
+  pivot_longer(
+    !MCD,
+    names_to = "AgeGroup",
+    values_to = "pop"
+  ) |> 
+  mutate(
+    AgeGroup = str_sub(AgeGroup, start = 3, end = 7)
+  ) |> 
+  group_by(
+    MCD,
+    AgeGroup
+  ) |> 
+  summarise(
+    pop = sum(pop)
+  ) |> 
+  ungroup() |> 
+  left_join(
+    munis,
+    by = c("MCD" = "muni_name")
+  ) |> 
+  group_by(
+    rpa_acr,
+    AgeGroup
+  ) |> 
+  summarise(
+    pop = sum(pop)
+  ) |> 
+  ungroup() |> 
+  group_by(
+    rpa_acr
+  ) |> 
+  mutate(
+    pop.rpa = round(sum(pop),0)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    pop.state = sum(pop),
+    pct.rpa.pop = pop.rpa/pop.state
+  )
+
+print(sum(EA.pop$pop))
+
+# Assumptions - 
+# 1. 100% of EA population is in households since we are assuming they are moving from, essentially, group quarters to housing units.
+
+# Determine the percent of the shelter population that is in households by 5-year age groups - the headship rate.
+# Load Population in Shelters for 2024
+Shelter.pop <- read_xlsx(
+  "C:/Project_Work/Local_Data/Housing/SWHP/Scenarios/Scenario_4/AdditionalMigrants_2020-2024_MCD level shares.xlsx",
+  sheet = 2
+  )
+
+# Clean shelter population data
+Shelter.pop <- Shelter.pop |> 
+  mutate(
+    # Remove "Ages " prefix from age groups and append leading zeros to single digit ages.
+    `Age Groups` = str_replace(`Age Groups`, "Ages ", ""),
+    AgeGroup = case_when(
+      `Age Groups` == "0-4" ~ "00-04",
+      `Age Groups` == "5-9" ~ "05-09",
+      .default = `Age Groups`
+    )
+  ) |> 
+  # Remove original age group variable
+  select(-c(`Age Groups`)) |> 
+  # Rename population variable
+  dplyr::rename(
+    pop = `Count of Individuals`
+  )
+
+# Load Shelter heads of household for 2024
+Shelter.HoH <- read_xlsx(
+  "C:/Project_Work/Local_Data/Housing/SWHP/Scenarios/Scenario_4/AdditionalMigrants_2020-2024_MCD level shares.xlsx",
+  sheet = 3
+  )
+
+# Clean shelter householder data
+Shelter.HoH <- Shelter.HoH |> 
+  mutate(
+    # Creates a five year age grouping variable
+    Age = as.numeric(Age),
+    AgeGroup = case_when(
+      Age %in% 0:4 ~ "00-04",
+      Age %in% 5:9 ~ "05-09",
+      Age %in% 10:14 ~ "10-14",
+      Age %in% 15:19 ~ "15-19",
+      Age %in% 20:24 ~ "20-24",
+      Age %in% 25:29 ~ "25-29",
+      Age %in% 30:34 ~ "30-34",
+      Age %in% 35:39 ~ "35-39",
+      Age %in% 40:44 ~ "40-44",
+      Age %in% 45:49 ~ "45-49",
+      Age %in% 50:54 ~ "50-54",
+      Age %in% 55:59 ~ "55-59",
+      Age %in% 60:64 ~ "60-64",
+      Age %in% 65:69 ~ "65-69",
+      Age %in% 70:74 ~ "70-74",
+      Age %in% 75:79 ~ "75-79",
+      Age %in% 80:84 ~ "80-84",
+      Age %in% 85:100 ~ "85+"
+    )
+  ) |> 
+  group_by(
+    AgeGroup
+  ) |> 
+  # Sums households to 5-year age grouping
+  summarise(
+    hh = sum(`Count of Individuals`)
+  ) |> 
+  ungroup() |> 
+  na.omit()
+
+# Join shelter population to shelter households 
+Shelter.hdsp.r <- left_join(
+  Shelter.pop,
+  Shelter.HoH,
+  by = c("AgeGroup")
+) |> 
+  # Insert 0s for NAs + calculate headship rates
+  mutate(
+    across(everything(), ~replace_na(.x, 0)),
+    hdsp.r = hh/pop
+ )
+
+#So we've got a general issue. From the shelter pop
 
 ```

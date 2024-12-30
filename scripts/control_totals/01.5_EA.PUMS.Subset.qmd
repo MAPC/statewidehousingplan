@@ -378,6 +378,11 @@ EA.pop <- EA.pop |>
 
 print(sum(EA.pop$pop))
 
+# Percentage of EA applicants in each RPA
+EA.margin <- EA.pop |> 
+  select(rpa_acr, pct.rpa.pop) |> 
+  distinct(rpa_acr, .keep_all = TRUE)
+
 # Assumptions - 
 # 1. 100% of EA population is in households since we are assuming they are moving from, essentially, group quarters to housing units.
 
@@ -449,17 +454,59 @@ Shelter.HoH <- Shelter.HoH |>
   na.omit()
 
 # Join shelter population to shelter households 
-Shelter.hdsp.r <- left_join(
+Shelter.total <- left_join(
   Shelter.pop,
   Shelter.HoH,
   by = c("AgeGroup")
 ) |> 
   # Insert 0s for NAs + calculate headship rates
   mutate(
+    across(everything(), ~replace_na(.x, 0))
+  ) |> 
+  relocate(AgeGroup)
+
+Shelter.hdsp.r <- Shelter.total |> 
+  # Insert 0s for NAs + calculate headship rates
+  mutate(
     across(everything(), ~replace_na(.x, 0)),
     hdsp.r = hh/pop
- )
+ ) |> 
+  select(AgeGroup, hdsp.r)
 
-#So we've got a general issue. From the shelter pop
+#
+
+rpa.list <- EA.margin |> select(rpa_acr) |> pull()
+
+Shelter.pop.rpa <- NULL
+
+for (i in rpa.list){
+  
+  print(paste0("Starting ",i,"."))
+  
+  tmp.margin <- EA.margin |> filter(rpa_acr == i)
+  
+  tmp.shelter <- bind_cols(
+    Shelter.total,
+    tmp.margin
+  )
+  
+  Shelter.pop.rpa <- bind_rows(Shelter.pop.rpa, tmp.shelter)
+  
+  rm(tmp.margin, tmp.shelter)
+  
+}
+
+Shelter.pop.rpa <- Shelter.pop.rpa |> 
+  rowwise() |> 
+  mutate(
+    pop = pop*pct.rpa.pop
+  ) |>
+  relocate(
+    rpa_acr,
+    AgeGroup
+  )
+
+print(sum(Shelter.pop.rpa$pop))
+print(sum(Shelter.total$pop))
 
 ```

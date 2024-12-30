@@ -52,7 +52,7 @@ set.seed(351)
 source("C:/Project_Work/statewidehousingplan/PUMS_Analysis/PUMS_Helper_Functions.R")
 
 # Load PUMA x RPA Crosswalk
-xw <- read.csv(paste0(rwt_path, "PUMS_data/PUMA10_RPA_crosswalk.csv")) |> 
+xw <- read_csv("C:/Project_Work/statewidehousingplan/PUMS_Analysis/PUMA10_RPA_crosswalk.csv") |> 
   mutate(PUMA = str_pad(PUMA, 5, "left", pad = 0))
 
 ```
@@ -267,6 +267,36 @@ pums_data <- pums_query(var.list = variable_list, yr = vintage, srvy = "acs5") |
 # Baseline Sample of 
 pums_EA <- pums_data |> 
   mutate(
+    child_0004 = case_when(
+      AGEP %in% 0:4 ~ 1,
+      !AGEP %in% 0:4 ~ 0,
+      .default = 0
+    ),
+    child_0509 = case_when(
+      AGEP %in% 5:9 ~ 1,
+      !AGEP %in% 5:9 ~ 0,
+      .default = 0
+    ),
+    child_1014 = case_when(
+      AGEP %in% 10:14 ~ 1,
+      !AGEP %in% 10:14 ~ 0,
+      .default = 0
+    ),
+    child_1517 = case_when(
+      AGEP %in% 15:17 ~ 1,
+      !AGEP %in% 15:17 ~ 0,
+      .default = 0
+    )
+  ) |> 
+  group_by(SERIALNO) |> 
+  mutate(
+    tot.child_0004 = sum(child_0004),
+    tot.child_0509 = sum(child_0509),
+    tot.child_1014 = sum(child_1014),
+    tot.child_1517 = sum(child_1517),
+  ) |> 
+  ungroup() |> 
+  mutate(
     HINCP.adj = HINCP*as.numeric(ADJINC),
     household.size = case_when(
       NP == 1 ~ 1,
@@ -284,7 +314,12 @@ pums_EA <- pums_data |>
     TYPEHUGQ == 1 &
     TEN %in% c(3,4) &
     HINCP.adj <= 35000 
-  )
+  ) |> 
+    left_join(
+      xw,
+      by = c("PUMA"),
+      relationship = "many-to-many"
+    )
 
 # Need to know how many people are in the sample
 print(sum(pums_EA$PWGTP))
@@ -496,17 +531,80 @@ for (i in rpa.list){
   
 }
 
-Shelter.pop.rpa <- Shelter.pop.rpa |> 
+Shelter.pop.rpa <- left_join(
+  Shelter.pop.rpa,
+  Shelter.hdsp.r,
+  by = c("AgeGroup"),
+  relationship = "many-to-many"
+) |> 
   rowwise() |> 
   mutate(
-    pop = pop*pct.rpa.pop
+    pop = pop*pct.rpa.pop,
+    hh = round(pop*hdsp.r, 0),
+    pop = round(pop, 0)
   ) |>
   relocate(
     rpa_acr,
     AgeGroup
+  ) |> 
+  select(
+    -c(pct.rpa.pop, hdsp.r)
   )
 
 print(sum(Shelter.pop.rpa$pop))
 print(sum(Shelter.total$pop))
+
+print(sum(Shelter.pop.rpa$hh))
+print(sum(Shelter.HoH$hh))
+
+test <- Shelter.pop.rpa |> 
+  group_by(rpa_acr) |> 
+  summarise(
+    hh = sum(hh)
+  ) |> 
+  ungroup()
+
+print(sum(test$hh))
+
+write.csv(
+  test,
+  "C:/Project_Work/Local_Data/Housing/SWHP/Scenarios/Scenario_4/shelter.hh_rpa.csv",
+  row.names = FALSE
+)
+
+```
+
+```{r}
+agegroup.list <- c("15-19","20-24","25-29","30-34","35-39","40-44","45-49","50-54","55-59","60-64","65-69","70-74","75-79")
+
+
+tmp.pums <- pums_EA |> filter(rpa_acr = i)
+sample.pums <- slice_sample(tmp.pums, n = 1, replace = TRUE)
+
+
+for (i in rpa.list) {
+  for (j in agegroup.list) {
+    
+  }
+  
+}
+
+pop.total <- NULL
+hh.total <- NULL
+child_0004.total <- NULL
+child_0509.total <- NULL
+child_1014.total <- NULL
+child_1517.total <- NULL
+
+pop.target <-
+hh.target <-
+child_0004.target <-
+child_0509.target <-
+child_1014.target <-
+child_1517.target <-
+  
+
+
+
 
 ```

@@ -576,28 +576,30 @@ S.hh.RPA.AG <- Shelter.pop.rpa |>
 
 agegroup.list <- c("15-19","20-24","25-29","30-34","35-39","40-44","45-49","50-54","55-59","60-64","65-69","70-74","75-79")
 
-pop.total <- 0
-hh.total <- 0
-child_0004.total <- 0
-child_0509.total <- 0
-child_1014.total <- 0
-child_1517.total <- 0
-
-full_sample.pums <- NULL
-iteration <- 0
-
-# Set the Population and Household Targets
-pop.target <- S.pop.RPA |> filter(rpa_acr == i) |> select(pop) |> pull()
-child_0004.target <- S.hh.RPA.AG |> filter(rpa_acr == i & AgeGroup == "00-04") |> select(pop) |> pull()
-child_0509.target <- S.hh.RPA.AG |> filter(rpa_acr == i & AgeGroup == "05-09") |> select(pop) |> pull()
-child_1014.target <- S.hh.RPA.AG |> filter(rpa_acr == i & AgeGroup == "10-14") |> select(pop) |> pull()
-child_1517.target <- S.hh.RPA.AG |> filter(rpa_acr == i & AgeGroup == "15-19") |> select(pop) |> pull()
-
-
 for (i in c("BRPC")) {
   # Evaluate whether or not we've hit the population targets.
+  
+  # Set the Population and Household Targets
+  pop.target <- S.pop.RPA |> filter(rpa_acr == i) |> select(pop) |> pull()
+  child_0004.target <- S.hh.RPA.AG |> filter(rpa_acr == i &  AgeGroup == "00-04") |> select(pop) |> pull()
+  child_0509.target <- S.hh.RPA.AG |> filter(rpa_acr == i & AgeGroup == "05-09") |> select(pop) |> pull()
+  child_1014.target <- S.hh.RPA.AG |> filter(rpa_acr == i & AgeGroup == "10-14") |> select(pop) |> pull()
+  child_1517.target <- S.hh.RPA.AG |> filter(rpa_acr == i & AgeGroup == "15-19") |> select(pop) |> pull()
+  #
+  
   repeat {
     for (j in agegroup.list) {
+      
+      pop.total <- 0
+      hh.total <- 0
+      child_0004.total <- 0
+      child_0509.total <- 0
+      child_1014.total <- 0
+      child_1517.total <- 0
+      
+      full_sample.pums <- NULL
+      iteration <- 0
+      
       #
       print(paste0("Sampling for ", i, " Age Group ", j, "."))
       
@@ -628,21 +630,18 @@ for (i in c("BRPC")) {
       rm(tmp.pums, sample.pums)
       
       iteration <- iteration + 1
-      print(paste0("Iteration: ", iteration,"."))
+      print(paste0("Iteration: ", iteration, "."))
+      print(paste0("Population: ", pop.total))
+      print(paste0("Households: ", hh.total))
+      print(paste0("Children Aged 0-4: ", child_0004.total))
+      print(paste0("Children Aged 5-9: ", child_0509.total))
+      print(paste0("Children Aged 10-14: ", child_1014.total))
+      print(paste0("Children Aged 15-19: ", child_1517.total))
+      
     }
     
-    if (pop.total <= pop.target & pop.total >= pop.target * 0.95) {
-      break
-    }
+    if (hh.total > 24) {break}
   }
-  
-  print(paste0("Population: ", pop.total))
-  print(paste0("Households: ", hh.total))
-  print(paste0("Children Aged 0-4: ", child_0004.total))
-  print(paste0("Children Aged 5-9: ", child_0509.total))
-  print(paste0("Children Aged 10-14: ", child_1014.total))
-  print(paste0("Children Aged 15-19: ", child_1517.total))
-  
 }
 
 ```

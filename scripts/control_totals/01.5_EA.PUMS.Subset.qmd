@@ -75,9 +75,9 @@ variable_list <- c('RT', 'PUMA', 'ADJINC','NP','TYPEHUGQ','HHLDRAGEP','CIT',
 pums_data <- pums_query(var.list = variable_list, yr = vintage, srvy = "acs5") |>
   # General Data Cleaning
   mutate(
-    # Generate five-year age groupings to match UMDI population projections data.
+    
+    # Renaming the 5-year age group variable.# Generate five-year age groupings to match UMDI population projections data.
     ageCAT6 = cut(AGEP, breaks = c(-Inf, seq(4, 84, 5), Inf), labels = 1:18),
-    # Renaming the 5-year age group variable.
     AgeCat = ageCAT6,
     # Generate a custom age grouping
     # Levels are (0) 0-14; (4) 15 to 19; (5) 20 to 24; (6) 25 to 34; (7) 35 to 44; (8) 45 to 54; (9) 55 to 64 (10) 65 to 74 (11) 75+
@@ -263,6 +263,8 @@ pums_data <- pums_query(var.list = variable_list, yr = vintage, srvy = "acs5") |
    )
   )
 
+# Create a list of labels for the 
+ageCAT6.list <- c("00-04","05-09","10-14","15-19","20-24","25-29","30-34","35-39","40-44","45-49","50-54","55-59","60-64","65-69","70-74","75-79","80-84","85+")
 
 # Baseline Sample of 
 pums_EA <- pums_data |> 
@@ -286,7 +288,9 @@ pums_EA <- pums_data |>
       AGEP %in% 15:17 ~ 1,
       !AGEP %in% 15:17 ~ 0,
       .default = 0
-    )
+    ),
+    # Generate five-year age groupings to match UMDI population projections data.
+    ageCAT6 = cut(AGEP, breaks = c(-Inf, seq(4, 84, 5), Inf), labels = ageCAT6.list),
   ) |> 
   group_by(SERIALNO) |> 
   mutate(
@@ -557,54 +561,81 @@ print(sum(Shelter.total$pop))
 print(sum(Shelter.pop.rpa$hh))
 print(sum(Shelter.HoH$hh))
 
-test <- Shelter.pop.rpa |> 
-  group_by(rpa_acr) |> 
-  summarise(
-    hh = sum(hh)
-  ) |> 
-  ungroup()
-
-print(sum(test$hh))
-
-write.csv(
-  test,
-  "C:/Project_Work/Local_Data/Housing/SWHP/Scenarios/Scenario_4/shelter.hh_rpa.csv",
-  row.names = FALSE
-)
-
 ```
 
 ```{r}
+
+S.pop.RPA <- Shelter.pop.rpa |>
+  group_by(rpa_acr) |>
+  summarise(pop = sum(pop)) |>
+  ungroup()
+
+S.hh.RPA.AG <- Shelter.pop.rpa |> 
+  select(-c(pct.rpa.pop, hdsp.r))
+  
+
 agegroup.list <- c("15-19","20-24","25-29","30-34","35-39","40-44","45-49","50-54","55-59","60-64","65-69","70-74","75-79")
 
+pop.total <- 0
+hh.total <- 0
+child_0004.total <- 0
+child_0509.total <- 0
+child_1014.total <- 0
+child_1517.total <- 0
 
-tmp.pums <- pums_EA |> filter(rpa_acr = i)
-sample.pums <- slice_sample(tmp.pums, n = 1, replace = TRUE)
+full_sample.pums <- NULL
+
+# Set the Population and Household Targets
+pop.target <- S.pop.RPA |> filter(rpa_acr == i) |> select(pop) |> pull()
+child_0004.target <- S.hh.RPA.AG |> filter(rpa_acr == i & AgeGroup == "00-04") |> select(pop) |> pull()
+child_0509.target <- S.hh.RPA.AG |> filter(rpa_acr == i & AgeGroup == "05-09") |> select(pop) |> pull()
+child_1014.target <- S.hh.RPA.AG |> filter(rpa_acr == i & AgeGroup == "10-14") |> select(pop) |> pull()
+child_1517.target <- S.hh.RPA.AG |> filter(rpa_acr == i & AgeGroup == "15-19") |> select(pop) |> pull()
 
 
-for (i in rpa.list) {
+for (i in c("BRPC")) {
+  
+  # Evaluate whether or not we've hit the population targets.
+  
   for (j in agegroup.list) {
+    #
+    print(paste0("Sampling for ", i, " Age Group ", j,"."))
+    
+    # Set the household target for each RPA x Age Group pair for sampling
+    hh.target <- S.hh.RPA.AG |> filter(rpa_acr == i & AgeGroup == j) |> select(hh) |> pull()
+    print(paste0("Household Target: ", hh.target))
+    # Filters the PUMS records to those in the RPA with a householder in the specified Age Group
+    tmp.pums <- pums_EA |> filter(rpa_acr == i & ageCAT6 == j & SPORDER == 1)
+    # Samples households with replacement equal to the number of households in the target (for RPA and Age Group)
+    sample.pums <- slice_sample(tmp.pums, n = hh.target, replace = FALSE)
+    
+    tmp.pop <- as.numeric(sum(sample.pums$NP))
+    tmp.hh <- as.numeric(nrow(sample.pums))
+    tmp.child_0004 <- as.numeric(sum(sample.pums$tot.child_0004))
+    tmp.child_0509 <- as.numeric(sum(sample.pums$tot.child_0509))
+    tmp.child_1014 <- as.numeric(sum(sample.pums$tot.child_1014))
+    tmp.child_1517 <- as.numeric(sum(sample.pums$tot.child_1517))
+    
+    pop.total <- pop.total + tmp.pop
+    hh.total <- hh.total + tmp.hh
+    child_0004.total <- child_0004.total + tmp.child_0004
+    child_0509.total <- child_0509.total + tmp.child_0509
+    child_1014.total <- child_1014.total + tmp.child_1014
+    child_1517.total <- child_1517.total + tmp.child_1517
+    
+    full_sample.pums <- bind_rows(full_sample.pums, sample.pums)
+    
+    rm(tmp.pums, sample.pums)
     
   }
   
-}
-
-pop.total <- NULL
-hh.total <- NULL
-child_0004.total <- NULL
-child_0509.total <- NULL
-child_1014.total <- NULL
-child_1517.total <- NULL
-
-pop.target <-
-hh.target <-
-child_0004.target <-
-child_0509.target <-
-child_1014.target <-
-child_1517.target <-
+  print(paste0("Population: ", pop.total))
+  print(paste0("Households: ", hh.total))
+  print(paste0("Children Aged 0-4: ", child_0004.total))
+  print(paste0("Children Aged 5-9: ", child_0509.total))
+  print(paste0("Children Aged 10-14: ", child_1014.total))
+  print(paste0("Children Aged 15-19: ", child_1517.total))
   
-
-
-
+}
 
 ```

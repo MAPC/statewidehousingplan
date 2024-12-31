@@ -584,6 +584,7 @@ child_1014.total <- 0
 child_1517.total <- 0
 
 full_sample.pums <- NULL
+iteration <- 0
 
 # Set the Population and Household Targets
 pop.target <- S.pop.RPA |> filter(rpa_acr == i) |> select(pop) |> pull()
@@ -594,39 +595,45 @@ child_1517.target <- S.hh.RPA.AG |> filter(rpa_acr == i & AgeGroup == "15-19") |
 
 
 for (i in c("BRPC")) {
-  
   # Evaluate whether or not we've hit the population targets.
-  
-  for (j in agegroup.list) {
-    #
-    print(paste0("Sampling for ", i, " Age Group ", j,"."))
+  repeat {
+    for (j in agegroup.list) {
+      #
+      print(paste0("Sampling for ", i, " Age Group ", j, "."))
+      
+      # Set the household target for each RPA x Age Group pair for sampling
+      hh.target <- S.hh.RPA.AG |> filter(rpa_acr == i & AgeGroup == j) |> select(hh) |> pull()
+      print(paste0("Household Target: ", hh.target))
+      # Filters the PUMS records to those in the RPA with a householder in the specified Age Group
+      tmp.pums <- pums_EA |> filter(rpa_acr == i & ageCAT6 == j & SPORDER == 1)
+      # Samples households with replacement equal to the number of households in the target (for RPA and Age Group)
+      sample.pums <- slice_sample(tmp.pums, n = hh.target, replace = TRUE)
+      
+      tmp.pop <- as.numeric(sum(sample.pums$NP))
+      tmp.hh <- as.numeric(nrow(sample.pums))
+      tmp.child_0004 <- as.numeric(sum(sample.pums$tot.child_0004))
+      tmp.child_0509 <- as.numeric(sum(sample.pums$tot.child_0509))
+      tmp.child_1014 <- as.numeric(sum(sample.pums$tot.child_1014))
+      tmp.child_1517 <- as.numeric(sum(sample.pums$tot.child_1517))
+      
+      pop.total <- pop.total + tmp.pop
+      hh.total <- hh.total + tmp.hh
+      child_0004.total <- child_0004.total + tmp.child_0004
+      child_0509.total <- child_0509.total + tmp.child_0509
+      child_1014.total <- child_1014.total + tmp.child_1014
+      child_1517.total <- child_1517.total + tmp.child_1517
+      
+      full_sample.pums <- bind_rows(full_sample.pums, sample.pums)
+      
+      rm(tmp.pums, sample.pums)
+      
+      iteration <- iteration + 1
+      print(paste0("Iteration: ", iteration,"."))
+    }
     
-    # Set the household target for each RPA x Age Group pair for sampling
-    hh.target <- S.hh.RPA.AG |> filter(rpa_acr == i & AgeGroup == j) |> select(hh) |> pull()
-    print(paste0("Household Target: ", hh.target))
-    # Filters the PUMS records to those in the RPA with a householder in the specified Age Group
-    tmp.pums <- pums_EA |> filter(rpa_acr == i & ageCAT6 == j & SPORDER == 1)
-    # Samples households with replacement equal to the number of households in the target (for RPA and Age Group)
-    sample.pums <- slice_sample(tmp.pums, n = hh.target, replace = FALSE)
-    
-    tmp.pop <- as.numeric(sum(sample.pums$NP))
-    tmp.hh <- as.numeric(nrow(sample.pums))
-    tmp.child_0004 <- as.numeric(sum(sample.pums$tot.child_0004))
-    tmp.child_0509 <- as.numeric(sum(sample.pums$tot.child_0509))
-    tmp.child_1014 <- as.numeric(sum(sample.pums$tot.child_1014))
-    tmp.child_1517 <- as.numeric(sum(sample.pums$tot.child_1517))
-    
-    pop.total <- pop.total + tmp.pop
-    hh.total <- hh.total + tmp.hh
-    child_0004.total <- child_0004.total + tmp.child_0004
-    child_0509.total <- child_0509.total + tmp.child_0509
-    child_1014.total <- child_1014.total + tmp.child_1014
-    child_1517.total <- child_1517.total + tmp.child_1517
-    
-    full_sample.pums <- bind_rows(full_sample.pums, sample.pums)
-    
-    rm(tmp.pums, sample.pums)
-    
+    if (pop.total <= pop.target & pop.total >= pop.target * 0.95) {
+      break
+    }
   }
   
   print(paste0("Population: ", pop.total))

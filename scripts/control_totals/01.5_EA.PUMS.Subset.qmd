@@ -598,9 +598,13 @@ for (i in c("BRPC")) {
   # Set empty dataframe to record the the total sampled population for each iteration
   pop.total.list <- data.frame()
   
+  # A repeat loop (works like a while loop). The Age Group for loop will repeat until a condition is met.
+  # The conditions for this repeat loop:
+  # - Total population of the PUMS sample comes within 10% of the total population target.
+  # - 5000 iterations of the repeat loop are reached.
   repeat {
     
-    # Set 
+    # Set objects to record total population and households for each RPA run
     pop.total <- 0
     hh.total <- 0
     child_0004.total <- 0
@@ -633,7 +637,7 @@ for (i in c("BRPC")) {
       tmp.child_1014 <- as.numeric(sum(sample.pums$tot.child_1014))
       tmp.child_1517 <- as.numeric(sum(sample.pums$tot.child_1517))
       
-      # Adds the temporary information for each 
+      # Adds the temporary information for each Age Group run to the RPA total objects
       pop.total <- pop.total + tmp.pop
       hh.total <- hh.total + tmp.hh
       child_0004.total <- child_0004.total + tmp.child_0004

@@ -585,6 +585,7 @@ for (i in c("BRPC")) {
   #
   iteration <- 0
   x.list <- data.frame()
+  pop.total.list <- data.frame()
   
   repeat {
     
@@ -640,14 +641,17 @@ for (i in c("BRPC")) {
       
     }
     
-    print(pop.target - pop.total)
+    # Diagnostics
+    print(paste0("Difference between Population Target and Population Sample: ",pop.target - pop.total))
     x <- as.data.frame(pop.target - pop.total)
     x.list <- bind_rows(x.list, x)
+    pop.total <- as.data.frame(pop.total)
+    pop.total.list <- bind_rows(pop.total.list, pop.total)
+    
     print(paste0("============================================="))
     
-   if ((pop.target - pop.total) < 10 | iteration > 100) {break}
+   if ((pop.target - pop.total) < round(pop.target*0.1, 0) | iteration > 100) {break}
   }
 }
-
 
 ```

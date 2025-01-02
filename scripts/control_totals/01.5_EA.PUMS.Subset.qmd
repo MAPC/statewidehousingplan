@@ -550,9 +550,6 @@ Shelter.pop.rpa <- left_join(
   relocate(
     rpa_acr,
     AgeGroup
-  ) |> 
-  select(
-    -c(pct.rpa.pop, hdsp.r)
   )
 
 print(sum(Shelter.pop.rpa$pop))
@@ -586,20 +583,23 @@ for (i in c("BRPC")) {
   child_1014.target <- S.hh.RPA.AG |> filter(rpa_acr == i & AgeGroup == "10-14") |> select(pop) |> pull()
   child_1517.target <- S.hh.RPA.AG |> filter(rpa_acr == i & AgeGroup == "15-19") |> select(pop) |> pull()
   #
+  iteration <- 0
+  x.list <- data.frame()
   
   repeat {
+    
+    pop.total <- 0
+    hh.total <- 0
+    child_0004.total <- 0
+    child_0509.total <- 0
+    child_1014.total <- 0
+    child_1517.total <- 0
+    full_sample.pums <- NULL
+    # Record information about the iteration.
+    iteration <- iteration + 1
+    print(paste0("Iteration: ", iteration, "."))
+    
     for (j in agegroup.list) {
-      
-      pop.total <- 0
-      hh.total <- 0
-      child_0004.total <- 0
-      child_0509.total <- 0
-      child_1014.total <- 0
-      child_1517.total <- 0
-      
-      full_sample.pums <- NULL
-      iteration <- 0
-      
       #
       print(paste0("Sampling for ", i, " Age Group ", j, "."))
       
@@ -629,8 +629,8 @@ for (i in c("BRPC")) {
       
       rm(tmp.pums, sample.pums)
       
-      iteration <- iteration + 1
-      print(paste0("Iteration: ", iteration, "."))
+      
+      
       print(paste0("Population: ", pop.total))
       print(paste0("Households: ", hh.total))
       print(paste0("Children Aged 0-4: ", child_0004.total))
@@ -640,8 +640,14 @@ for (i in c("BRPC")) {
       
     }
     
-    if (hh.total > 24) {break}
+    print(pop.target - pop.total)
+    x <- as.data.frame(pop.target - pop.total)
+    x.list <- bind_rows(x.list, x)
+    print(paste0("============================================="))
+    
+   if ((pop.target - pop.total) < 10 | iteration > 100) {break}
   }
 }
+
 
 ```

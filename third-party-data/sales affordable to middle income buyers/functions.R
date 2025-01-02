@@ -20,7 +20,7 @@ mortgage_calculator <- function(df, down_payment, loan_term, ho_insurance, condo
       year = year(date_clean)
     ) |> 
     group_by(year) |> 
-    summarize(mortgage_rate_30 = mean(pmms30))
+    summarize(mortgage_rate_30 = mean(pmms30)/100)
   
   ## PROPERTY TAX RATE TABLE - THIS TABLE WILL NEED TO BE UPDATED WITH FUTURE YEARS AS DATA BECOMES AVAILABLE!
   prop_taxrate = read_csv(paste0(calc_data_path, "prop_taxrates_ma_2024.csv")) |> 
@@ -67,7 +67,8 @@ mortgage_calculator <- function(df, down_payment, loan_term, ho_insurance, condo
     # get monthly principle cost
     mortgage_principle_m = (price - down_payment)/(loan_term*12),
     # adding mortgage interest
-    mortgage_interest_m = mortgage_principle_m*(1+(mortgage_rate_30/100)),
+    # M= P ((r(1+r)^n)/((1+r)^n-1 
+    mortgage_interest_m = mortgage_principle_m*(mortgage_rate_30*(1+mortgage_rate_30)^loan_term)/((1+mortgage_rate_interest)^(loan_term-1)),
     # get monthly property tax based on assessed value of home at date of sale
     property_tax_m = (assdvaltot*proptaxrate)/12,
     # adding property tax

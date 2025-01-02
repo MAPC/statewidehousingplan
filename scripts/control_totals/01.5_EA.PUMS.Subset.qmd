@@ -560,7 +560,7 @@ print(sum(Shelter.HoH$hh))
 
 ```
 
-```{r}
+```{r echo=TRUE, results='hide'}
 
 S.pop.RPA <- Shelter.pop.rpa |>
   group_by(rpa_acr) |>
@@ -583,6 +583,7 @@ for (i in c("BRPC")) {
   child_1014.target <- S.hh.RPA.AG |> filter(rpa_acr == i & AgeGroup == "10-14") |> select(pop) |> pull()
   child_1517.target <- S.hh.RPA.AG |> filter(rpa_acr == i & AgeGroup == "15-19") |> select(pop) |> pull()
   #
+  time_start <- lubridate::now()
   iteration <- 0
   x.list <- data.frame()
   pop.total.list <- data.frame()
@@ -650,8 +651,11 @@ for (i in c("BRPC")) {
     
     print(paste0("============================================="))
     
-   if ((pop.target - pop.total) < round(pop.target*0.1, 0) | iteration > 100) {break}
+   if ((pop.target - pop.total) < round(pop.target*0.1, 0) | iteration > 5000) {break}
+    
+  time_end <- lubridate::now()
   }
+  time_elapsed <- lubridate::interval(time_start, time_end)
 }
 
 ```

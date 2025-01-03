@@ -589,7 +589,7 @@ full_sample.pums <- NULL
 #Empty object to append the full diagnostic list to.
 full_diagnostic.list <- NULL
 
-for (i in c("BRPC","FRCOG")) {
+for (i in rpa.list) {
   # Evaluate whether or not we've hit the population targets.
   
   # Set the Population and Household Targets
@@ -736,5 +736,19 @@ for (i in c("BRPC","FRCOG")) {
   full_diagnostic.list <- bind_rows(full_diagnostic.list, diagnostic.list)
   
 }
+
+# Write full sample of pums records to a .csv
+write.csv(
+  full_sample.pums,
+  paste0("C:/Project_Work/Local_Data/Housing/SWHP/Scenarios/Scenario_4/full.shelter.pums.sample_run.1.csv"),
+  row.names = FALSE
+)
+
+# Write full diagnostic list to a .csv
+write.csv(
+  full_diagnostic.list,
+  paste0("C:/Project_Work/Local_Data/Housing/SWHP/Scenarios/Scenario_4/full.shelter.pums.diagnostic_run.1.csv"),
+  row.names = FALSE
+)
 
 ```

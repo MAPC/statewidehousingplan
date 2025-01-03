@@ -568,6 +568,7 @@ print(sum(Shelter.pop.rpa$hh))
 print(sum(Shelter.HoH$hh))
 
 ```
+
 # 2.0 - Sampling the PUMS records to match shelter households and approximate shelter population
 ```{r echo=TRUE, results='hide'}
 # Creates a dataframe with the total population in each RPA.
@@ -585,8 +586,10 @@ agegroup.list <- c("15-19","20-24","25-29","30-34","35-39","40-44","45-49","50-5
 
 # Empty object to append RPA PUMS records
 full_sample.pums <- NULL
+#Empty object to append the full diagnostic list to.
+full_diagnostic.list <- NULL
 
-for (i in c("BRPC")) {
+for (i in c("BRPC","FRCOG")) {
   # Evaluate whether or not we've hit the population targets.
   
   # Set the Population and Household Targets
@@ -601,15 +604,29 @@ for (i in c("BRPC")) {
   time_start <- lubridate::now()
   # Set the number of initial number of iterations for RPA loop to 0
   iteration <- 0
+  # Set empty dataframe to record the iteration number
+  iteration.list <- data.frame()
   # Set empty dataframe to record the difference between sampled and target population for each iteration
   pop.diff.list <- data.frame()
   # Set empty dataframe to record the the total sampled population for each iteration
   pop.total.list <- data.frame()
+  # Set empty dataframe to record the the total sampled households for each iteration
+  hh.total.list <- data.frame()
+  # Set empty dataframe to record the the total sampled children 0-4 for each iteration
+  child_0004.total.list <- data.frame()
+  # Set empty dataframe to record the the total sampled children 5-9 for each iteration
+  child_0509.total.list <- data.frame()
+  # Set empty dataframe to record the the total sampled children 10-14 for each iteration
+  child_1014.total.list <- data.frame()
+  # Set empty dataframe to record the the total sampled children 15-19 each iteration
+  child_1517.total.list <- data.frame()
+
+  # Set an empty dataframe for sampled PUMS records to be appended for each RPA
+  partial_sample.pums <- NULL
   
   # A repeat loop (works like a while loop). The Age Group for loop will repeat until a condition is met.
   # The conditions for this repeat loop:
-  # - Total population of the PUMS sample comes within 10% of the total population target.
-  # - 5000 iterations of the repeat loop are reached.
+  # - 500 iterations of the repeat loop are reached.
   repeat {
     
     # Set objects to record total population and households for each RPA run
@@ -619,8 +636,6 @@ for (i in c("BRPC")) {
     child_0509.total <- 0
     child_1014.total <- 0
     child_1517.total <- 0
-    # Set an empty dataframe for sampled PUMS records to be appended for each RPA
-    partial_sample.pums <- NULL
     # Add one for each successive iteration and print the iteration number
     iteration <- iteration + 1
     print(paste0("Iteration: ", iteration, "."))
@@ -679,38 +694,47 @@ for (i in c("BRPC")) {
     
     # Diagnostics
     print(paste0("Difference between Population Target and Population Sample: ", pop.target - pop.total))
-    # List of number of 
+    # List of population, difference between target pop and sampled pop, and the iteration
     pop.diff <- as.data.frame(pop.target - pop.total)
     pop.diff.list <- bind_rows(pop.diff.list, pop.diff)
     pop.total <- as.data.frame(pop.total)
     pop.total.list <- bind_rows(pop.total.list, pop.total)
+    hh.total <- as.data.frame(hh.total)
+    hh.total.list <- bind_rows(hh.total.list, hh.total)
+    child_0004.total <- as.data.frame(child_0004.total)
+    child_0004.total.list <- bind_rows(child_0004.total.list, child_0004.total)
+    child_0509.total <- as.data.frame(child_0509.total)
+    child_0509.total.list <- bind_rows(child_0509.total.list, child_0509.total)
+    child_1014.total <- as.data.frame(child_1014.total)
+    child_1014.total.list <- bind_rows(child_1014.total.list, child_1014.total)
+    child_1517.total <- as.data.frame(child_1517.total)
+    child_1517.total.list <- bind_rows(child_1517.total.list, child_1517.total)
+    iter <- as.data.frame(iteration)
+    iteration.list <- bind_rows(iteration.list, iter)
     # Print a break between iterations for easier visual inspection
     print(paste0("============================================="))
     
-   if (iteration > 100) {break}
-    
-    # Time Diagnostics
-    # Time when the loop ends
-    time_end <- lubridate::now()
-    # Calculates the interval between the beginning of the RPA loop and the end
-    time_elapsed <- lubridate::interval(time_start, time_end)
-    # Prints the interval
-    print(time_elapsed[1])
+    # Break condition for the repeat loop. Runs for 500 iterations and then moves to the next RPA.
+   if (iteration > 50) {break}
     
   }
-
+  
+  # Time Diagnostics
+  # Time when the loop ends
+  time_end <- lubridate::now()
+  # Calculates the interval between the beginning of the RPA loop and the end
+  time_elapsed <- lubridate::interval(time_start, time_end)
+  # Prints the interval
+  print(time_elapsed[1])
+  
   # Append the partial RPA sample PUMS records to an object outside of the loop which records the full set of PUMS records.
   full_sample.pums <- bind_rows(full_sample.pums, partial_sample.pums)
+  # Create a dataframe of all sampling diagnostics for each RPA loop
+  diagnostic.list <- bind_cols(iteration.list, pop.total.list, pop.diff.list, hh.total.list, child_0004.total.list, child_0509.total.list, child_1014.total.list, child_1517.total.list) |> 
+    mutate(rpa_acr = i)
+  # Append the full RPA diagnostic dataframe to a master dataframe which will hold all diagnostic statistics
+  full_diagnostic.list <- bind_rows(full_diagnostic.list, diagnostic.list)
   
-#   # 
-#   write.csv(
-#     partial_sample.pums,
-#     paste0("C:/Project_Work/Local_Data/Housing/SWHP/Scenarios/Scenario_4/partial_shelter.pums_",i,".csv"),
-#     row.names = FALSE
-#   )
-# 
 }
-
-(pop.target - pop.total) < round(pop.target*0.1, 0) |
 
 ```

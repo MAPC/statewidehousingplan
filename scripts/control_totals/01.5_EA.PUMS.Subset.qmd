@@ -353,18 +353,27 @@ tbl.hhsize.citizen <- pums_EA |>
 
 # Gets the distribution of Citizen and Non-Citizen pretty close: pums(88%/12%) v. expected(83%/17%)
 # Non-Citizens:
-# One Person HH = pums(38%) v. expected(7%)
-# Two Person HH = pums(25%) v. expected(22%)
-# Three Person HH = pums(18.5%) v. expected(40%)
-# Four Person HH = pums(12.6%) v. expected(21%)
-# Five Person HH = pums(5.2%) v. expected(10%)
+# One Person HH = pums(38%) v. expected(7%)  -- 7% x 17% = 0.0119 (1.19%)
+# Two Person HH = pums(25%) v. expected(22%) -- 22% x 17% = 0.0374 (3.74%)
+# Three Person HH = pums(18.5%) v. expected(40%) -- 40% x 17% = 0.068 (6.8%)
+# Four Person HH = pums(12.6%) v. expected(21%) -- 21% x 17% = 0.357 (3.57%)
+# Five Person HH = pums(5.2%) v. expected(10%) -- 10% x 17% = 0.017 (1,7%)
 
 # Citizens:
-# One Person HH = pums(63%) v. expected(18%)
-# Two Person HH = pums(19.6%) v. expected(32%)
-# Three Person HH = pums(9.2%) v. expected(27%)
-# Four Person HH = pums(5.3%) v. expected(14%)
-# Five Person HH = pums(2.7%) v. expected(9%)
+# One Person HH = pums(63%) v. expected(18%) -- 18% x 83% = 0.1494 (14.94%)
+# Two Person HH = pums(19.6%) v. expected(32%) -- 32% x 83% = 0.2656 (26.56%)
+# Three Person HH = pums(9.2%) v. expected(27%) -- 27% x 83% = 0.2241 (22.41%)
+# Four Person HH = pums(5.3%) v. expected(14%) -- 14% x 83% = 0.1162 (11.62%)
+# Five Person HH = pums(2.7%) v. expected(9%) -- 9% x 83% = 0.0747 (7.47%)
+
+# Household Size Splits
+# One Person: (0.1613) 16.13% --> 16%
+# Two Person: (0.303) 30.3% --> 30%
+# Three Person: (0.2921) 29.21% --> 30%
+# Four Person: (0.1519) 15.19% -- 15%
+# Five Person: (0.0917) 9.17% --> 9%
+
+hh.size_list <- c(0.1613, 0.303, 0.2921, 0.1519, 0.0917)
 
 # Determine the RPA distribution of EA applicants
 munis <- mapcdatakeys::all_muni_data_keys |> select(muni_name, rpa_acr)
@@ -561,7 +570,6 @@ print(sum(Shelter.HoH$hh))
 ```
 # 2.0 - Sampling the PUMS records to match shelter households and approximate shelter population
 ```{r echo=TRUE, results='hide'}
-
 # Creates a dataframe with the total population in each RPA.
 S.pop.RPA <- Shelter.pop.rpa |>
   group_by(rpa_acr) |>
@@ -624,10 +632,18 @@ for (i in c("BRPC")) {
       # Set the household target for each RPA x Age Group pair for sampling. Print the household target.
       hh.target <- S.hh.RPA.AG |> filter(rpa_acr == i & AgeGroup == j) |> select(hh) |> pull()
       print(paste0("Household Target: ", hh.target))
-      # Filters the PUMS records to those in the RPA with a householder in the specified Age Group
-      tmp.pums <- pums_EA |> filter(rpa_acr == i & ageCAT6 == j & SPORDER == 1)
-      # Samples households with replacement equal to the number of households in the target (for RPA and Age Group). Adds the iteration number to the dataset.
-      sample.pums <- slice_sample(tmp.pums, n = hh.target, replace = TRUE) |> mutate(iter = iteration)
+      # Create a household target for some household size (1 person, 2 person, and 3+ person)
+      hh.target.1 <- round(hh.target*hh.size_list[1], 0)
+      hh.target.2 <- round(hh.target*(hh.size_list[2] + hh.size_list[3] + hh.size_list[4] + hh.size_list[5]), 0)
+      # Filters the PUMS records to those in the RPA with a householder in the specified Age Group by household size.
+      tmp.pums.1 <- pums_EA |> filter(rpa_acr == i & ageCAT6 == j & SPORDER == 1 & NP == 1)
+      tmp.pums.2 <- pums_EA |> filter(rpa_acr == i & ageCAT6 == j & SPORDER == 1 & NP >= 2)
+      # Samples households with replacement equal to the number of households in the target (for RPA and Age Group and household size). Adds the iteration number to the dataset.
+      sample.pums.1 <- slice_sample(tmp.pums.1, n = hh.target.1, replace = TRUE) |> mutate(iter = iteration)
+      sample.pums.2 <- slice_sample(tmp.pums.2, n = hh.target.2, replace = TRUE) |> mutate(iter = iteration)
+      
+      # Bind all samples together into one dataframe.
+      sample.pums <- bind_rows(sample.pums.1, sample.pums.2, sample.pums.3)
       
       # Records temporary information about the sampled PUMS records.
       tmp.pop <- as.numeric(sum(sample.pums$NP))
@@ -649,7 +665,7 @@ for (i in c("BRPC")) {
       partial_sample.pums <- bind_rows(partial_sample.pums, sample.pums)
       
       # Remove objects that need to be refreshed with each repeat. 
-      rm(tmp.pums, sample.pums, tmp.pop, tmp.hh, tmp.child_0004, tmp.child_0509, tmp.child_1014, tmp.child_1517)
+      rm(tmp.pums.1, tmp.pums.2, sample.pums, tmp.pop, tmp.hh, tmp.child_0004, tmp.child_0509, tmp.child_1014, tmp.child_1517)
       
       # Prints the progression of population and households totals as each Age Group is looped through
       print(paste0("Population: ", pop.total))
@@ -671,7 +687,7 @@ for (i in c("BRPC")) {
     # Print a break between iterations for easier visual inspection
     print(paste0("============================================="))
     
-   if ((pop.target - pop.total) < round(pop.target*0.1, 0) | iteration > 5000) {break}
+   if (iteration > 100) {break}
     
     # Time Diagnostics
     # Time when the loop ends
@@ -685,7 +701,16 @@ for (i in c("BRPC")) {
 
   # Append the partial RPA sample PUMS records to an object outside of the loop which records the full set of PUMS records.
   full_sample.pums <- bind_rows(full_sample.pums, partial_sample.pums)
-
+  
+#   # 
+#   write.csv(
+#     partial_sample.pums,
+#     paste0("C:/Project_Work/Local_Data/Housing/SWHP/Scenarios/Scenario_4/partial_shelter.pums_",i,".csv"),
+#     row.names = FALSE
+#   )
+# 
 }
+
+(pop.target - pop.total) < round(pop.target*0.1, 0) |
 
 ```

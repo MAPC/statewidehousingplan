@@ -579,7 +579,14 @@ S.pop.RPA <- Shelter.pop.rpa |>
 
 # Creates a dataframe of the shelter population and households by 5-year age group.
 S.hh.RPA.AG <- Shelter.pop.rpa |> 
-  select(-c(pct.rpa.pop, hdsp.r))
+  select(-c(pct.rpa.pop, hdsp.r)) |> 
+  mutate(
+    hh = case_when(
+      rpa_acr == "OCPC" & AgeGroup == "15-19" ~ hh - 1,
+      rpa_acr == "OCPC" & AgeGroup == "20-24" ~ hh + 1,
+      .default = hh
+    )
+  )
   
 # A list of 5-year age groups with households and population to loop through
 agegroup.list <- c("15-19","20-24","25-29","30-34","35-39","40-44","45-49","50-54","55-59","60-64","65-69","70-74","75-79")
@@ -589,9 +596,9 @@ full_sample.pums <- NULL
 #Empty object to append the full diagnostic list to.
 full_diagnostic.list <- NULL
 
-for (i in rpa.list) {
+for (i in c("OCPC")) {
   # Evaluate whether or not we've hit the population targets.
-  
+  print(paste0("CURRENT RPA: ", i))
   # Set the Population and Household Targets
   pop.target <- S.pop.RPA |> filter(rpa_acr == i) |> select(pop) |> pull()
   child_0004.target <- S.hh.RPA.AG |> filter(rpa_acr == i &  AgeGroup == "00-04") |> select(pop) |> pull()
@@ -658,7 +665,7 @@ for (i in rpa.list) {
       sample.pums.2 <- slice_sample(tmp.pums.2, n = hh.target.2, replace = TRUE) |> mutate(iter = iteration)
       
       # Bind all samples together into one dataframe.
-      sample.pums <- bind_rows(sample.pums.1, sample.pums.2, sample.pums.3)
+      sample.pums <- bind_rows(sample.pums.1, sample.pums.2)
       
       # Records temporary information about the sampled PUMS records.
       tmp.pop <- as.numeric(sum(sample.pums$NP))
@@ -715,7 +722,7 @@ for (i in rpa.list) {
     print(paste0("============================================="))
     
     # Break condition for the repeat loop. Runs for 500 iterations and then moves to the next RPA.
-   if (iteration > 50) {break}
+   if (iteration > 500) {break}
     
   }
   
@@ -740,14 +747,14 @@ for (i in rpa.list) {
 # Write full sample of pums records to a .csv
 write.csv(
   full_sample.pums,
-  paste0("C:/Project_Work/Local_Data/Housing/SWHP/Scenarios/Scenario_4/full.shelter.pums.sample_run.1.csv"),
+  paste0("C:/Project_Work/Local_Data/Housing/SWHP/Scenarios/Scenario_4/full.shelter.pums.sample_OCPCrun.1.csv"),
   row.names = FALSE
 )
 
 # Write full diagnostic list to a .csv
 write.csv(
   full_diagnostic.list,
-  paste0("C:/Project_Work/Local_Data/Housing/SWHP/Scenarios/Scenario_4/full.shelter.pums.diagnostic_run.1.csv"),
+  paste0("C:/Project_Work/Local_Data/Housing/SWHP/Scenarios/Scenario_4/full.shelter.pums.diagnostic_OCPCrun.1.csv"),
   row.names = FALSE
 )
 

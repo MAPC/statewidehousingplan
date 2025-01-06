@@ -15,7 +15,7 @@ options(scipen = 999)
 # Load home sale data
 
 ```{r, include = FALSE}
-warren_res <- read_csv("K:/DataServices/Datasets/Housing/Warren Group - Home Sales/Data/Tabular/Modified/20240314_warren_group_2000_2023_residential_final.csv")
+warren_res <- read_csv("K:/DataServices/Datasets/Housing/Warren Group - Home Sales/Data/Tabular/Modified/20241220_warren_group_2000_2023_residential_final.csv")
 ```
 
 # Run the mortgage calculator
@@ -38,7 +38,8 @@ affordable_counts <- affordable_sales(warren_res_monthly, 'count')
 affordable_percents <- affordable_sales(warren_res_monthly, 'percent')
 ```
 
-# Get RPA aggregations 
+# Get RPA aggregations
+
 ```{r}
 affordable_rpa <- affordable_counts |> 
   ungroup() |> 
@@ -69,8 +70,6 @@ rpa_percents <- affordable_rpa |>
   select(rpa_acr, fy_year, hh_size, total_transactions, affordable_30, affordable_50, affordable_80, affordable_100, affordable_120) |> 
   distinct()
 ```
-
-
 
 # Write summary tables to project folder
 

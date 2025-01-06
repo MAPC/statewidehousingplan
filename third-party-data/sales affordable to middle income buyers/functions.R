@@ -6,7 +6,7 @@
 ## output: a dataframe that appends fields estimated the monthly mortgage principle (mortgage_principle_m), monthly mortgage with interest (mortgage_interest_m), 
 ### and the total monthly payment including all variables outlined above
 
-mortgage_calculator <- function(df, down_payment, loan_term, ho_insurance, condo_fee){
+mortgage_calculator <- function(df, down_payment_p, loan_term, ho_insurance, condo_fee){
   ## MAKE VARIABLES 
   # data paths
   calc_data_path <- "K:/DataServices/Datasets/Housing/Warren Group - Home Sales/attainable_housing/calculator_data/"
@@ -64,19 +64,25 @@ mortgage_calculator <- function(df, down_payment, loan_term, ho_insurance, condo
     left_join(fmrate, by = 'year') |> 
     # calculate estimated monthly payment
     mutate(
-    # get monthly principle cost
-    mortgage_principle_m = (price - down_payment)/(loan_term*12),
-    # adding mortgage interest
-    # M= P ((r(1+r)^n)/((1+r)^n-1 
-    mortgage_interest_m = mortgage_principle_m*(mortgage_rate_30*(1+mortgage_rate_30)^loan_term)/((1+mortgage_rate_interest)^(loan_term-1)),
-    # get monthly property tax based on assessed value of home at date of sale
-    property_tax_m = (assdvaltot*proptaxrate)/12,
-    # adding property tax
-    mortgage_interest_tax = mortgage_interest_m + property_tax_m, 
-    # add other potential monthly costs
-    monthly_payment = ifelse(proptype == 'RCD', 
-                             mortgage_interest_tax + ho_insurance + condo_fee,
-                             mortgage_interest_tax + ho_insurance)
+      # calculate mortgage principle
+      mortgage_principle = price - (price*down_payment_p),
+      # get loan term in months
+      loan_term_m = loan_term*12,
+      # calculating monthly interest rate from average APR
+      monthly_interest = mortgage_rate_30/12, 
+      # calculating monthly mortgage with interest
+      # M= P ((r(1+r)^n)/((1+r)^n-1 
+      mortgage_interest_m = mortgage_principle*((monthly_interest*((1+monthly_interest)^loan_term_m))/(((1+monthly_interest)^loan_term_m)-1)),
+      # get monthly property tax based on sale price of home
+      property_tax_m = (price*proptaxrate)/12,
+      # adding property tax
+      mortgage_interest_tax = mortgage_interest_m + property_tax_m, 
+      # monthly homeowners insurance
+      ho_insurance_m = ho_insurance/12, 
+      # add other potential monthly costs
+      monthly_payment = ifelse(proptype == 'RCD', 
+                               mortgage_interest_tax + ho_insurance_m + condo_fee,
+                               mortgage_interest_tax + ho_insurance_m)
     ) |> 
     # remove interim fields
     select(-c(proptaxrate, mortgage_rate_30, property_tax_m, mortgage_interest_tax))

@@ -568,8 +568,12 @@ print(sum(Shelter.pop.rpa$hh))
 print(sum(Shelter.HoH$hh))
 
 ```
+
 # 2.0 - Sampling the PUMS records to match shelter households and approximate shelter population
 ```{r echo=TRUE, results='hide'}
+# Sets the run number for the sampling
+run <- "run.2"
+
 # Creates a dataframe with the total population in each RPA.
 S.pop.RPA <- Shelter.pop.rpa |>
   group_by(rpa_acr) |>
@@ -578,17 +582,26 @@ S.pop.RPA <- Shelter.pop.rpa |>
 
 # Creates a dataframe of the shelter population and households by 5-year age group.
 S.hh.RPA.AG <- Shelter.pop.rpa |> 
-  select(-c(pct.rpa.pop, hdsp.r))
+  select(-c(pct.rpa.pop, hdsp.r)) |> 
+  mutate(
+    hh = case_when(
+      rpa_acr == "OCPC" & AgeGroup == "15-19" ~ hh - 1,
+      rpa_acr == "OCPC" & AgeGroup == "20-24" ~ hh + 1,
+      .default = hh
+    )
+  )
   
 # A list of 5-year age groups with households and population to loop through
 agegroup.list <- c("15-19","20-24","25-29","30-34","35-39","40-44","45-49","50-54","55-59","60-64","65-69","70-74","75-79")
 
 # Empty object to append RPA PUMS records
 full_sample.pums <- NULL
+#Empty object to append the full diagnostic list to.
+full_diagnostic.list <- NULL
 
-for (i in c("BRPC")) {
+for (i in c("OCPC")) {
   # Evaluate whether or not we've hit the population targets.
-  
+  print(paste0("CURRENT RPA: ", i))
   # Set the Population and Household Targets
   pop.target <- S.pop.RPA |> filter(rpa_acr == i) |> select(pop) |> pull()
   child_0004.target <- S.hh.RPA.AG |> filter(rpa_acr == i &  AgeGroup == "00-04") |> select(pop) |> pull()
@@ -601,15 +614,29 @@ for (i in c("BRPC")) {
   time_start <- lubridate::now()
   # Set the number of initial number of iterations for RPA loop to 0
   iteration <- 0
+  # Set empty dataframe to record the iteration number
+  iteration.list <- data.frame()
   # Set empty dataframe to record the difference between sampled and target population for each iteration
   pop.diff.list <- data.frame()
   # Set empty dataframe to record the the total sampled population for each iteration
   pop.total.list <- data.frame()
+  # Set empty dataframe to record the the total sampled households for each iteration
+  hh.total.list <- data.frame()
+  # Set empty dataframe to record the the total sampled children 0-4 for each iteration
+  child_0004.total.list <- data.frame()
+  # Set empty dataframe to record the the total sampled children 5-9 for each iteration
+  child_0509.total.list <- data.frame()
+  # Set empty dataframe to record the the total sampled children 10-14 for each iteration
+  child_1014.total.list <- data.frame()
+  # Set empty dataframe to record the the total sampled children 15-19 each iteration
+  child_1517.total.list <- data.frame()
+
+  # Set an empty dataframe for sampled PUMS records to be appended for each RPA
+  partial_sample.pums <- NULL
   
   # A repeat loop (works like a while loop). The Age Group for loop will repeat until a condition is met.
   # The conditions for this repeat loop:
-  # - Total population of the PUMS sample comes within 10% of the total population target.
-  # - 5000 iterations of the repeat loop are reached.
+  # - 500 iterations of the repeat loop are reached.
   repeat {
     
     # Set objects to record total population and households for each RPA run
@@ -619,8 +646,6 @@ for (i in c("BRPC")) {
     child_0509.total <- 0
     child_1014.total <- 0
     child_1517.total <- 0
-    # Set an empty dataframe for sampled PUMS records to be appended for each RPA
-    partial_sample.pums <- NULL
     # Add one for each successive iteration and print the iteration number
     iteration <- iteration + 1
     print(paste0("Iteration: ", iteration, "."))
@@ -643,7 +668,7 @@ for (i in c("BRPC")) {
       sample.pums.2 <- slice_sample(tmp.pums.2, n = hh.target.2, replace = TRUE) |> mutate(iter = iteration)
       
       # Bind all samples together into one dataframe.
-      sample.pums <- bind_rows(sample.pums.1, sample.pums.2, sample.pums.3)
+      sample.pums <- bind_rows(sample.pums.1, sample.pums.2)
       
       # Records temporary information about the sampled PUMS records.
       tmp.pop <- as.numeric(sum(sample.pums$NP))
@@ -679,38 +704,160 @@ for (i in c("BRPC")) {
     
     # Diagnostics
     print(paste0("Difference between Population Target and Population Sample: ", pop.target - pop.total))
-    # List of number of 
+    # List of population, difference between target pop and sampled pop, and the iteration
     pop.diff <- as.data.frame(pop.target - pop.total)
     pop.diff.list <- bind_rows(pop.diff.list, pop.diff)
     pop.total <- as.data.frame(pop.total)
     pop.total.list <- bind_rows(pop.total.list, pop.total)
+    hh.total <- as.data.frame(hh.total)
+    hh.total.list <- bind_rows(hh.total.list, hh.total)
+    child_0004.total <- as.data.frame(child_0004.total)
+    child_0004.total.list <- bind_rows(child_0004.total.list, child_0004.total)
+    child_0509.total <- as.data.frame(child_0509.total)
+    child_0509.total.list <- bind_rows(child_0509.total.list, child_0509.total)
+    child_1014.total <- as.data.frame(child_1014.total)
+    child_1014.total.list <- bind_rows(child_1014.total.list, child_1014.total)
+    child_1517.total <- as.data.frame(child_1517.total)
+    child_1517.total.list <- bind_rows(child_1517.total.list, child_1517.total)
+    iter <- as.data.frame(iteration)
+    iteration.list <- bind_rows(iteration.list, iter)
     # Print a break between iterations for easier visual inspection
     print(paste0("============================================="))
     
-   if (iteration > 100) {break}
-    
-    # Time Diagnostics
-    # Time when the loop ends
-    time_end <- lubridate::now()
-    # Calculates the interval between the beginning of the RPA loop and the end
-    time_elapsed <- lubridate::interval(time_start, time_end)
-    # Prints the interval
-    print(time_elapsed[1])
+    # Break condition for the repeat loop. Runs for 500 iterations and then moves to the next RPA.
+   if (iteration > 500) {break}
     
   }
-
+  
+  # Time Diagnostics
+  # Time when the loop ends
+  time_end <- lubridate::now()
+  # Calculates the interval between the beginning of the RPA loop and the end
+  time_elapsed <- lubridate::interval(time_start, time_end)
+  # Prints the interval
+  print(time_elapsed[1])
+  
   # Append the partial RPA sample PUMS records to an object outside of the loop which records the full set of PUMS records.
   full_sample.pums <- bind_rows(full_sample.pums, partial_sample.pums)
+  # Create a dataframe of all sampling diagnostics for each RPA loop
+  diagnostic.list <- bind_cols(iteration.list, pop.total.list, pop.diff.list, hh.total.list, child_0004.total.list, child_0509.total.list, child_1014.total.list, child_1517.total.list) |> 
+    mutate(rpa_acr = i)
+  # Append the full RPA diagnostic dataframe to a master dataframe which will hold all diagnostic statistics
+  full_diagnostic.list <- bind_rows(full_diagnostic.list, diagnostic.list)
   
-#   # 
-#   write.csv(
-#     partial_sample.pums,
-#     paste0("C:/Project_Work/Local_Data/Housing/SWHP/Scenarios/Scenario_4/partial_shelter.pums_",i,".csv"),
-#     row.names = FALSE
-#   )
-# 
 }
 
-(pop.target - pop.total) < round(pop.target*0.1, 0) |
+# Write full sample of pums records to a .csv
+write.csv(
+  full_sample.pums,
+  paste0("C:/Project_Work/Local_Data/Housing/SWHP/Scenarios/Scenario_4/full.shelter.pums.sample_",run,".csv"),
+  row.names = FALSE
+)
 
+# Write full diagnostic list to a .csv
+write.csv(
+  full_diagnostic.list,
+  paste0("C:/Project_Work/Local_Data/Housing/SWHP/Scenarios/Scenario_4/full.shelter.pums.diagnostic_",run,".csv"),
+  row.names = FALSE
+)
+
+# Clean up the environment
+rm(full_sample.pums, full_diagnostic.list)
+
+```
+
+# 3.0 Evaluate Run Diagnostics
+```{r}
+tmp.1 <- read.csv("C:/Project_Work/Local_Data/Housing/SWHP/Scenarios/Scenario_4/full.shelter.pums.diagnostic_BRPCtoNMCOGrun.1.csv")
+tmp.2 <- read.csv("C:/Project_Work/Local_Data/Housing/SWHP/Scenarios/Scenario_4/full.shelter.pums.diagnostic_PVPCandSRPEDDrun.1.csv")
+tmp.3 <- read.csv("C:/Project_Work/Local_Data/Housing/SWHP/Scenarios/Scenario_4/full.shelter.pums.diagnostic_OCPCrun.1.csv")
+
+full.diagnostics <- bind_rows(tmp.1, tmp.2, tmp.3)
+
+rm(tmp.1, tmp.2, tmp.3)
+
+for (i in c("MAPC")) {
+  
+  tmp.pop <- S.pop.RPA |> filter(rpa_acr == i)
+  
+  pop.graph <- full.diagnostics |>
+    filter(rpa_acr == i) |>
+    ggplot() +
+    geom_density(aes(x = pop.total)) +
+    geom_vline(xintercept = as.numeric(tmp.pop[2]), linetype = "dashed", color = "red") +
+    theme_minimal() +
+    theme()
+  
+}
+
+pop.graph
+
+sample_choice.BRPC <- full.diagnostics |> 
+  filter(rpa_acr == "BRPC") |> 
+  filter(pop.total == 77) |> 
+  rowwise() |> 
+  mutate(
+    child.total = sum(child_0004.total, child_0509.total, child_1014.total, child_1517.total)
+  ) |>
+  group_by(rpa_acr) |> 
+  slice_max(child.total, with_ties = TRUE) |> 
+  ungroup() |> 
+  select(-c(child.total))
+
+sample_choice.CCC <- full.diagnostics |> 
+  filter(rpa_acr == "CCC") |> 
+  slice_max(pop.total, with_ties = TRUE) |> 
+  rowwise() |> 
+  mutate(
+    child.total = sum(child_0004.total, child_0509.total, child_1014.total, child_1517.total)
+  ) |> 
+  group_by(rpa_acr) |> 
+  slice_max(child.total, with_ties = TRUE) |> 
+  ungroup() |> 
+  select(-c(child.total))
+
+
+sample_choice.general <- full.diagnostics |> 
+  filter(!rpa_acr %in% c("BRPC", "CCC")) |> 
+  group_by(rpa_acr) |> 
+  slice_max(pop.total, with_ties = TRUE) |> 
+  ungroup()
+
+sample_choice <- bind_rows(sample_choice.BRPC, sample_choice.CCC, sample_choice.general)
+
+rm(sample_choice.BRPC, sample_choice.CCC, sample_choice.general)
+#==========
+tmp.1 <- read_csv("C:/Project_Work/Local_Data/Housing/SWHP/Scenarios/Scenario_4/full.shelter.pums.sample_BRPCtoNMCOGrun.1.csv")
+tmp.2 <- read_csv("C:/Project_Work/Local_Data/Housing/SWHP/Scenarios/Scenario_4/full.shelter.pums.sample_PVPCandSRPEDDrun.1.csv")
+tmp.3 <- read_csv("C:/Project_Work/Local_Data/Housing/SWHP/Scenarios/Scenario_4/full.shelter.pums.sample_OCPCrun.1.csv")
+
+full.sample.pums <- bind_rows(tmp.1, tmp.2, tmp.3)
+
+rm(tmp.1, tmp.2, tmp.3)
+
+choice.pums <- NULL
+
+for (i in rpa.list) {
+  
+  tmp.sc <- sample_choice |> filter(rpa_acr == i) |> select(iteration) |> pull() |> as.numeric()
+  
+  tmp.ps <- full.sample.pums |> filter(rpa_acr == i)
+  
+  tmp <- tmp.ps |> filter(iter == tmp.sc)
+  
+  choice.pums <- bind_rows(choice.pums, tmp)
+  
+  rm(tmp.sc, tmp.ps, tmp)
+  
+}
+
+choice.pums_SERIALNO <- choice.pums |> select(SERIALNO) |> pull()
+
+#============================
+# Select the full household records from PUMS using the SERIALNO of the households in the sample.
+
+```
+
+# 4.0 Select all PUMS records for each SERIALNO
+```{r}
 ```

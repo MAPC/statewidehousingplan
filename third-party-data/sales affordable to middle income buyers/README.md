@@ -17,24 +17,27 @@ output:
 
 assumptions:
 for the statewide housing plan the mortgage calculator was run with the following assumptions
-- a 20% downpayment
+- a 20% down payment
 - a 30 year loan term
 - $1,000 a year for homeowners insurance
 - $300 a month for condo fees
 
 methods:
-1. use federal mortgage interest rates from Freddie Mac and calculate and average annual interest rate
+1. use federal mortgage interest rates from Freddie Mac to calculate an average annual interest rate for each calendar year
 2. join annual municipal property tax rates to data, calculate rate as percentage rather than dollar amount per $1000, assign 2003 tax rates to properties sold from 2000-2002 to supplement missing data
 3. filter input data frame to only show condos and single family homes
-4. the monthly mortgage principle is calculated as (price - down payment)/(loan term * 12)
-6. property tax is calculated using the average property tax rate for the municipality and the assessed value of the home
-7. the final monthly payment is calculated by summing the monthly mortgage principle, mortgage interest, proerty tax, homeowners insurance, and where the property is a condo, the monthly condo fee
+4. the mortgage principle is calculated based on the input down payment percentage as price - (price*down_payment_p)
+5. the loan term is calculated in months based on the loan term in years input to the function
+6. the monthly interest rate is calculated for each calendar year by taking 1/12 of the averaged annual interest rate
+7. the monthly mortgage payment is then calculated using the formula M= P ((r(1+r)^n)/((1+r)^n-1 where P is the mortgage principle, r is the monthly mortgage interest amount, and n is the loan term in months
+8. property tax is calculated by multiplying the sale price of the home by the average property tax rate for the municipality and then diving by 12
+9. the final monthly payment is derived by summing the monthly mortgage payment, property tax, homeowners' insurance, and where the property is a condo, the monthly condo fee
 
 
 `affordable_sales()`
 
 inputs:
-- a dataframe that has gone through the mortgage calculator (must include fields for monthly_payment, number of bedrooms, month, year, and muncipal ID)
+- a dataframe that has gone through the mortgage calculator (must include fields for monthly_payment, number of bedrooms, month, year, and municipal ID)
 - 'count' or 'percent' depending on the output summary table wanted
 
 output:

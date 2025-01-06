@@ -571,6 +571,9 @@ print(sum(Shelter.HoH$hh))
 
 # 2.0 - Sampling the PUMS records to match shelter households and approximate shelter population
 ```{r echo=TRUE, results='hide'}
+# Sets the run number for the sampling
+run <- "run.2"
+
 # Creates a dataframe with the total population in each RPA.
 S.pop.RPA <- Shelter.pop.rpa |>
   group_by(rpa_acr) |>
@@ -747,15 +750,114 @@ for (i in c("OCPC")) {
 # Write full sample of pums records to a .csv
 write.csv(
   full_sample.pums,
-  paste0("C:/Project_Work/Local_Data/Housing/SWHP/Scenarios/Scenario_4/full.shelter.pums.sample_OCPCrun.1.csv"),
+  paste0("C:/Project_Work/Local_Data/Housing/SWHP/Scenarios/Scenario_4/full.shelter.pums.sample_",run,".csv"),
   row.names = FALSE
 )
 
 # Write full diagnostic list to a .csv
 write.csv(
   full_diagnostic.list,
-  paste0("C:/Project_Work/Local_Data/Housing/SWHP/Scenarios/Scenario_4/full.shelter.pums.diagnostic_OCPCrun.1.csv"),
+  paste0("C:/Project_Work/Local_Data/Housing/SWHP/Scenarios/Scenario_4/full.shelter.pums.diagnostic_",run,".csv"),
   row.names = FALSE
 )
 
+# Clean up the environment
+rm(full_sample.pums, full_diagnostic.list)
+
+```
+
+# 3.0 Evaluate Run Diagnostics
+```{r}
+tmp.1 <- read.csv("C:/Project_Work/Local_Data/Housing/SWHP/Scenarios/Scenario_4/full.shelter.pums.diagnostic_BRPCtoNMCOGrun.1.csv")
+tmp.2 <- read.csv("C:/Project_Work/Local_Data/Housing/SWHP/Scenarios/Scenario_4/full.shelter.pums.diagnostic_PVPCandSRPEDDrun.1.csv")
+tmp.3 <- read.csv("C:/Project_Work/Local_Data/Housing/SWHP/Scenarios/Scenario_4/full.shelter.pums.diagnostic_OCPCrun.1.csv")
+
+full.diagnostics <- bind_rows(tmp.1, tmp.2, tmp.3)
+
+rm(tmp.1, tmp.2, tmp.3)
+
+for (i in c("MAPC")) {
+  
+  tmp.pop <- S.pop.RPA |> filter(rpa_acr == i)
+  
+  pop.graph <- full.diagnostics |>
+    filter(rpa_acr == i) |>
+    ggplot() +
+    geom_density(aes(x = pop.total)) +
+    geom_vline(xintercept = as.numeric(tmp.pop[2]), linetype = "dashed", color = "red") +
+    theme_minimal() +
+    theme()
+  
+}
+
+pop.graph
+
+sample_choice.BRPC <- full.diagnostics |> 
+  filter(rpa_acr == "BRPC") |> 
+  filter(pop.total == 77) |> 
+  rowwise() |> 
+  mutate(
+    child.total = sum(child_0004.total, child_0509.total, child_1014.total, child_1517.total)
+  ) |>
+  group_by(rpa_acr) |> 
+  slice_max(child.total, with_ties = TRUE) |> 
+  ungroup() |> 
+  select(-c(child.total))
+
+sample_choice.CCC <- full.diagnostics |> 
+  filter(rpa_acr == "CCC") |> 
+  slice_max(pop.total, with_ties = TRUE) |> 
+  rowwise() |> 
+  mutate(
+    child.total = sum(child_0004.total, child_0509.total, child_1014.total, child_1517.total)
+  ) |> 
+  group_by(rpa_acr) |> 
+  slice_max(child.total, with_ties = TRUE) |> 
+  ungroup() |> 
+  select(-c(child.total))
+
+
+sample_choice.general <- full.diagnostics |> 
+  filter(!rpa_acr %in% c("BRPC", "CCC")) |> 
+  group_by(rpa_acr) |> 
+  slice_max(pop.total, with_ties = TRUE) |> 
+  ungroup()
+
+sample_choice <- bind_rows(sample_choice.BRPC, sample_choice.CCC, sample_choice.general)
+
+rm(sample_choice.BRPC, sample_choice.CCC, sample_choice.general)
+#==========
+tmp.1 <- read_csv("C:/Project_Work/Local_Data/Housing/SWHP/Scenarios/Scenario_4/full.shelter.pums.sample_BRPCtoNMCOGrun.1.csv")
+tmp.2 <- read_csv("C:/Project_Work/Local_Data/Housing/SWHP/Scenarios/Scenario_4/full.shelter.pums.sample_PVPCandSRPEDDrun.1.csv")
+tmp.3 <- read_csv("C:/Project_Work/Local_Data/Housing/SWHP/Scenarios/Scenario_4/full.shelter.pums.sample_OCPCrun.1.csv")
+
+full.sample.pums <- bind_rows(tmp.1, tmp.2, tmp.3)
+
+rm(tmp.1, tmp.2, tmp.3)
+
+choice.pums <- NULL
+
+for (i in rpa.list) {
+  
+  tmp.sc <- sample_choice |> filter(rpa_acr == i) |> select(iteration) |> pull() |> as.numeric()
+  
+  tmp.ps <- full.sample.pums |> filter(rpa_acr == i)
+  
+  tmp <- tmp.ps |> filter(iter == tmp.sc)
+  
+  choice.pums <- bind_rows(choice.pums, tmp)
+  
+  rm(tmp.sc, tmp.ps, tmp)
+  
+}
+
+choice.pums_SERIALNO <- choice.pums |> select(SERIALNO) |> pull()
+
+#============================
+# Select the full household records from PUMS using the SERIALNO of the households in the sample.
+
+```
+
+# 4.0 Select all PUMS records for each SERIALNO
+```{r}
 ```

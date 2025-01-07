@@ -851,13 +851,47 @@ for (i in rpa.list) {
   
 }
 
-choice.pums_SERIALNO <- choice.pums |> select(SERIALNO) |> pull()
+# List of SERIALNO in the PUMS records selected to represent the shelter population
+choice.pums_SERIALNO <- choice.pums |> select(SERIALNO) |> pull() |> unique()
 
-#============================
-# Select the full household records from PUMS using the SERIALNO of the households in the sample.
+choice.pums_number <- choice.pums |> group_by(SERIALNO) |> summarise(num = n()) |> ungroup()
 
 ```
 
 # 4.0 Select all PUMS records for each SERIALNO
 ```{r}
+# Select the full household records from PUMS using the SERIALNO of the households in the sample.
+shelter.pums <- pums_EA |> 
+  filter(SERIALNO %in% choice.pums_SERIALNO) |> 
+  # Join the dataframe with information (num) about how many times the SERIALNO needs to duplicated
+  left_join(
+    choice.pums_number,
+    by = c("SERIALNO"),
+    relationship = "many-to-many"
+  ) |>
+  # Duplicate PUMS records in accordance to how many times they show up in the sample outpu
+  uncount(num) |>
+  mutate(
+    # Gives each row a number
+    ID = row_number()
+  ) |> 
+  group_by(SERIALNO, SPORDER) |> 
+  mutate(
+    # RANK represents the number of duplicates present in the sample
+    RANK = rank(ID, na.last = TRUE, ties.method = "first")
+  ) |> 
+  ungroup() |> 
+  mutate(
+    # New SERIALNO which makes duplicate records unique
+    SERIALNO.adj = paste0(SERIALNO,".",RANK,".shelter"),
+    # New household weight set to 1
+    new_WGTP = 1,
+    # New person weight set to 1
+    new_PWGTP = 1
+  )
+
+#================
+# QA on the shelter data
+hh.test <- shelter.pums |> 
+  filter(SPORDER == 1)
 ```

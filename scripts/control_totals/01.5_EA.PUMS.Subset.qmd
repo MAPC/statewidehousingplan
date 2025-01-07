@@ -856,6 +856,11 @@ choice.pums_SERIALNO <- choice.pums |> select(SERIALNO) |> pull() |> unique()
 
 choice.pums_number <- choice.pums |> group_by(SERIALNO) |> summarise(num = n()) |> ungroup()
 
+# Number of 
+print(sum(choice.pums_number$num))
+# Number of unique serialno's (must match the list of unique serialno's in choice.pums_SERIALNO)
+print(length(unique(choice.pums_number$SERIALNO)))
+
 ```
 
 # 4.0 Select all PUMS records for each SERIALNO

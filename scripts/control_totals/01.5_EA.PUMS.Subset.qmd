@@ -65,7 +65,7 @@ NOTE: We use the CPI deflator time series to adjust PUMS income to 2013 dollars 
 vintage <- 2021
 
 # List of PUMS variables
-variable_list <- c('RT', 'PUMA', 'ADJINC','NP','TYPEHUGQ','HHLDRAGEP','CIT',
+variable_list <- c('RT', 'PUMA', 'ADJINC','NP','TYPEHUGQ','HHLDRAGEP','CIT', 'SCHL',
                    'HHLDRRAC1P','HHLDRHISP', 'HHT', 'HHT2', 'HINCP','LNGI', 'NR', 'PSF','R18',
                    'AGEP','RAC1P','OC','TEN', "SEX", "ESR", 'HISP', 'WKHP', 'HHLANP', 'LANP')
 
@@ -815,45 +815,11 @@ shelter.pums_cleaned <- shelter.pums |>
       SCHL >= 22 ~ 4,
       is.na(SCHL) ~ 0,
       .default = 0
-    ),
-    # Create a grouping variable for types of relationships to the householder.
-    RELSHIPP_TYPE = case_when(
-      # 1 indicates a person in a household that is related in some way to the householder.
-      RELSHIPP %in% c(21,22,23,24,25,26,27,28,29,30,31,32,33) ~ 0,
-      # 2 indicates a person in a household unrelated to the householder.
-      RELSHIPP %in% c(34,35,36) ~ 1,
-      # Set a default flag for householders.
-      .default = 0
-    ),
-    # Create a "Studio/Non-Defined Bedroom" variable to denote where households do
-    # not have a bedroom number.
-    studio_flag = case_when(
-      BDSP == 0 ~ "Studio/No Defined Bedroom",
-      BDSP != 0 ~ "Defined Bedroom",
-      .default = "Unknown"
-    ),
-    # Redefine BDSP to label studios/non-defined bedroom units as One-Bedrooms
-    # For purpose of calculating the number of people per bedrooms.
-    BDSP = if_else(BDSP == 0, 1, BDSP),
-    # Calculate the number of people per bedroom in a housing unit.
-    PPB = NP/BDSP,
-    # Categorize each housing unit as overcrowded or not based on PPB.
-    overcrowded.ppb = case_when(
-      PPB > 2.0 ~ "1",
-      PPB <= 2.0 ~ "0"
-    ),
-    # Convert SFN into a numeric column. Introduces NAs for people not in subfamilies
-    SFN = as.numeric(SFN),
-    # Replace the NA for non-subfamily members with 0.
-    SFN = replace_na(SFN, 0)
+    )
   ) |>
   # Creating household flags for person variables.
-  group_by(SERIALNO) |> 
+  group_by(SERIALNO.adj) |> 
   mutate(
-    # Create a variable which denotes the presence of subfamilies for a household.
-    SFN.num = sum(SFN),
-    # Create a variable which denotes the total number of subfamilies in a household.
-    SFN.max = max(SFN),
     # Sum the total number of workers in the household
     Worker_Total = sum(worker),
     # Sum the total number of children in the household
@@ -867,8 +833,6 @@ shelter.pums_cleaned <- shelter.pums |>
       Child_Total == 0 ~ "0",
       .default = "0"
     ),
-   # Create a household flag for whether or not the household contains a subfamily.
-   SFN.flag = if_else(SFN.num > 0, 1, 0),
    # Categorizing worker categories:
    # (0) no workers
    # (1) one worker
@@ -906,4 +870,13 @@ shelter.pums_cleaned <- shelter.pums |>
      NP == 1 & HHder != 99 ~ 5
    )
   )
+
+#===
+# Write the shelter pums dataframe
+write.csv(
+  shelter.pums_cleaned,
+  paste0("C:/Project_Work/Local_Data/Housing/SWHP/Scenarios/Scenario_4/cleaned.shelter.pums.sample_run.1.csv"),
+  row.names = FALSE
+)
+
 ```

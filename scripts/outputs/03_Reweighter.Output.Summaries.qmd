@@ -396,6 +396,12 @@ shelter.pums <- read_csv(paste0(shelter_path, "cleaned.shelter.pums.sample_run.1
 
 shelter.pums_cleaned <- shelter.pums |> 
   mutate(
+    # Align SERIALNO variables
+    SERIALNO = SERIALNO.adj,
+    PUMA = as.numeric(PUMA),
+    HISP = as.numeric(HISP),
+    HHLDRHISP = as.numeric(HHLDRHISP),
+    HHT2 = as.numeric(HHT2),
     # Creates a group designation based on household income.
     Income_Group = case_when(
       HINCP.adj <= 35000 ~ "<=$35,000",
@@ -460,8 +466,102 @@ shelter.pums_cleaned <- shelter.pums |>
       NP == 6 ~ "Six Person",
       NP >= 7 ~ "Seven or More Persons",
       .default = "Unknown"
+    ),
+    # Creates a group designation based on the type of household.
+    HHtype_Group = case_when(
+      HHtype == 1 ~ "Household w Children",
+      HHtype == 3 ~ "Household w 2 plus Adults wo Children",
+      HHtype == 5 ~ "Single Person Household",
+      .default = "Unknown"
     )
   )
+
+# Creates a reference table for the total number of households in each year to compare to subsequent tables as a QA check.
+tbl.0 <- shelter.pums_cleaned |> 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
+  group_by(rpa_acr) |> 
+  summarise(hhds = sum(new_WGTP)) |> 
+  ungroup()
+
+print(sum(tbl.0$hhds))
+
+# .1 UrbanSim Household Income Groupings
+tbl.1 <- shelter.pums_cleaned |> 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
+  group_by(
+    rpa_acr,
+    Income_Group
+  ) |> 
+  summarise(
+    hhds = sum(new_WGTP)
+  ) |> 
+  ungroup()
+
+# .2 5-year Age Groupings (ageCAT6)
+tbl.2 <- shelter.pums_cleaned |> 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
+  group_by(
+    rpa_acr,
+    Age_Group
+  ) |> 
+  summarise(
+    hhds = sum(new_WGTP)
+  ) |> 
+  ungroup()
+
+# .3 Household Type
+tbl.3 <- shelter.pums_cleaned  |> 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
+  group_by(
+    rpa_acr,
+    HHtype_Group
+  ) |> 
+  summarise(
+    hhds = sum(new_WGTP)
+  ) |> 
+  ungroup()
+
+# .4 Laborforce
+# Note: A bit of a roundabout way of calculating labor force. Its based on the number households with a specific number of workers in them. Households with two workers are multiplied by 2 to get the total number of people in that household in the labor force. "Workers" are people in the LF + military service members (a negligible amount of people in MA).
+tbl.4 <- shelter.pums_cleaned  |> 
+  filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
+  group_by(
+    rpa_acr,
+    WRKHH
+  ) |> 
+  summarise(
+    hhds = sum(new_WGTP)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    lf = WRKHH*hhds
+  ) |> 
+  group_by(rpa_acr) |> 
+  summarise(
+    lf = sum(lf)
+  ) |> 
+  ungroup()
+```
+# 1.3 
+```{r}
+shelter.pums_cleaned.2030 <- shelter.pums_cleaned |> mutate(year = 2030)
+shelter.pums_cleaned.2035 <- shelter.pums_cleaned |> mutate(year = 2035)
+shelter.pums_cleaned.2040 <- shelter.pums_cleaned |> mutate(year = 2040)
+shelter.pums_cleaned.2045 <- shelter.pums_cleaned |> mutate(year = 2045)
+shelter.pums_cleaned.2050 <- shelter.pums_cleaned |> mutate(year = 2050)
+
+shelter.pums_cleaned.year <- bind_rows(
+  shelter.pums_cleaned.2030,
+  shelter.pums_cleaned.2035,
+  shelter.pums_cleaned.2040,
+  shelter.pums_cleaned.2045,
+  shelter.pums_cleaned.2050
+)
+
+rm(shelter.pums_cleaned.2030, shelter.pums_cleaned.2035, shelter.pums_cleaned.2040,
+   shelter.pums_cleaned.2045, shelter.pums_cleaned.2050)
+
+rwt.pums.df.join_Scenario_2 <- bind_rows(rwt.pums.df.join_Scenario_2, shelter.pums_cleaned.year)
 ```
 
 # 2.0 QA/QC For Total Households and Reweighter Parameters

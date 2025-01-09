@@ -1,0 +1,73 @@
+---
+title: "HNA Data Requests"
+format: html
+editor: visual
+---
+# 0.1 - Set knitr path + root for inputs
+
+```{r}
+#Use when Rproject is open
+#root <- '../../../../Data/Working/Regional_Control_Totals/'
+
+# Base root. Toggle between S: and K: drive depending on mapped paths on your computer
+base <- "K:/DataServices/Projects/Current_Projects/"
+# base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
+
+#General K drive filepath
+root <- paste0(base, "/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/")
+
+# Reweighter files path
+rwt_path <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Reweighter/")
+
+#PUMS K drive filepath
+pums_path <- paste0(base, "/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS/ipums_2021/")
+
+#Set output filepath
+output_path <- paste0(base, "/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS/outputs/")
+
+#Set knitr path
+knitr::opts_knit$set(root.dir = pums_path)
+```
+
+# 0.2 - Set package dependencies, set environment, set up data keys
+
+```{r}
+library(tidycensus)
+library(tidyverse)
+library(data.table)
+library(mapcdatakeys)
+library(janitor)
+library(readxl)
+library(here)
+
+# Remove scientific notation
+options(scipen = 999)
+# Set random seed
+set.seed(351)
+
+# Load Libraries for PUMS Analysis and PUMS API query functions
+# Sets seed and removes scientific notation
+# source(here("PUMS_Analysis/PUMS_Helper_Functions.R"))
+source("C:/Project_Work/statewidehousingplan/PUMS_Analysis/PUMS_Helper_Functions.R")
+
+# Load PUMA x RPA Crosswalk
+xw <- read_csv("C:/Project_Work/statewidehousingplan/PUMS_Analysis/PUMA10_RPA_crosswalk.csv") |> 
+  mutate(PUMA = str_pad(PUMA, 5, "left", pad = 0))
+
+```
+
+# 1.0 Load PUMS Data
+```{r}
+# Set PUMS vintage final year for {tidycensus} API query.
+vintage <- 2021
+
+# List of PUMS variables
+variable_list <- c('RT', 'PUMA', 'ADJINC','NP','TYPEHUGQ','HHLDRAGEP','CIT', 'SCHL',
+                   'HHLDRRAC1P','HHLDRHISP', 'HHT', 'HHT2', 'HINCP','LNGI', 'NR', 'PSF','R18',
+                   'AGEP','RAC1P','OC','TEN', "SEX", "ESR", 'HISP', 'WKHP', 'HHLANP', 'LANP')
+
+# SEMP bottom coding has changed from $1 to $4 like WAGP
+
+# Query {tidycensus} for 2017-2021 5-Year PUMS data
+pums_data <- pums_query(var.list = variable_list, yr = vintage, srvy = "acs5")
+```

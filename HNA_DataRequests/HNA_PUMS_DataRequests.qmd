@@ -186,7 +186,18 @@ graph.1 <- hdsp.r |>
   ) |> 
   ggplot(aes(x = Age, y = rates, color = hdsp.r_type, group = hdsp.r_type)) +
   geom_line() +
-  geom_point()
+  geom_point() +
+  labs(
+    title = paste0("Headship Rates"),
+  ) +
+  ylab("Population in Households who are a Householder (%)") +
+  xlab("Five Year Age Groups") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(color = "black"),
+    axis.text.y = element_text(color = "black"),
+    panel.border = element_rect(fill = NA, color = "black", linewidth = 0.5)
+  )
 
 graph.1
 
@@ -201,7 +212,18 @@ graph.2 <- hdsp.r |>
   ) |> 
   ggplot(aes(x = Age, y = rates, color = hdsp.r_type, group = hdsp.r_type)) +
   geom_line() +
-  geom_point()
+  geom_point()  +
+  labs(
+    title = paste0("Headship Rates for Single Households"),
+  ) +
+  ylab("Population in Households who are a Householder (%)") +
+  xlab("Five Year Age Groups") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(color = "black"),
+    axis.text.y = element_text(color = "black"),
+    panel.border = element_rect(fill = NA, color = "black", linewidth = 0.5)
+  )
 
 graph.2
 
@@ -216,7 +238,18 @@ graph.3 <- hdsp.r |>
   ) |> 
   ggplot(aes(x = Age, y = rates, color = hdsp.r_type, group = hdsp.r_type)) +
   geom_line() +
-  geom_point()
+  geom_point() +
+  labs(
+    title = paste0("Headship Rates for Households with Children"),
+  ) +
+  ylab("Population in Households who are a Householder (%)") +
+  xlab("Five Year Age Groups") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(color = "black"),
+    axis.text.y = element_text(color = "black"),
+    panel.border = element_rect(fill = NA, color = "black", linewidth = 0.5)
+  )
 
 graph.3
 
@@ -231,7 +264,18 @@ graph.4 <- hdsp.r |>
   ) |> 
   ggplot(aes(x = Age, y = rates, color = hdsp.r_type, group = hdsp.r_type)) +
   geom_line() +
-  geom_point()
+  geom_point()  +
+  labs(
+    title = paste0("Headship Rates for Multiple Adult Households without Children"),
+  ) +
+  ylab("Population in Households who are a Householder (%)") +
+  xlab("Five Year Age Groups") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(color = "black"),
+    axis.text.y = element_text(color = "black"),
+    panel.border = element_rect(fill = NA, color = "black", linewidth = 0.5)
+  )
 
 graph.4
   

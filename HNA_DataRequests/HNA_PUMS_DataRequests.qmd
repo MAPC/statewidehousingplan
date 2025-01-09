@@ -3,6 +3,7 @@ title: "HNA Data Requests"
 format: html
 editor: visual
 ---
+
 # 0.1 - Set knitr path + root for inputs
 
 ```{r}
@@ -23,7 +24,10 @@ rwt_path <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/
 pums_path <- paste0(base, "/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS/ipums_2021/")
 
 #Set output filepath
-output_path <- paste0(base, "/Housing/StatewideHousingPlan/04_Analysis/Data/Working/PUMS/outputs/")
+output_path <- paste0(base, "/Housing/StatewideHousingPlan/04_Analysis/Data/Working/HNA/")
+
+# Input path for headship rates
+hdsp.r_path <- paste0(base,"/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Reweighter/Headship_rates/")
 
 #Set knitr path
 knitr::opts_knit$set(root.dir = pums_path)
@@ -39,6 +43,7 @@ library(mapcdatakeys)
 library(janitor)
 library(readxl)
 library(here)
+library(RPostgreSQL)
 
 # Remove scientific notation
 options(scipen = 999)
@@ -47,16 +52,31 @@ set.seed(351)
 
 # Load Libraries for PUMS Analysis and PUMS API query functions
 # Sets seed and removes scientific notation
-# source(here("PUMS_Analysis/PUMS_Helper_Functions.R"))
-source("C:/Project_Work/statewidehousingplan/PUMS_Analysis/PUMS_Helper_Functions.R")
+source(file = "C:/Project_Work/statewidehousingplan/PUMS_Analysis/PUMS_Helper_Functions.R")
+source(file = "C:/Project_Work/Local_Data/General/census.data_connection.R")
+source(file = "C:/Project_Work/housing/dbConnections.R")
+#source(file = "C:/Project_Work/housing/ami-analysis.R")
 
 # Load PUMA x RPA Crosswalk
-xw <- read_csv("C:/Project_Work/statewidehousingplan/PUMS_Analysis/PUMA10_RPA_crosswalk.csv") |> 
+xw <- read.csv(paste0(rwt_path, "PUMS_data/PUMA10_RPA_crosswalk.csv")) |> 
   mutate(PUMA = str_pad(PUMA, 5, "left", pad = 0))
+
+# Load MUnicipality to PUMA Crosswalk
+muni2puma<-read_csv(paste0(rwt_path, "PUMS_data/pums_muni_inter.csv")) |> 
+  select(TOWN_ID, PUMACE10) |> 
+  dplyr::rename(muni_id = TOWN_ID)
+
+# 
+muni2rpa <- mapcdatakeys::all_muni_data_keys |> select(muni_id, rpa_acr)
 
 ```
 
 # 1.0 Load PUMS Data
+# 1.1 Load 2000 PUMS Data
+```{r}
+```
+
+# 1.2 Load PUMS Data
 ```{r}
 # Set PUMS vintage final year for {tidycensus} API query.
 vintage <- 2021
@@ -69,5 +89,152 @@ variable_list <- c('RT', 'PUMA', 'ADJINC','NP','TYPEHUGQ','HHLDRAGEP','CIT', 'SC
 # SEMP bottom coding has changed from $1 to $4 like WAGP
 
 # Query {tidycensus} for 2017-2021 5-Year PUMS data
-pums_data <- pums_query(var.list = variable_list, yr = vintage, srvy = "acs5")
+pums_data <- pums_query(var.list = variable_list, yr = vintage, srvy = "acs5") |> 
+  mutate(PUMA = as.character(str_pad(PUMA, width = 5, side = "left", pad = 0)))
 ```
+
+# 2.0 PUMS Data Cleaning
+# 2.1 2000 PUMS Cleaning
+```{r}
+```
+# 2.2 PUMS Cleaning
+```{r}
+```
+
+# 3.0
+```{r}
+#===============================================================================
+# Create AMI Table for RPA Groups
+# Pull AMI Table for 2021
+rpa.ami_table <- get_mapc_database(
+  db.table_name = "hous_section8_income_limits_by_year_m",
+  year = 2021,
+  vars = "*"
+) |>
+  mutate(
+    #100% AMI
+    il_100_1 = il_50_1 * 2,
+    il_100_2 = il_50_2 * 2,
+    il_100_3 = il_50_3 * 2,
+    il_100_4 = il_50_4 * 2,
+    il_100_5 = il_50_5 * 2,
+    il_100_6 = il_50_6 * 2,
+    il_100_7 = il_50_7 * 2,
+    il_100_8 = il_50_8 * 2,
+    # 40 % AMI
+    il_40_1 = il_100_1 * 0.4,
+    il_40_2 = il_100_2 * 0.4,
+    il_40_3 = il_100_3 * 0.4,
+    il_40_4 = il_100_4 * 0.4,
+    il_40_5 = il_100_5 * 0.4,
+    il_40_6 = il_100_6 * 0.4,
+    il_40_7 = il_100_7 * 0.4,
+    il_40_8 = il_100_8 * 0.4,
+    # 60 % AMI
+    il_60_1 = il_100_1 * 0.6,
+    il_60_2 = il_100_2 * 0.6,
+    il_60_3 = il_100_3 * 0.6,
+    il_60_4 = il_100_4 * 0.6,
+    il_60_5 = il_100_5 * 0.6,
+    il_60_6 = il_100_6 * 0.6,
+    il_60_7 = il_100_7 * 0.6,
+    il_60_8 = il_100_8 * 0.6,
+    # 70 % AMI
+    il_70_1 = il_100_1 * 0.7,
+    il_70_2 = il_100_2 * 0.7,
+    il_70_3 = il_100_3 * 0.7,
+    il_70_4 = il_100_4 * 0.7,
+    il_70_5 = il_100_5 * 0.7,
+    il_70_6 = il_100_6 * 0.7,
+    il_70_7 = il_100_7 * 0.7,
+    il_70_8 = il_100_8 * 0.7
+  ) |>
+  left_join(muni2rpa,
+            by = c("muni_id")) |>
+  select(-c(
+    municipal,
+    muni_id,
+    countyname,
+    areaname,
+    seq_id,
+    fy_year,
+    median
+  )) |>
+  group_by(rpa_acr) |>
+  mutate(across(starts_with("il"), ~ round(mean(.), 0))) |>
+  ungroup() |>
+  distinct(rpa_acr, .keep_all = TRUE) |> 
+  relocate(rpa_acr)
+```
+
+# 4.0 Load ACS Data
+```{r}
+```
+
+# 5.0 Load Headship Rates
+```{r}
+# Load in the headship rates 
+hdsp.r <- read_csv(paste0(hdsp.r_path, "headship_rate_comparison.csv"))
+
+# Overall Headship Rates
+graph.1 <- hdsp.r |> 
+  select(Age, census2000, acs1519, acs1721) |> 
+  pivot_longer(
+    !Age,
+    names_to = "hdsp.r_type",
+    values_to = "rates"
+  ) |> 
+  ggplot(aes(x = Age, y = rates, color = hdsp.r_type, group = hdsp.r_type)) +
+  geom_line() +
+  geom_point()
+
+graph.1
+
+# Headship Rates - Single Persons
+graph.2 <- hdsp.r |> 
+  select(Age, contains("single")) |> 
+  select(-c(pop1721_single)) |> 
+  pivot_longer(
+    !Age,
+    names_to = "hdsp.r_type",
+    values_to = "rates"
+  ) |> 
+  ggplot(aes(x = Age, y = rates, color = hdsp.r_type, group = hdsp.r_type)) +
+  geom_line() +
+  geom_point()
+
+graph.2
+
+# Headship Rates - Households with Children
+
+graph.3 <- hdsp.r |> 
+  select(Age, head_child2000, head_child1519, rate1721_hhderchild) |> 
+  pivot_longer(
+    !Age,
+    names_to = "hdsp.r_type",
+    values_to = "rates"
+  ) |> 
+  ggplot(aes(x = Age, y = rates, color = hdsp.r_type, group = hdsp.r_type)) +
+  geom_line() +
+  geom_point()
+
+graph.3
+
+# Headship Rates - Multiple Adult Households without Children
+
+graph.4 <- hdsp.r |> 
+  select(Age, head_nochild2000, head_nochild1519, rate1721_hhdernochild) |> 
+  pivot_longer(
+    !Age,
+    names_to = "hdsp.r_type",
+    values_to = "rates"
+  ) |> 
+  ggplot(aes(x = Age, y = rates, color = hdsp.r_type, group = hdsp.r_type)) +
+  geom_line() +
+  geom_point()
+
+graph.4
+  
+```
+
+

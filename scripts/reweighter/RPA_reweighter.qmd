@@ -46,8 +46,8 @@ reb <- 'MAPC101'
 mpos <- unlist(c(mapcdatakeys::all_muni_data_keys |> select(mpo) |> unique()))
 
 # Root Directory
-root <- 'S:/Network Shares/K Drive/DataServices/Projects/'
-# root <- 'K:/DataServices/Projects/'
+#root <- 'S:/Network Shares/K Drive/DataServices/Projects/'
+root <- 'K:/DataServices/Projects/'
 
 umdi.path <- paste0(root, 'Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/UMDI/', scen, '/')
 
@@ -1488,7 +1488,7 @@ setkey(umdi, mpo, year, ageCAT6)
 ##  CALCULATE differences in HHpop by age between UMDI/Control Totals and reweighter Outputs
 
 
-for (yr in c(2025,2035)){
+for (yr in c(2035)){
     dx <- fread(paste0(workpath,scen,'/Output_Files/reweighted_PUMS_', scen, '_', reb, '_', hdshp, '_', yr, '.csv'))
     dx[, c("WGT1", "WGT2") := tstrsplit(new_WGTP, ".", fixed=TRUE)]
     dx[,WGT1:=as.numeric(WGT1)]
@@ -1498,44 +1498,15 @@ for (yr in c(2025,2035)){
     
     dfrac <- dx[WGT2>0]
     dfrac[,new_WGTP:=WGT2]
-    dfrac[,hid:=paste0(SERIALNO,'_','frac')]
+    dfrac[,hid:=paste0(pid,'_','frac')]
     
     xr <- dx[rep(1:.N,WGT1)]
     xr[,new_WGTP:=1]
-    
     xr[, row := .I]
     xr[, hid := paste(pid, row, sep = '_')]
-    xr <- xr[,.(pid,hid)]
-    setkey(xr,pid)
-    setkey(dx,pid)
-    dw <- dx[xr]
-    # xr <- xr[,.(SERIALNO,hid)]
-    # dw <- merge(xr,dx,by='pid', all=T, allow.cartesian = T)
-    
-  
-    dw[,new_WGTP:=1]
-    dt <- rbind(dw,dfrac)
-    
+    xr[,row:=NULL]
+    dt <- rbind(xr,dfrac)
     dt[,pop:=new_WGTP]
-    
-    if(scen=='Scenario_1'){
-    tar <- fread(paste0(ctrltotal.path,'hhtype.targetfile.MAPC101.',scen,'.hdshp.acs1721.y',yr,'.csv'))
-    }
-    if(scen!='Scenario_1'){
-    tar <- fread(paste0(ctrltotal.path,'hhtype.targetfile.MAPC101.',scen,'.hdshp.scen2.y',yr,'.csv'))
-    }
-    
-    hh <- dt[SPORDER==1, lapply(.SD,lun),.(mpo,ageCAT6,HHtype),.SDcols='hid']
-    setkey(hh,mpo,ageCAT6,HHtype)
-    setnames(hh,'hid','HH')
-    
-    tar[,ageCAT6:=as.numeric(gsub('x == ','',AgeCat))][,HHtype:=as.numeric(gsub('x == ','',HHtype))][,mpo:=RPA]
-    setkey(tar,mpo,ageCAT6,HHtype)
-    
-    hd <- tar[hh]
-    hd[,diff:=HH-TARGET]
-    
-    setkey(uspop, mpo, year, ageCAT6)
     
     fwrite(dt,paste0(output_path,'expanded_reweighted_PUMS_',yr,'.csv'))
     uspop <- dt[,lapply(.SD,sum),.(mpo,year,ageCAT6),.SDcols='pop']
@@ -1544,7 +1515,8 @@ for (yr in c(2025,2035)){
     adiff[, diff := pop - umdi_hh_pop]
     setnames(adiff, 'pop', 'urbansim_hh_pop')
     fwrite(adiff, paste0(output_path,'umdi_pop_age_difference_',yr,'.csv'))
-  }
+rm(xr,dt,dx,dfrac);gc()
+      }
 
 
 
@@ -1556,14 +1528,18 @@ for (yr in c(2025,2035)){
 #| eval: false
   
 
-for (yr in c(2025,2035)){
+for (yr in c(2035)){
   adiff <- fread(paste0(output_path,'umdi_pop_age_difference_',yr,'.csv'))
-  swm <- fread(paste0(output_path,'expanded_reweighted_PUMS_',yr,'.csv'))
-  swm[,person_num:=SPORDER][,age:=AGEP]
+  adiff[,diff:=round(diff)]
+  
   dt_shift <- data.table()
   
   
   for (m in unique(adiff$mpo)) {
+    swm <- fread(paste0(output_path,'expanded_reweighted_PUMS_',yr,'.csv'))
+    swm <- swm[mpo==m]
+    swm[,person_num:=SPORDER][,age:=AGEP]
+    gc()
     diff <- adiff[mpo == m & year == yr]
     
     
@@ -1824,13 +1800,13 @@ for (yr in c(2025,2035)){
     dt_shift <- rbind(dt_shift, swm)
     message(paste0(m, ' complete ', yr))
   }
-  saveRDS(dt_shift,paste0(output_path,'/pop_shifted_',run,'_',yr,'_v3.rds'))
+  saveRDS(dt_shift,paste0(output_path,'/pop_shifted_',scen,'_',yr,'.rds'))
 }
 
 # Recalculate age differences to UMDI
 fs <-
-  list.files(path = run,
-             pattern = glob2rx("urbansim_pop_shifted*v3*"),
+  list.files(path = output_path,
+             pattern = 'pop_shifted_',
              full.names = TRUE)
 
 if (run == SWM_run) {

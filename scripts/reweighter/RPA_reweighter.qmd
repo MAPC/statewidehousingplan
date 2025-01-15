@@ -26,9 +26,9 @@ pacman::p_load(
 )
 # Set Scenario name
 
-scen <- 'Scenario_3'
+#scen <- 'Scenario_1'
 # scen <- 'Scenario_2'
-# scen <- 'Scenario_3'
+ scen <- 'Scenario_3'
 # scen <- 'Scenario_4'
 
 # Set ACS / PUMS vintage
@@ -51,9 +51,9 @@ root <- 'S:/Network Shares/K Drive/DataServices/Projects/'
 
 umdi.path <- paste0(root, 'Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/UMDI/', scen, '/')
 
-ctrltotal.path <- paste0(root, 'Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/', scen, '/UPDATE/')
+#ctrltotal.path <- paste0(root, 'Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/', scen, '/UPDATE/')
 
-#ctrltotal.path <- paste0(root, 'Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/', scen, '/')
+ctrltotal.path <- paste0(root, 'Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/', scen, '/')
 
 workpath <- paste0(root, 'Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Reweighter/')
 
@@ -1488,8 +1488,13 @@ setkey(umdi, mpo, year, ageCAT6)
 ##  CALCULATE differences in HHpop by age between UMDI/Control Totals and reweighter Outputs
 
 
-for (yr in c(2035)){
-    dx <- fread(paste0(workpath,scen,'/Output_Files/reweighted_PUMS_', scen, '_', reb, '_', hdshp, '_', yr, '.csv'))
+for (yr in c(2025,2035)){
+    d1 <- fread(paste0(workpath,scen,'/Output_Files/reweighted_PUMS_', scen, '_', reb, '_', hdshp, '_', yr, '.csv'))
+    pums <- fread(paste0(workpath,'PUMS_data/PUMS2021_Scenario_2_2030.csv')) |> select(SERIALNO,SPORDER,PINCP)
+    if(!'PINCP' %in% names(d1)){
+      dx <- d1 |> left_join(pums, by=c('SERIALNO','SPORDER'))
+    }
+    dx[PINCP<0,PINCP:=0]
     dx[, c("WGT1", "WGT2") := tstrsplit(new_WGTP, ".", fixed=TRUE)]
     dx[,WGT1:=as.numeric(WGT1)]
     dx[is.na(WGT2),WGT2:=0]
@@ -2052,7 +2057,7 @@ cx <- function(x) {
 flaglist <- data.table()
 
 
-yr=2035
+yr=2025
 # Load shift-corrected population differences
 # adiff <-
   # fread(paste0(output_path,'post_shift_umdi_pop_age_difference_',yr,'.csv'))
@@ -2570,9 +2575,9 @@ adiff[,diff:=round(diff)]
     
     cf <- dt3[,lapply(.SD,sum),ageCAT6,.SDcols='new_WGTP']
     setnames(cf,'new_WGTP','pop_in_HH')
-    cf[,year:=2035][,pop_in_HH:=round(pop_in_HH)]
+    cf[,year:=yr][,pop_in_HH:=round(pop_in_HH)]
     setkey(cf,ageCAT6)
-    ad <- adiff[year==2035,lapply(.SD,sum),ageCAT6,.SDcols = c('umdi_hh_pop','urbansim_hh_pop')]
+    ad <- adiff[year==yr,lapply(.SD,sum),ageCAT6,.SDcols = c('umdi_hh_pop','urbansim_hh_pop')]
     setkey(ad,ageCAT6)
     
     cc <- ad[cf]
@@ -2580,7 +2585,7 @@ adiff[,diff:=round(diff)]
     
     ct <- dt3[,lapply(.SD,sum),.(ageCAT6,HHT),.SDcols='new_WGTP']
     setnames(ct,'new_WGTP','pop_in_HH')
-    ct[,year:=2035][,pop_in_HH:=round(pop_in_HH)]
+    ct[,year:=yr][,pop_in_HH:=round(pop_in_HH)]
     setorder(ct,ageCAT6,HHT)
     
     saveRDS(
@@ -2589,6 +2594,6 @@ adiff[,diff:=round(diff)]
         'pop_corrected_PUMS_',scen,'_',yr,'.csv'
       )
     )
-    }
+  
   
 ```

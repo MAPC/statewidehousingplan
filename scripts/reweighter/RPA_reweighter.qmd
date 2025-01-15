@@ -2565,6 +2565,8 @@ adiff[,diff:=round(diff)]
     dt3[age %in% 75:79 , ageCAT6 := 16]
     dt3[age %in% 80:84 , ageCAT6 := 17]
     dt3[age >= 85 , ageCAT6 := 18]
+    dt3[,HHtype:=HHT]
+    dt3[,WGTP:=new_WGTP]
     
     cf <- dt3[,lapply(.SD,sum),ageCAT6,.SDcols='new_WGTP']
     setnames(cf,'new_WGTP','pop_in_HH')

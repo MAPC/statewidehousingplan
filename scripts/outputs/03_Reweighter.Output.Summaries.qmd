@@ -754,7 +754,7 @@ tbl.1.test <- tbl.1 |>
   ) |> 
   ungroup()
 
-if (sum(tbl.0$hhds) != sum(tbl.1.test$hhds)){
+if (sum(tbl.1$hhds) != sum(tbl.1.test$hhds)){
   
   print("STOP! Check table!")
   
@@ -798,7 +798,7 @@ tbl.2.test <- tbl.2 |>
   ) |> 
   ungroup()
 
-if (sum(tbl.0$hhds) != sum(tbl.2.test$hhds)){
+if (sum(tbl.2$hhds) != sum(tbl.2.test$hhds)){
   
   print("STOP! Check table!")
   
@@ -844,7 +844,7 @@ tbl.3.test <- tbl.3 |>
   ) |> 
   ungroup()
 
-if (sum(tbl.0$hhds) != sum(tbl.3.test$hhds)){
+if (sum(tbl.3$hhds) != sum(tbl.3.test$hhds)){
   
   print("STOP! Check table!")
   
@@ -928,7 +928,7 @@ tbl.5.test <- tbl.5 |>
   ) |> 
   ungroup()
 
-if (sum(tbl.0$hhds) != sum(tbl.5.test$hhds)){
+if (sum(tbl.5$hhds) != sum(tbl.5.test$hhds)){
   
   print("STOP! Check table!")
   
@@ -939,7 +939,7 @@ if (sum(tbl.0$hhds) != sum(tbl.5.test$hhds)){
 }
 
 # Alternate version no grouping
-
+setDT(tbl.5)
 
 tbl.5b <- rwt.pums.df.join_Scenario_3_shelt |>
   # filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
@@ -1009,7 +1009,7 @@ tbl.6.test <- tbl.6 |>
   ) |> 
   ungroup()
 
-if (sum(tbl.0$hhds) != sum(tbl.6.test$hhds)){
+if (sum(tbl.6$hhds) != sum(tbl.6.test$hhds)){
   
   print("STOP! Check table!")
   
@@ -1054,7 +1054,7 @@ tbl.7.test <- tbl.7 |>
   ) |> 
   ungroup()
 
-if (sum(tbl.0$hhds) != sum(tbl.7.test$hhds)){
+if (sum(tbl.7$hhds) != sum(tbl.7.test$hhds)){
   
   print("STOP! Check table!")
   
@@ -1099,7 +1099,7 @@ tbl.8.test <- tbl.8 |>
     rpa = mpo
   )
 
-if (sum(tbl.0$hhds) != sum(tbl.8.test$hhds)){
+if (sum(tbl.8$hhds) != sum(tbl.8.test$hhds)){
   
   print("STOP! Check table!")
   

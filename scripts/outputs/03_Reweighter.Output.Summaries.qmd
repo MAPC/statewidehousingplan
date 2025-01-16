@@ -30,16 +30,16 @@ hdshp <- 'scen2'
 #root <- '../../../../Data/Working/Regional_Control_Totals/'
 
 # Base root. Toggle between S: and K: drive depedning on mapped paths on your computer
-#base <- "K:/DataServices/Projects/Current_Projects/"
-base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
+base <- "K:/DataServices/Projects/Current_Projects/"
+#base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
 
 # General K drive filepath
 root <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/")
 
 # Set output filepath
-output_path <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Final_Outputs/", scen, "/UPDATE_w_shelter2/")
+# output_path <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Final_Outputs/", scen, "/UPDATE_w_shelter2/")
 
-output_path <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Final_Outputs/", scen, "/UPDATE_w_shelter2/CKG/")
+output_path <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Final_Outputs/", scen, "/UPDATE_w_shelter2/CKG2/")
 
 # Set Shelter Households path
 shelter_path <- paste0(
@@ -104,46 +104,46 @@ read_rwt.files <- function(scenario, year){
   readRDS(paste0(rwt_path, scen, "/Output_Files/processor_corrected_PUMS_",scenario,".rds"))
 }
 
-read_pums.files <- function(year){
-  read_csv(paste0(base, 'Housing/StatewideHousingPlan/04_Analysis/Data/Working/Reweighter/PUMS_data/PUMS2021_Scenario_2_',year,'.csv'))
-}
+# read_pums.files <- function(year){
+#   read_csv(paste0(base, 'Housing/StatewideHousingPlan/04_Analysis/Data/Working/Reweighter/PUMS_data/PUMS2021_Scenario_2_',year,'.csv'))
+# }
 
-#for (i in c(2030,2035,2040,2045,2050)) {
-for (i in c(2035)) {
-  
-  tmp <- read_pums.files(year = i) |> 
-    select(SERIALNO.adj, SPORDER.adj, AGEP, HINCP, PINCP, ADJINC) |> 
-    mutate(
-      PINCP = case_when(
-        AGEP <= 14 ~ 0,
-        AGEP > 14 ~ PINCP,
-        .default = PINCP
-      ),
-      year = i
-    ) |> 
-    group_by(SERIALNO.adj) |> 
-    mutate(
-      HINCP.adj = sum(PINCP)
-    ) |> 
-    ungroup() |> 
-    mutate(
-      HINCP.adj.2021USD = round((HINCP.adj*ADJINC), 0),
-      Income_Group = case_when(
-        HINCP.adj.2021USD <= 35000 ~ "<=$35,000",
-        HINCP.adj.2021USD > 35000 & HINCP.adj.2021USD <= 75000 ~ "$35,001 - $75,000",
-        HINCP.adj.2021USD > 75000 & HINCP.adj.2021USD <= 125000 ~ "$75,001 - $125,000",
-        HINCP.adj.2021USD > 125000 & HINCP.adj.2021USD <= 225000 ~ "$125,001 - $225,000",
-        HINCP.adj.2021USD > 225000 ~ ">$225,000",
-        .default = "Unknown"
-      )
-    ) |> 
-    select(SERIALNO.adj, SPORDER.adj, HINCP.adj.2021USD, Income_Group, year)
-  
-  pums.df <- bind_rows(pums.df, tmp)
-  
-  rm(tmp)
-  
-}
+# #for (i in c(2030,2035,2040,2045,2050)) {
+# for (i in c(2035)) {
+#   
+#   tmp <- read_pums.files(year = i) |> 
+#     select(SERIALNO.adj, SPORDER.adj, AGEP, HINCP, PINCP, ADJINC) |> 
+#     mutate(
+#       PINCP = case_when(
+#         AGEP <= 14 ~ 0,
+#         AGEP > 14 ~ PINCP,
+#         .default = PINCP
+#       ),
+#       year = i
+#     ) |> 
+#     group_by(SERIALNO.adj) |> 
+#     mutate(
+#       HINCP.adj = sum(PINCP)
+#     ) |> 
+#     ungroup() |> 
+#     mutate(
+#       HINCP.adj.2021USD = round((HINCP.adj*ADJINC), 0),
+#       Income_Group = case_when(
+#         HINCP.adj.2021USD <= 35000 ~ "<=$35,000",
+#         HINCP.adj.2021USD > 35000 & HINCP.adj.2021USD <= 75000 ~ "$35,001 - $75,000",
+#         HINCP.adj.2021USD > 75000 & HINCP.adj.2021USD <= 125000 ~ "$75,001 - $125,000",
+#         HINCP.adj.2021USD > 125000 & HINCP.adj.2021USD <= 225000 ~ "$125,001 - $225,000",
+#         HINCP.adj.2021USD > 225000 ~ ">$225,000",
+#         .default = "Unknown"
+#       )
+#     ) |> 
+#     select(SERIALNO.adj, SPORDER.adj, HINCP.adj.2021USD, Income_Group, year)
+#   
+#   pums.df <- bind_rows(pums.df, tmp)
+#   
+#   rm(tmp)
+#   
+# }
 
 gc()
 
@@ -261,14 +261,17 @@ if (scen == "Scenario_2" | scen == "Scenario_3" | scen == "Scenario_4"){
       # Reads in the reweighted PUMS data by year.
       # tmp.rwt <- read_rwt.files(scenario = i, year = j) |> 
       tmp.rwt.25 <- readRDS(paste0(rwt_path,scen,"/Output_Files/processor_corrected_PUMS_Scenario_3_2025.rds")) |> 
-       select(SERIALNO, sporder, mpo, year, HHsize, child, workers,ageCAT6,HHtype,HINCP.adj.2021USD,tenure,children_in_HH, new_WGTP) |> 
-       mutate(SPORDER = sporder)
+       select(SERIALNO, sporder, mpo, year, HHsize, child, workers,ageCAT6,HHtype,HINCP.adj.2021USD,tenure,children_in_HH, hid, pinc2021, new_WGTP) |> 
+       mutate(SPORDER = sporder) |> setDT()
       
       gc()
       
       tmp.rwt.35 <- readRDS(paste0(rwt_path,scen,"/Output_Files/processor_corrected_PUMS_Scenario_3_2035.rds")) |> 
-       select(SERIALNO, sporder, mpo, year, HHsize, child, workers,ageCAT6,HHtype,HINCP.adj.2021USD,tenure,children_in_HH, new_WGTP) |> 
-       mutate(SPORDER = sporder)
+       select(SERIALNO, sporder, mpo, year, HHsize, child, workers,ageCAT6,HHtype,HINCP.adj.2021USD,tenure,children_in_HH, hid, pinc2021, new_WGTP) |> 
+       mutate(SPORDER = sporder) |> setDT()
+      
+      tmp.rwt.35[pinc2021<0,pinc2021:=0]
+      tmp.rwt.35[,HINCP.adj.2021USD := sum(pinc2021), hid]
       
      gc()
      tmp.rwt_cleaned <- bind_rows(tmp.rwt.25, tmp.rwt.35)
@@ -290,23 +293,7 @@ if (scen == "Scenario_2" | scen == "Scenario_3" | scen == "Scenario_4"){
     # Join the new weights to the 
     #rwt.pums.df.join <-  rwt.pums.df |>
     rwt.pums.df.join <-  tmp.rwt_cleaned |>
-      # group_by(SERIALNO, rpa_acr, year) |> 
-      # mutate(
-      #   NP = n(),
-      #   Child_Total = sum(child),
-      #   Worker_Total = sum(worker)
-      # ) |> 
-      # ungroup() |> 
       mutate(
-        # # Creates a group designation based on the number of children in a household.
-        # CHILDHH_Group = case_when(
-        #   Child_Total == 0 ~ "No Children",
-        #   Child_Total == 1 ~ "One Child",
-        #   Child_Total == 2 ~ "Two Children",
-        #   Child_Total == 3 ~ "Three Children",
-        #   Child_Total >= 4 ~ "Four or More Children",
-        #   .default = "Unknown"
-        # ),
         # Creates a group designation based on the number of children in a household.
         CHILDHH_Group = case_when(
           children_in_HH == 0 ~ "No Children",
@@ -316,16 +303,6 @@ if (scen == "Scenario_2" | scen == "Scenario_3" | scen == "Scenario_4"){
           children_in_HH >= 4 ~ "Four or More Children",
           .default = "Unknown"
         ), 
-        # # Creates a group designation based on household income.
-        # Income_Group = case_when(
-        #   WAGPALLC_US == 1 ~ "<=$35,000",
-        #   WAGPALLC_US == 2 ~ "$35,001 - $75,000",
-        #   WAGPALLC_US == 3 ~ "$75,001 - $125,000",
-        #   WAGPALLC_US == 4 ~ "$125,001 - $225,000",
-        #   WAGPALLC_US == 5 ~ ">$225,000",
-        #   .default = "Unknown"
-        # ),
-                # Creates a group designation based on household income.
         # Creates a group designation based on household income.
         Income_Group = case_when(
           HINCP.adj.2021USD <= 35000 ~ "<=$35,000",
@@ -394,19 +371,19 @@ if (scen == "Scenario_2" | scen == "Scenario_3" | scen == "Scenario_4"){
         # (1) one worker
         # (2) two workers
         # (3) three or more workers
-        # WRKHH = case_when(
-        #   Worker_Total == 0 ~ 0,
-        #   Worker_Total == 1 ~ 1,
-        #   Worker_Total == 2 ~ 2,
-        #   Worker_Total == 3 ~ 3,
-        #   Worker_Total == 4 ~ 4,
-        #   Worker_Total == 5 ~ 5,
-        #   Worker_Total == 6 ~ 6,
-        #   Worker_Total == 7 ~ 7,
-        #   Worker_Total == 8 ~ 8,
-        #   Worker_Total == 9 ~ 9,
-        #   Worker_Total == 10 ~ 10,
-        # ), 
+        WRKHH = case_when(
+          workers == 0 ~ 0,
+          workers == 1 ~ 1,
+          workers == 2 ~ 2,
+          workers == 3 ~ 3,
+          workers == 4 ~ 4,
+          workers == 5 ~ 5,
+          workers == 6 ~ 6,
+          workers == 7 ~ 7,
+          workers == 8 ~ 8,
+          workers == 9 ~ 9,
+          workers >= 10 ~ 10,
+        ),
         # Creates a group designation based on the number of workers in a household.
         WRKHH_Group = case_when(
           workers == 0 ~ "No Workers",
@@ -419,10 +396,10 @@ if (scen == "Scenario_2" | scen == "Scenario_3" | scen == "Scenario_4"){
       )
     
     # Assigns a unique scenario id to the dataframe.
-    assign(paste0("rwt.pums.df.join_", i), rwt.pums.df.join)
+    # assign(paste0("rwt.pums.df.join_", i), rwt.pums.df.join)
     
     # Removes intermediate dataframe.
-    rm(rwt.pums.df.join)
+    # rm(rwt.pums.df.join)
     
     rm(tmp.rwt_cleaned)
     gc()
@@ -513,10 +490,10 @@ shelter.pums_cleaned <- shelter.pums |>
     ),
     # Creates a group designation based on the number of workers in a household.
     WRKHH_Group = case_when(
-      WRKHH == 0 ~ "No Workers",
-      WRKHH == 1 ~ "One Worker",
-      WRKHH == 2 ~ "Two Workers",
-      WRKHH >= 3 ~ "Three or More Workers",
+      Worker_Total == 0 ~ "No Workers",
+      Worker_Total == 1 ~ "One Worker",
+      Worker_Total == 2 ~ "Two Workers",
+      Worker_Total >= 3 ~ "Three or More Workers",
       .default = "Unknown"
     ),
     # Creates a group designation based on the number of children in a household.
@@ -647,19 +624,22 @@ shelter.pums_cleaned.year <- bind_rows(
 rm(shelter.pums_cleaned.2035)
 rm(shelter.pums_cleaned)
 
-rm(shelter.pums_cleaned.2030, shelter.pums_cleaned.2035, shelter.pums_cleaned.2040,
-   shelter.pums_cleaned.2045, shelter.pums_cleaned.2050)
+# rm(shelter.pums_cleaned.2030, shelter.pums_cleaned.2035, shelter.pums_cleaned.2040,
+#    shelter.pums_cleaned.2045, shelter.pums_cleaned.2050)
 # rm(tmp.rwt_cleaned)
 gc()
 
-rwt.pums.df.join_Scenario_3_shelt <- bind_rows(rwt.pums.df.join_Scenario_3, shelter.pums_cleaned.year) |> mutate(
+rwt.pums.df.join_Scenario_3_shelt <- bind_rows(rwt.pums.df.join, shelter.pums_cleaned.year) |> mutate(
     mpo = coalesce(mpo, rpa_acr)
     ) |> 
   setDT()
+
+gc()
+
 rwt.pums.df.join_Scenario_3_shelt[is.na(children_in_HH),children_in_HH:=Child_Total]
 
 
-rm(shelter.pums_cleaned.year)
+rm(rwt.pums.df.join_2035, shelter.pums_cleaned.year)
 gc()
  
 ```
@@ -682,15 +662,15 @@ gc()
 ```{r}
 #===============================================================================
 # -.1 Total Households by Year
-test <- s1.df |> 
-  filter(SPORDER == 1 & TYPEHUGQ == 1) |> 
-  group_by(year) |> 
-  summarise(
-    hhd = sum(new_WGTP)
-  ) |> 
-  ungroup()
-
-print(sum(test$new_WGTP))
+# test <- s1.df |> 
+#   filter(SPORDER == 1 & TYPEHUGQ == 1) |> 
+#   group_by(year) |> 
+#   summarise(
+#     hhd = sum(new_WGTP)
+#   ) |> 
+#   ungroup()
+# 
+# print(sum(test$new_WGTP))
 #===============================================================================
 # -.2 Total Households by RPA
 
@@ -767,7 +747,7 @@ if (sum(tbl.1$hhds) != sum(tbl.1.test$hhds)){
 #Write Output tables to K Drive
 write.csv(
   tbl.1,
-  paste0(output_path,"/output.tbl_",scen,"_Households.by.IncomeGroups.csv"),
+  paste0(output_path,"/output.tbl_",scen,"_Households.by.IncomeGroups.fix.csv"),
   row.names = FALSE
 )
 gc()
@@ -1085,7 +1065,10 @@ tbl.8 <- rwt.pums.df.join_Scenario_3_shelt  |>
   summarise(
     hhds = sum(new_WGTP)
   ) |> 
-  ungroup()
+  ungroup() |> 
+  dplyr::rename(
+    rpa = mpo
+  )
 
 tbl.8.test <- tbl.8 |> 
   group_by(
@@ -1094,10 +1077,7 @@ tbl.8.test <- tbl.8 |>
   summarise(
     hhds = sum(hhds)
   ) |> 
-  ungroup() |> 
-  dplyr::rename(
-    rpa = mpo
-  )
+  ungroup()
 
 if (sum(tbl.8$hhds) != sum(tbl.8.test$hhds)){
   
@@ -1127,7 +1107,7 @@ tbl.9 <- rwt.pums.df.join_Scenario_3_shelt  |>
     year
   ) |> 
   summarise(
-    avg_workers = round(mean(workers), 2)
+    avg_workers = round(mean(WRKHH), 2)
   ) |> 
   ungroup() |> 
   dplyr::rename(
@@ -1189,7 +1169,7 @@ full.crosstab <- rwt.pums.df.join_Scenario_3_shelt  |>
 #Write Output tables to K Drive
 write.csv(
   full.crosstab,
-  paste0(output_path,"/output.tbl_",scen,"_full.crosstab.csv"),
+  paste0(output_path,"/output.tbl_",scen,"_full.crosstab.fix.csv"),
   row.names = FALSE
 )
 

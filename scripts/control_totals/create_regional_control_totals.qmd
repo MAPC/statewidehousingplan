@@ -12,10 +12,10 @@ editor: visual
 # Set Scenario Names
 
 # Population Scenario
-scen <- 'Scenario_1'
+scen <- 'Scenario_3'
 # Headship rate Scenario
-hdshp <- 'acs1721'
-#hdshp <- 'scen2'
+#hdshp <- 'acs1721'
+hdshp <- 'scen2'
 
 # Use when Rproject is open
 # root <- '../../../../Data/Working/Regional_Control_Totals/'
@@ -28,7 +28,7 @@ base <- "K:/DataServices/Projects/Current_Projects/"
 root <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/")
 
 # Set output filepath
-output_path <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/", scen, "/")
+output_path <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/", scen, "/UPDATE.fix1/")
 
 # Reweighter files path
 rwt_path <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Reweighter/")
@@ -2212,7 +2212,7 @@ if (scen == "Scenario_1"){ # Scenario 1
       year = 2025
     )
    
-  hdsp.r <- fread(paste0(root,"Scenario_2/headship.rates.comparison_2000.hsr_to_1721.household.split.hsr.csv")) |> 
+  hdsp.r <- fread(paste0(root,"Scenario_2/headship.rates.comparison_2000.hsr_to_1721.household.split.hsr.UPDATE.fix1.csv")) |> 
     filter(var %in% c('single','hhderchild','hhdernochild')) |> 
     dplyr::rename(freq=freq.scenario2)
   

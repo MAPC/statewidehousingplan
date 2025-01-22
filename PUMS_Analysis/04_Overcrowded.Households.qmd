@@ -225,6 +225,8 @@ rpa.ami_table <- get_mapc_database(
   distinct(rpa_acr, .keep_all = TRUE) |> 
   relocate(rpa_acr)
 
+x <- as.data.frame(unique(rpa.ami_table$areaname))
+
 ```
 
 # WORK IN PROGRESS - Elegant AMI Table Generation Function

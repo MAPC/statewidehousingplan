@@ -79,7 +79,7 @@ headship_rates.1721 <- read_csv(paste0(rwt_path,"Headship_rates/headship.rates.1
 #===============================================================================
 # 1.3.1 - ACS PUMS 17-21 Split Households (Statewide Housing Plan - Scenario 2)
 # Read in headship rates
-headship_rates.1721.split <- read_csv(paste0(rwt_path,"Headship_rates/hdsp.r.1721_household.split.paced.csv"))
+headship_rates.1721.split <- read_csv(paste0(rwt_path,"Headship_rates/hdsp.r.1721_household.split.paced.fix1.csv"))
 
 #===============================================================================
 ```
@@ -158,10 +158,15 @@ hdshp.r_2000.compare.1721.split <- full_join(
     use.flag.30 = case_when(
       # Households with householders under the age of 45:
       # .1 Use the Headship rates from the 17-21 ACS w/ Split Households when it is higher than 2000 headship rates.
-      ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & freq.diff.30 < 0 ~ "Use freq.split",
+      #ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & freq.diff.30 < 0 ~ "Use freq.split",
+      ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & var %in% c("single", "hhdernochild") & freq.diff.30 < 0 ~ "Use freq.split",
+      ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & var %in% c("hhderchild") & freq.diff.30 < 0 ~ "Use freq.split",
+     
+      ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & var %in% c("single", "hhdernochild") & freq.diff.30 >= 0 ~ "Use freq.2000",
+      ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & var %in% c("hhderchild") & freq.diff.30 >= 0 ~ "Use freq.split",
       # .2 Use the Headship rates from the 2000 5% PUMS Sample when it is higher than headship rates from the 17-21 ACS w/ Split Households, unless the split headship rate is 0 (to avoid generating non-zero targets when there are no PUMS households to sample from)
-      ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & freq.diff.30 >= 0 & freq.split.30 != 0 ~ "Use freq.2000",
-      ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & freq.diff.30 >= 0 & freq.split.30 == 0 ~ "Use freq.split",
+      # ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & freq.diff.30 >= 0 & freq.split.30 != 0 ~ "Use freq.2000",
+      # ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & freq.diff.30 >= 0 & freq.split.30 == 0 ~ "Use freq.split",
       # Households with householders 45 and older:
       # .1 Use the Headship rates from the 17-21 ACS w/ Split Households
       ageCAT6 %in% c("10","11","12","13","14","15","16","17","18") ~ "Use freq.split",
@@ -171,10 +176,15 @@ hdshp.r_2000.compare.1721.split <- full_join(
     use.flag.35 = case_when(
       # Households with householders under the age of 45:
       # .1 Use the Headship rates from the 17-21 ACS w/ Split Households when it is higher than 2000 headship rates.
-      ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & freq.diff.35 < 0 ~ "Use freq.split",
+      # ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & freq.diff.35 < 0 ~ "Use freq.split",
+      ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & var %in% c("single", "hhdernochild") & freq.diff.35 < 0 ~ "Use freq.split",
+     ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & var %in% c("hhderchild") & freq.diff.35 < 0 ~ "Use freq.split",
+     
+     ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & var %in% c("single", "hhdernochild") & freq.diff.35 >= 0 ~ "Use freq.2000",
+     ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & var %in% c("hhderchild") & freq.diff.35 >= 0 ~ "Use freq.split",
       # .2 Use the Headship rates from the 2000 5% PUMS Sample when it is higher than headship rates from the 17-21 ACS w/ Split Households.
-      ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & freq.diff.35 >= 0 & freq.split.35 != 0~ "Use freq.2000",
-      ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & freq.diff.35 >= 0 & freq.split.35 == 0~ "Use freq.split",
+      # ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & freq.diff.35 >= 0 & freq.split.35 != 0~ "Use freq.2000",
+      # ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & freq.diff.35 >= 0 & freq.split.35 == 0 ~ "Use freq.split",
       # Households with householders 45 and older:
       # .1 Use the Headship rates from the 17-21 ACS w/ Split Households
       ageCAT6 %in% c("10","11","12","13","14","15","16","17","18") ~ "Use freq.split",
@@ -184,10 +194,15 @@ hdshp.r_2000.compare.1721.split <- full_join(
     use.flag.40 = case_when(
       # Households with householders under the age of 45:
       # .1 Use the Headship rates from the 17-21 ACS w/ Split Households when it is higher than 2000 headship rates.
-      ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & freq.diff.40 < 0 ~ "Use freq.split",
+      # ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & freq.diff.40 < 0 ~ "Use freq.split",
+      ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & var %in% c("single", "hhdernochild") & freq.diff.40 < 0 ~ "Use freq.split",
+     ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & var %in% c("hhderchild") & freq.diff.40 < 0 ~ "Use freq.split",
+     
+     ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & var %in% c("single", "hhdernochild") & freq.diff.40 >= 0 ~ "Use freq.2000",
+     ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & var %in% c("hhderchild") & freq.diff.40 >= 0 ~ "Use freq.split",
       # .2 Use the Headship rates from the 2000 5% PUMS Sample when it is higher than headship rates from the 17-21 ACS w/ Split Households.
-      ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & freq.diff.40 >= 0 & freq.split.40 != 0~ "Use freq.2000",
-      ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & freq.diff.40 >= 0 & freq.split.40 == 0~ "Use freq.split",
+      # ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & freq.diff.40 >= 0 & freq.split.40 != 0~ "Use freq.2000",
+      # ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & freq.diff.40 >= 0 & freq.split.40 == 0~ "Use freq.split",
       # Households with householders 45 and older:
       # .1 Use the Headship rates from the 17-21 ACS w/ Split Households
       ageCAT6 %in% c("10","11","12","13","14","15","16","17","18") ~ "Use freq.split",
@@ -197,10 +212,15 @@ hdshp.r_2000.compare.1721.split <- full_join(
     use.flag.45 = case_when(
       # Households with householders under the age of 45:
       # .1 Use the Headship rates from the 17-21 ACS w/ Split Households when it is higher than 2000 headship rates.
-      ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & freq.diff.45 < 0 ~ "Use freq.split",
+      # ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & freq.diff.45 < 0 ~ "Use freq.split",
+      ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & var %in% c("single", "hhdernochild") & freq.diff.45 < 0 ~ "Use freq.split",
+     ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & var %in% c("hhderchild") & freq.diff.45 < 0 ~ "Use freq.split",
+     
+     ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & var %in% c("single", "hhdernochild") & freq.diff.45 >= 0 ~ "Use freq.2000",
+      ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & var %in% c("hhderchild") & freq.diff.45 >= 0 ~ "Use freq.split",
       # .2 Use the Headship rates from the 2000 5% PUMS Sample when it is higher than headship rates from the 17-21 ACS w/ Split Households.
-      ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & freq.diff.45 >= 0 & freq.split.45 != 0~ "Use freq.2000",
-      ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & freq.diff.45 >= 0 & freq.split.45 == 0~ "Use freq.split",
+      # ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & freq.diff.45 >= 0 & freq.split.45 != 0~ "Use freq.2000",
+      # ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & freq.diff.45 >= 0 & freq.split.45 == 0~ "Use freq.split",
       # Households with householders 45 and older:
       # .1 Use the Headship rates from the 17-21 ACS w/ Split Households
       ageCAT6 %in% c("10","11","12","13","14","15","16","17","18") ~ "Use freq.split",
@@ -210,10 +230,15 @@ hdshp.r_2000.compare.1721.split <- full_join(
     use.flag.50 = case_when(
       # Households with householders under the age of 45:
       # .1 Use the Headship rates from the 17-21 ACS w/ Split Households when it is higher than 2000 headship rates.
-      ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & freq.diff.50 < 0 ~ "Use freq.split",
+      # ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & freq.diff.50 < 0 ~ "Use freq.split",
+      ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & var %in% c("single", "hhdernochild") & freq.diff.50 < 0 ~ "Use freq.split",
+     ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & var %in% c("hhderchild") & freq.diff.50 < 0 ~ "Use freq.split",
+     
+     ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & var %in% c("single", "hhdernochild") & freq.diff.50 >= 0 ~ "Use freq.2000",
+     ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & var %in% c("hhderchild") & freq.diff.50 >= 0 ~ "Use freq.split",
       # .2 Use the Headship rates from the 2000 5% PUMS Sample when it is higher than headship rates from the 17-21 ACS w/ Split Households.
-      ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & freq.diff.50 >= 0 & freq.split.50 != 0~ "Use freq.2000",
-      ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & freq.diff.50 >= 0 & freq.split.50 == 0~ "Use freq.split",
+      #ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & freq.diff.50 >= 0 & freq.split.50 != 0~ "Use freq.2000",
+      #ageCAT6 %in% c("1","2","3","4","5","6","7","8","9") & freq.diff.50 >= 0 & freq.split.50 == 0~ "Use freq.split",
       # Households with householders 45 and older:
       # .1 Use the Headship rates from the 17-21 ACS w/ Split Households
       ageCAT6 %in% c("10","11","12","13","14","15","16","17","18") ~ "Use freq.split",
@@ -251,6 +276,13 @@ hdshp.r_2000.compare.1721.split <- full_join(
       .default = 999
     )
   )
+
+# Write the wide format to .csv
+write.csv(
+  hdshp.r_2000.compare.1721.split,
+  paste0(root,"Scenario_2/headship.rates.comparison_2000.hsr_to_1721.household.split.hsr.UPDATE.WIDE.fix1.csv"),
+  row.names = FALSE
+)
 
 # Function to check whether the headship rates do not exceed 100%
 hdsp.r_QC <- function(df, hdsp.r){
@@ -330,8 +362,7 @@ hdshp.r_2000.compare.1721.split <- hdshp.r_2000.compare.1721.split |>
 # Write to .csv
 write.csv(
   hdshp.r_2000.compare.1721.split,
-  paste0(root,"Scenario_2/headship.rates.comparison_2000.hsr_to_1721.household.split.hsr.csv"),
+  paste0(root,"Scenario_2/headship.rates.comparison_2000.hsr_to_1721.household.split.hsr.UPDATE.fix1.csv"),
   row.names = FALSE
 )
-
 ```

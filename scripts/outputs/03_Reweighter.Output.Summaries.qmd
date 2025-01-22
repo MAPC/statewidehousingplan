@@ -257,6 +257,8 @@ rm(rwt.pums.df);gc()
 # 1.2 Load Shelter Households
 
 ```{r}
+
+if (scen %in% c('Scenario_2','Scenario_3')){
 # Read in the shelter household sample
 shelter.pums <- read_csv(paste0(shelter_path, "cleaned.shelter.pums.sample_run.1.csv"))
 
@@ -427,11 +429,16 @@ tbl.4 <- shelter.pums_cleaned  |>
     lf = sum(lf)
   ) |> 
   ungroup()
+}
+
 ```
 
 # 1.3 Add Shelter HH to Reweighter Output
 
 ```{r}
+
+if (scen %in% c('Scenario_2','Scenario_3')){
+
 #shelter.pums_cleaned.2030 <- shelter.pums_cleaned |> mutate(year = 2030)
 shelter.pums_cleaned.2035 <- shelter.pums_cleaned |> mutate(year = 2035)
 #shelter.pums_cleaned.2040 <- shelter.pums_cleaned |> mutate(year = 2040)
@@ -454,15 +461,16 @@ rm(shelter.pums_cleaned)
 # rm(tmp.rwt_cleaned)
 gc()
 
-rwt.pums.df.join_shelt <- bind_rows(rwt.pums.df.join, shelter.pums_cleaned.year) |> mutate(
+rwt.pums.df.join <- bind_rows(rwt.pums.df.join, shelter.pums_cleaned.year) |> mutate(
     mpo = coalesce(mpo, rpa_acr)
     ) |> 
   setDT()
-rwt.pums.df.join_shelt[is.na(children_in_HH),children_in_HH:=Child_Total]
+rwt.pums.df.join[is.na(children_in_HH),children_in_HH:=Child_Total]
 
-rm(rwt.pums.df.join, shelter.pums_cleaned.year)
+rm(shelter.pums_cleaned.year)
 gc()
- 
+}
+
 ```
 
 # 2.0 QA/QC For Total Households and Reweighter Parameters
@@ -515,7 +523,7 @@ gc()
 ```{r}
 #===============================================================================
 # Creates a reference table for the total number of households in each year to compare to subsequent tables as a QA check.
-tbl.0 <- rwt.pums.df.join_shelt |> 
+tbl.0 <- rwt.pums.df.join |> 
   #filter(TYPEHUGQ == 1 & SPORDER == 1) |>
   filter(SPORDER == 1) |>
   group_by(
@@ -530,7 +538,7 @@ gc()
 
 #===============================================================================
 # .1 UrbanSim Household Income Groupings
-tbl.1 <- rwt.pums.df.join_shelt |> 
+tbl.1 <- rwt.pums.df.join |> 
   #filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   filter(SPORDER == 1) |> 
   group_by(
@@ -574,7 +582,7 @@ write.csv(
 gc()
 #===============================================================================
 # .2 5-year Age Groupings (ageCAT6)
-tbl.2 <- rwt.pums.df.join_shelt |> 
+tbl.2 <- rwt.pums.df.join |> 
   # filter(TYPEHUGQ == 1 & SPORDER == 1) |>
   filter(SPORDER == 1) |>
   group_by(
@@ -620,7 +628,7 @@ gc()
 
 #===============================================================================
 # .3 Household Type
-tbl.3 <- rwt.pums.df.join_shelt  |>
+tbl.3 <- rwt.pums.df.join  |>
   # filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   filter(SPORDER == 1) |> 
   group_by(
@@ -665,7 +673,7 @@ gc()
 #===============================================================================
 # .4 Laborforce
 # Note: A bit of a roundabout way of calculating labor force. Its based on the number households with a specific number of workers in them. Households with two workers are multiplied by 2 to get the total number of people in that household in the labor force. "Workers" are people in the LF + military service members (a negligible amount of people in MA).
-tbl.4 <- rwt.pums.df.join_shelt  |> 
+tbl.4 <- rwt.pums.df.join  |> 
   # filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   filter(SPORDER == 1) |> 
   group_by(
@@ -705,7 +713,7 @@ gc()
 ```{r}
 #===============================================================================
 # .5 Number of Children in a Household
-tbl.5 <- rwt.pums.df.join_shelt |>
+tbl.5 <- rwt.pums.df.join |>
   # filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   filter(SPORDER == 1) |>  
   group_by(
@@ -743,7 +751,7 @@ if (round(sum(tbl.5$hhds)) != round(sum(tbl.5.test$hhds))){
 # Alternate version no grouping
 setDT(tbl.5)
 
-tbl.5b <- rwt.pums.df.join_shelt |>
+tbl.5b <- rwt.pums.df.join |>
   # filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   filter(SPORDER == 1) |>  
   group_by(
@@ -771,7 +779,7 @@ tbl.5b[!is.na(diff2),range(diff2)]
 setnames(tbl.5b,c('rpa','year','children_in_HH','CHILDHH_Group','HH_ungrouped','HH_grouped','raw_diff','sum_4+','diff_2'))
 
 # raw <- copy( rwt.pums.df.join)
-# dt <- copy( rwt.pums.df.join_shelt)
+# dt <- copy( rwt.pums.df.join)
 # 
 # raw[year==2035 & SPORDER==1 & children_in_HH>0,sum(new_WGTP)]
 # dt[year==2035 & SPORDER==1 & children_in_HH>0,sum(new_WGTP)]
@@ -786,7 +794,7 @@ write.csv(
 gc()
 #===============================================================================
 # .6 Size of Household
-tbl.6 <- rwt.pums.df.join_shelt  |> 
+tbl.6 <- rwt.pums.df.join  |> 
   # filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   filter(SPORDER == 1) |> 
   group_by(
@@ -831,7 +839,7 @@ write.csv(
 gc()
 #===============================================================================
 # .7 Tenure
-tbl.7 <- rwt.pums.df.join_shelt  |>
+tbl.7 <- rwt.pums.df.join  |>
   # filter(TYPEHUGQ == 1 & SPORDER == 1) |>
   filter(SPORDER == 1) |> 
   group_by(
@@ -876,7 +884,7 @@ write.csv(
 gc()
 #===============================================================================
 # .8 Number of Workers in a Household
-tbl.8 <- rwt.pums.df.join_shelt  |>
+tbl.8 <- rwt.pums.df.join  |>
   # filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   filter(SPORDER == 1) |> 
   group_by(
@@ -921,7 +929,7 @@ write.csv(
 gc()
 #==============================================================================
 # .9 Average Workers in Households with Three or More Workers
-tbl.9 <- rwt.pums.df.join_shelt  |> 
+tbl.9 <- rwt.pums.df.join  |> 
   # filter(TYPEHUGQ == 1 & SPORDER == 1 & WRKHH_Group == "Three or More Workers") |> 
   filter(SPORDER == 1 & WRKHH_Group == "Three or More Workers") |> 
   group_by(
@@ -966,7 +974,7 @@ gc()
 ```{r}
 # Creates a table which is a full crosstab of variables from previously generated tables.
 # Households is unrounded to avoid rounding error.
-full.crosstab <- rwt.pums.df.join_shelt  |> 
+full.crosstab <- rwt.pums.df.join  |> 
   # filter(TYPEHUGQ == 1 & SPORDER == 1) |>
   filter(SPORDER == 1) |>
   group_by(
@@ -999,7 +1007,7 @@ gc()
 ```
 
 ```{r}
-children_inhhd <- rwt.pums.df.join_shelt |> 
+children_inhhd <- rwt.pums.df.join |> 
   filter(children_in_HH >= 1 & SPORDER == 1)
 print(round(sum(children_inhhd$new_WGTP)))
 ```

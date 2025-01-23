@@ -69,6 +69,9 @@ muni2puma<-read_csv(paste0(rwt_path, "PUMS_data/pums_muni_inter.csv")) |>
 # 
 muni2rpa <- mapcdatakeys::all_muni_data_keys |> select(muni_id, rpa_acr)
 
+# Set date
+st <- str_sub(date(Sys.time()), start = 1, end = 10)
+
 ```
 
 # 1.0 Question 6:
@@ -333,6 +336,7 @@ pums <- pums_query(var.list = variable_list, yr = vintage, srvy = "acs5") |>
 ```
 # 2.2 Clean ACS Data
 ```{r}
+# Clean PUMS Data
 pums_cleaned <- pums |> 
   # Create a household flag for whether there is a child in a household.
   mutate(
@@ -493,7 +497,7 @@ pums_cleaned <- pums |>
 #===============================================================================
 # Create AMI Table for RPA Groups
 # Pull AMI Table for 2021
-rpa.ami_table <- get_mapc_database(
+puma.ami_table <- get_mapc_database(
   db.table_name = "hous_section8_income_limits_by_year_m",
   year = 2021,
   vars = "*"
@@ -536,7 +540,7 @@ rpa.ami_table <- get_mapc_database(
     il_70_7 = il_100_7 * 0.7,
     il_70_8 = il_100_8 * 0.7
   ) |>
-  left_join(muni2rpa,
+  left_join(muni2puma,
             by = c("muni_id")) |>
   select(-c(
     municipal,
@@ -547,39 +551,35 @@ rpa.ami_table <- get_mapc_database(
     fy_year,
     median
   )) |>
-  group_by(rpa_acr) |>
+  group_by(PUMACE10) |>
   mutate(across(starts_with("il"), ~ round(mean(.), 0))) |>
   ungroup() |>
-  distinct(rpa_acr, .keep_all = TRUE) |> 
-  relocate(rpa_acr)
+  distinct(PUMACE10, .keep_all = TRUE) |> 
+  relocate(PUMACE10) |> 
+  dplyr::rename(puma_id = PUMACE10)
+
 ```
 
 # 2.4 Assign AMI Levels to PUMS Data
 ```{r}
 #===============================================================================
-# RPA-based AMI Tables
-pums_rpa <- left_join(pums_cleaned, xw, by = c("PUMA"), relationship = "many-to-many")
-
-rpa_list <- xw |> distinct(rpa_acr) |> pull(rpa_acr)
-
+# PUMA-based AMI Tables
 full.pums_ami.subsets <- NULL
 
-for (j in rpa_list) {
-  for (i in 1:8) {
-    ami_table_filtered <- rpa.ami_table |>
-      select(rpa_acr, ends_with(as.character(i))) |> #change to puma id
-      filter(rpa_acr == j) |> 
-      # this example below is the correct syntax - also noting that if you don't reorder the table 50 comes before 30
-      `colnames<-`(c("rpa_acr","il50","il30","il80","il100", "il40", "il60", "il70"))
-    
-    pums_ami.subset <- pums_rpa |>
-      #account for households larger than 8, will be treated as 8 person
-      mutate(size_group = ifelse(NP > 8, 8, NP)) |>
-      #run the analysis on just the size household we have the filtered ami table to
-      filter(rpa_acr == j & size_group == i) |>
-      #join in the ami table of income limits
-      left_join(ami_table_filtered, by = "rpa_acr") |>
-      #create a column called ami_group that will assign an ami % to an income based on the PUMA
+for (i in 1:8) {
+  ami_table_filtered <- puma.ami_table |> 
+    select(puma_id, ends_with(as.character(i))) |>  #change to puma id
+    # this example below is the correct syntax - also noting that if you don't reorder the table 50 comes before 30
+    `colnames<-`(c("puma_id","il50","il30","il80","il100", "il40", "il60", "il70"))
+  
+  pums_ami.subset <- pums_cleaned |>
+    #account for households larger than 8, will be treated as 8 person
+    mutate(size_group = ifelse(NP > 8, 8, NP)) |>
+    #run the analysis on just the size household we have the filtered ami table to
+    filter(size_group == i) |>
+    #join in the ami table of income limits
+    left_join(ami_table_filtered, by = c("PUMA" = "puma_id")) |>
+    #create a column called ami_group that will assign an ami % to an income based on the PUMA
       mutate(
         ami_group = case_when(
           HINCP_adj <= il30 ~ "u30",
@@ -591,16 +591,12 @@ for (j in rpa_list) {
           .default = "o80"
         )
       )
-    
-    full.pums_ami.subsets <-bind_rows(full.pums_ami.subsets, pums_ami.subset)
-    
-    rm(ami_table_filtered, pums_ami.subset)
-    
-    print(paste0("Finished creating a subset of PUMS records with a household size of ",i,"!"))
-    
-  }
   
-  print(paste0("Finished creating subset of PUMS records in ", j, "!"))
+  full.pums_ami.subsets <- bind_rows(full.pums_ami.subsets, pums_ami.subset)
+  
+  rm(ami_table_filtered, pums_ami.subset)
+  
+  print(paste0("Finished creating a subset of PUMS records with a household size of ", i, "!"))
   
 }
 ```
@@ -623,9 +619,18 @@ tbl.1 <- full.pums_ami.subsets |>
   ungroup() |> 
   mutate(pct = hh/tot_hh)
 
+# QA household aggregation
+if (sum(tbl.1$hh) != 2714444){
+  print(sum(tbl.1$hh))
+  print("STOP! Check household aggregations.")
+} else{
+  print("Proceed.")
+}
+
+# Write output table to .csv
 write.csv(
   tbl.1,
-  paste0(output_path, "q7.NP.HHSize.csv"),
+  paste0(output_path, "q7.NP.HHSize.",st,".csv"),
   row.names = FALSE
 )
 
@@ -635,15 +640,24 @@ tbl.2 <- full.pums_ami.subsets |>
   filter(TYPEHUGQ == 1 & SPORDER == 1) |>
   group_by(WRKHH, ami_group) |> 
   summarise(hh = sum(WGTP)) |> 
-  ungroup |> 
+  ungroup() |> 
   group_by(WRKHH) |> 
   mutate(tot_hh = sum(hh)) |> 
   ungroup() |> 
   mutate(pct = hh/tot_hh)
 
+# QA household aggregation
+if (sum(tbl.2$hh) != 2714444){
+  print(sum(tbl.2$hh))
+  print("STOP! Check household aggregations.")
+} else{
+  print("Proceed.")
+}
+
+# Write output table to .csv
 write.csv(
   tbl.2,
-  paste0(output_path, "q7.ESR.HHWorkers.csv"),
+  paste0(output_path, "q7.ESR.HHWorkers.",st,".csv"),
   row.names = FALSE
 )
 
@@ -659,9 +673,18 @@ tbl.3 <- full.pums_ami.subsets |>
   ungroup() |> 
   mutate(pct = hh/tot_hh)
 
+# QA household aggregation
+if (sum(tbl.3$hh) != 2714444){
+  print(sum(tbl.3$hh))
+  print("STOP! Check household aggregations.")
+} else{
+  print("Proceed.")
+}
+
+# Write output table to .csv
 write.csv(
   tbl.3,
-  paste0(output_path, "q7.RETP.Retirees.csv"),
+  paste0(output_path, "q7.RETP.Retirees.",st,".csv"),
   row.names = FALSE
 )
 
@@ -677,9 +700,18 @@ tbl.4 <- full.pums_ami.subsets |>
   ungroup() |> 
   mutate(pct = hh/tot_hh)
 
+# QA household aggregation
+if (sum(tbl.4$hh) != 2714444){
+  print(sum(tbl.4$hh))
+  print("STOP! Check household aggregations.")
+} else{
+  print("Proceed.")
+}
+
+# Write output table to .csv
 write.csv(
   tbl.4,
-  paste0(output_path, "q7.PAP.PublicAssistance.csv"),
+  paste0(output_path, "q7.PAP.PublicAssistance.",st,".csv"),
   row.names = FALSE
 )
 #===============================================================================
@@ -694,9 +726,18 @@ tbl.5 <- full.pums_ami.subsets |>
   ungroup() |> 
   mutate(pct = hh/tot_hh)
 
+# QA household aggregation
+if (sum(tbl.5$hh) != 2714444){
+  print(sum(tbl.5$hh))
+  print("STOP! Check household aggregations.")
+} else{
+  print("Proceed.")
+}
+
+# Write output table to .csv
 write.csv(
   tbl.5,
-  paste0(output_path, "q7.FS.SNAP.csv"),
+  paste0(output_path, "q7.FS.SNAP.",st,".csv"),
   row.names = FALSE
 )
 
@@ -707,14 +748,23 @@ tbl.6 <- full.pums_ami.subsets |>
   group_by(HINS4, ami_group) |> 
   summarise(hh = sum(WGTP)) |> 
   ungroup() |> 
-  group_by(retired) |> 
+  group_by(HINS4) |> 
   mutate(tot_hh = sum(hh)) |> 
   ungroup() |> 
   mutate(pct = hh/tot_hh)
 
+# QA household aggregation
+if (sum(tbl.6$hh) != 2714444){
+  print(sum(tbl.6$hh))
+  print("STOP! Check household aggregations.")
+} else{
+  print("Proceed.")
+}
+
+# Write output table to .csv
 write.csv(
   tbl.6,
-  paste0(output_path, "q7.HINS4.Medicaid.csv"),
+  paste0(output_path, "q7.HINS4.Medicaid.",st,".csv"),
   row.names = FALSE
 )
 

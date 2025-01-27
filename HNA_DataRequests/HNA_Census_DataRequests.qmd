@@ -1,0 +1,289 @@
+---
+title: "HNA_Census_DataRequests"
+format: html
+editor: visual
+---
+
+# 1 - Paths and Libraries
+
+```{r}
+
+# Load libraries
+pacman::p_load(
+  tidyverse,
+  tidycensus,
+  mapcdatakeys,
+  janitor,
+  stringr,
+  data.table,
+  here
+)
+
+# Base root. Toggle between S: and K: drive depedning on mapped paths on your computer
+# base <- "K:/DataServices/Projects/Current_Projects/"
+base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
+
+# General K drive filepath
+kpath <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/HNA/")
+
+# Set output filepath
+output_path <- here('HNA_DataRequests')
+
+source(here('scripts/control_totals/Projections.Functions.R'))
+
+sun <- function(x){sort(unique(x))}
+lun <- function(x){length(unique(x))}
+
+#Decennial Census API Query Function
+vars00 <- load_variables(2000, dataset = c("sf1")) |> setDT()
+vars10 <- load_variables(2010, dataset = c("sf1")) |> setDT()
+vars20 <- load_variables(2020, dataset = c("dhc")) |> setDT()
+svars20 <- load_variables(2020, dataset = c("dhcas")) |> setDT()
+
+```
+
+# 2.1 - Family Households by Generation - 2000
+
+```{r}
+
+fam.vars00 <- vars00[grepl('HOUSEHOLD TYPE BY AGE OF HOUSEHOLDER', concept) & grepl('Family households',label)]
+
+fam00 <- get_decennial(
+      variables = fam.vars00$name,
+      geography = 'state',
+      state = "MA",
+      year = 2000,
+      sumfile = "sf1",
+      output = 'wide'
+    ) |> 
+  setDT()
+
+fam.names00 <- c('st','st_name','famHH_2000','famHH_1524_2000','famHH_2534_2000','famHH_3544_2000','famHH_4554_2000','famHH_5564_2000','famHH_6574_2000','famHH_7584_2000','famHH_85_2000')
+
+setnames(fam00,fam.names00)
+fam00[,boomer_family_HH_2000:=famHH_3544_2000+famHH_4554_2000]
+fam00[,genX_family_HH_2000:=famHH_1524_2000+famHH_2534_2000]
+fam00 <- fam00[,.(genX_family_HH_2000,boomer_family_HH_2000,famHH_5564_2000,famHH_2000)]
+
+# 2010
+
+fam.vars10 <- vars10[concept=='HOUSEHOLD TYPE BY AGE OF HOUSEHOLDER' & grepl('Family households',label)]
+
+fam10 <- get_decennial(
+      variables = fam.vars10$name,
+      geography = 'state',
+      state = "MA",
+      year = 2010,
+      sumfile = "sf1",
+      output = 'wide'
+    ) |> 
+  setDT()
+
+fam.names10 <- c('st','st_name','famHH_2010','famHH_1524_2010','famHH_2534_2010','famHH_3544_2010','famHH_4554_2010','famHH_5559_2010','famHH_6064_2010','famHH_6574_2010','famHH_7584_2010','famHH_85_2010')
+
+setnames(fam10,fam.names10)
+fam10[,boomer_family_HH_2010:=famHH_4554_2010+famHH_5559_2010+famHH_6064_2010]
+fam10[,genX_family_HH_2010:=famHH_2534_2010+famHH_3544_2010]
+fam10[,mill_family_HH_2010:=famHH_1524_2010]
+fam10 <- fam10[,.(mill_family_HH_2010,genX_family_HH_2010,boomer_family_HH_2010,famHH_2010)]
+
+fam.vars20 <- vars20[concept=='HOUSEHOLD TYPE BY AGE OF HOUSEHOLDER' & grepl('Family households',label)]
+
+fam20 <- get_decennial(
+      variables = fam.vars20$name,
+      geography = 'state',
+      state = "MA",
+      year = 2020,
+      sumfile = "dhc",
+      output = 'wide'
+    ) |> 
+  setDT()
+
+fam.names20 <- c('st','st_name','famHH_2020','famHH_1524_2020','famHH_2534_2020','famHH_3544_2020','famHH_4554_2020','famHH_5559_2020','famHH_6064_2020','famHH_6574_2020','famHH_7584_2020','famHH_85_2020')
+
+setnames(fam20,fam.names20)
+fam20[,boomer_family_HH_2020:=famHH_5559_2020+famHH_6064_2020+famHH_6574_2020]
+fam20[,genX_family_HH_2020:=famHH_3544_2020+famHH_4554_2020]
+fam20[,mill_family_HH_2020:=famHH_2534_2020]
+fam20 <- fam20[,.(mill_family_HH_2020,genX_family_HH_2020,boomer_family_HH_2020,famHH_2020)]
+
+fam <- cbind(fam00,fam10,fam20)
+```
+
+# 2.2 - NonFamily Households
+```{r}
+
+nonfam.vars10 <- vars10[concept=='HOUSEHOLD TYPE BY AGE OF HOUSEHOLDER' & grepl('Nonfamily households',label)]
+
+nonfam10 <- get_decennial(
+      variables = nonfam.vars10$name,
+      geography = 'state',
+      state = "MA",
+      year = 2010,
+      sumfile = "sf1",
+      output = 'wide'
+    ) |> 
+  setDT()
+
+nonfam.names10 <- c('st','st_name','nonfamHH_2010','nonfamHH_1524_2010','nonfamHH_2534_2010','nonfamHH_3544_2010','nonfamHH_4554_2010','nonfamHH_5559_2010','nonfamHH_6064_2010','nonfamHH_6574_2010','nonfamHH_7584_2010','nonfamHH_85_2010')
+
+setnames(nonfam10,nonfam.names10)
+nonfam10[,boomer_nonfamily_HH_2010:=nonfamHH_4554_2010+nonfamHH_5559_2010+nonfamHH_6064_2010]
+nonfam10[,genX_nonfamily_HH_2010:=nonfamHH_2534_2010+nonfamHH_3544_2010]
+nonfam10[,mill_nonfamily_HH_2010:=nonfamHH_1524_2010]
+nonfam10 <- nonfam10[,.(mill_nonfamily_HH_2010,genX_nonfamily_HH_2010,boomer_nonfamily_HH_2010,nonfamHH_2010)]
+
+nonfam.vars20 <- vars20[concept=='HOUSEHOLD TYPE BY AGE OF HOUSEHOLDER' & grepl('Nonfamily households',label)]
+
+nonfam20 <- get_decennial(
+      variables = nonfam.vars20$name,
+      geography = 'state',
+      state = "MA",
+      year = 2020,
+      sumfile = "dhc",
+      output = 'wide'
+    ) |> 
+  setDT()
+
+nonfam.names20 <- c('st','st_name','nonfamHH_2020','nonfamHH_1524_2020','nonfamHH_2534_2020','nonfamHH_3544_2020','nonfamHH_4554_2020','nonfamHH_5559_2020','nonfamHH_6064_2020','nonfamHH_6574_2020','nonfamHH_7584_2020','nonfamHH_85_2020')
+
+setnames(nonfam20,nonfam.names20)
+nonfam20[,boomer_nonfamily_HH_2020:=nonfamHH_5559_2020+nonfamHH_6064_2020+nonfamHH_6574_2020]
+nonfam20[,genX_nonfamily_HH_2020:=nonfamHH_3544_2020+nonfamHH_4554_2020]
+nonfam20[,mill_nonfamily_HH_2020:=nonfamHH_2534_2020]
+nonfam20 <- nonfam20[,.(mill_nonfamily_HH_2020,genX_nonfamily_HH_2020,boomer_nonfamily_HH_2020,nonfamHH_2020)]
+
+nonfam <- cbind(nonfam10,nonfam20)
+```
+
+# 3 - Total Children in Households
+```{r}
+tot.child00 <- get_decennial(
+      variables = c('P028004','P028013'),
+      # table = 'P014',
+      geography = 'state',
+      state = "MA",
+      year = 2000,
+      sumfile = "sf1"
+    ) |> 
+  setDT()
+tot.child00 <- tot.child00[,lapply(.SD,sum),.SDcols='value']
+setnames(tot.child00,'children_in_HH_2000')
+
+tot.child10 <- get_decennial(
+      variables = c('P032004','P032021'),
+      geography = 'state',
+      state = "MA",
+      year = 2010,
+      sumfile = "sf1"
+    ) |> 
+  setDT()
+tot.child10 <- tot.child10[,lapply(.SD,sum),.SDcols='value']
+setnames(tot.child10,'children_in_HH_2010')
+
+tot.child20 <- get_decennial(
+      variables = c('PCT8_004N','PCT8_012N'),
+      geography = 'state',
+      state = "MA",
+      year = 2020,
+      sumfile = "dhc"
+    ) |> 
+  setDT()
+tot.child20 <- tot.child20[,lapply(.SD,sum),.SDcols='value']
+setnames(tot.child20,'children_in_HH_2020')
+
+tot.child <- cbind(tot.child00,tot.child10,tot.child20)
+
+```
+
+# 4 - Family Households with Own Children
+```{r}
+
+child.vars00 <- vars00[label %in% c("Total!!Householder 15 to 64 years","Total!!Householder 15 to 64 years!!Family households","Total!!Householder 15 to 64 years!!Family households!!Married-couple family!!With own children under 18 years","Total!!Householder 15 to 64 years!!Family households!!Other family!!Female householder, no husband present!!With own children under 18 years","Total!!Householder 15 to 64 years!!Family households!!Other family!!Male householder, no wife present!!With own children under 18 years")]
+
+child00 <- get_decennial(
+      variables = child.vars00$name,
+      geography = 'state',
+      state = "MA",
+      year = 2000,
+      sumfile = "sf1",
+      output = 'wide'
+    ) |> 
+  setDT()
+setnames(child00,c('st','st_name','HH_15_64_2000','famHH_15_64_2000','mar_kids00','sf_kids00','sm_kids00'))
+child00[,HH_kids_15_64_2000:=mar_kids00+sf_kids00+sm_kids00][,frac:=HH_kids_15_64_2000/famHH_15_64_2000]
+
+child.vars10 <- vars10[label %in% c(
+  "Total!!Householder 15 to 64 years",
+  "Total!!Householder 15 to 64 years!!Family households",
+  "Total!!Householder 15 to 64 years!!Family households!!Husband-wife family!!With related children under 18 years",
+  "Total!!Householder 15 to 64 years!!Family households!!Other family!!Female householder, no husband present!!With related children under 18 years",
+  "Total!!Householder 15 to 64 years!!Family households!!Other family!!Male householder, no wife present!!With related children under 18 years"
+)]
+
+child10 <- get_decennial(
+      variables = child.vars10$name,
+      geography = 'state',
+      state = "MA",
+      year = 2010,
+      sumfile = "sf1",
+      output = 'wide'
+    ) |> 
+  setDT()
+setnames(child10,c('st','st_name','HH_15_64_2010','famHH_15_64_2010','mar_kids10','sf_kids10','sm_kids10'))
+child10[,HH_kids_15_64_2010:=mar_kids10+sf_kids10+sm_kids10][,kidfrac_2010:=HH_kids_15_64_2010/famHH_15_64_2010]
+
+child.vars20 <- vars20[grepl(
+  "!!Total:!!Married couple household:!!With own children under 18|!!Total:!!Cohabiting couple household:!!With own children under 18|!!Total:!!Male householder, no spouse or partner present:!!With own children under 18|!!Total:!!Female householder, no spouse or partner present:!!With own children under 18",label)]
+
+child20 <- get_decennial(
+      # variables = child.vars20$name,
+      table='P20',
+      geography = 'state',
+      state = "MA",
+      year = 2020,
+      sumfile = "dhc"
+    ) |> 
+  setDT()
+
+child20h <- child20[variable %in% child.vars20$name]
+child20h <- child20h[,lapply(.SD,sum),.SDcols='value']
+# setnames(child20,c('HH_kids_2020'))
+
+
+
+```
+#5 - Millenial HH by income 2021
+```{r}
+
+pums <- fread(paste0(kpath,'PUMS2021_formatted.csv'))
+setkey(pums,SERIALNO,SPORDER)
+bld <- fread(paste0(kpath,'PUMS2021_bld_type.csv')) |> 
+  select(SERIALNO,SPORDER,BLD)
+setkey(bld,SERIALNO,SPORDER)
+pums <- bld[pums]
+pums[,sf:=0][,mf:=0][,BLD:=as.numeric(BLD)]
+pums[BLD %in% 1:3,sf:=1]
+pums[BLD %in% 4:9,mf:=1]
+pums[,HINCP2021:=HINCP*ADJINC]
+pums[SPORDER==1 & TYPEHUGQ==1 & AGEP %in% 25:34,sum(WGTP)]
+pums[SPORDER==1 & TYPEHUGQ==1 & AGEP %in% 25:34 & HINCP2021>=150000,sum(WGTP)]
+pums[SPORDER==1 & TYPEHUGQ==1 & AGEP %in% 25:34 & HINCP2021>=150000 & Child_Total>0,sum(WGTP)]
+
+pums[,unit_type:='SF']
+pums[mf==1,unit_type:='MF']
+pums[,ten:='own']
+pums[tenure==2,ten:='rent']
+
+pums[SPORDER==1 & TYPEHUGQ==1 & AGEP %in% 25:34,sum(WGTP),.(ten,unit_type)]
+pums[SPORDER==1 & TYPEHUGQ==1 & AGEP %in% 25:34 & HINCP2021>=150000,sum(WGTP),.(unit_type,ten)]
+pums[SPORDER==1 & TYPEHUGQ==1 & AGEP %in% 25:34 & HINCP2021>=150000 & Child_Total>0,sum(WGTP),.(unit_type,ten)]
+
+#renters
+
+pums[tenure==2 & SPORDER==1 & TYPEHUGQ==1 & AGEP %in% 25:34,sum(WGTP)]
+pums[tenure==2 & SPORDER==1 & TYPEHUGQ==1 & AGEP %in% 25:34 & HINCP2021>=150000,sum(WGTP)]
+pums[tenure==2 & SPORDER==1 & TYPEHUGQ==1 & AGEP %in% 25:34 & HINCP2021>=150000 & Child_Total>0,sum(WGTP)]
+
+```
+

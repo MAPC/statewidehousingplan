@@ -77,6 +77,14 @@ st <- str_sub(date(Sys.time()), start = 1, end = 10)
 # 1.0 Question 6:
 # 1.1 Load 2000 PUMS Data
 ```{r}
+ x <- tidycensus::load_variables(year = 2010, dataset = "sf1")
+y <- get_decennial(
+  geography = "state",
+  variables = c("H006001", "H006002", "H006003", "H006004", "H006005", "H006006", "H006007", "H006008"),
+  state = "MA",
+  year = 2010,
+  sumfile = "sf1"
+)
 ```
 
 # 1.2 Load PUMS Data
@@ -767,14 +775,85 @@ write.csv(
   paste0(output_path, "q7.HINS4.Medicaid.",st,".csv"),
   row.names = FALSE
 )
+#===============================================================================
+# Clean up the environment
+rm(tbl.1, tbl.2, tbl.3, tbl.4, tbl.5, tbl.6)
+gc()
 
 ```
 
 # 3.0 Question 9: Headship Rate Differences Between 2000, 2015-2019, and 2017-2021
 # 3.1 Load Headship Rates and Create Graphs
 ```{r}
+#===============================================================================
 # Load in the headship rates 
 hdsp.r <- read_csv(paste0(hdsp.r_path, "headship_rate_comparison.csv"))
+
+#===============================================================================
+# Wide Tables
+# Overall
+tbl.1 <- hdsp.r |> 
+  select(-contains("pop")) |> 
+  select(Age, census2000, acs1519, acs1721) |> 
+  mutate(
+    diff_2000.2019 = acs1519 - census2000,
+    diff_2000.2021 = acs1721 - census2000
+  )
+
+# Write tables to .csv
+write.csv(
+  tbl.1,
+  paste0(output_path, "q9.hdsp.r.comp.overall.",st,".csv")
+)
+
+# Single
+tbl.2 <- hdsp.r |> 
+  select(-contains("pop")) |> 
+  select(Age, contains("single")) |> 
+  mutate(
+    diff_2000.2019 = head_single1519 - head_single2000,
+    diff_2000.2021 = rate1721_single - head_single2000
+  )
+
+# Write tables to .csv
+write.csv(
+  tbl.2,
+  paste0(output_path, "q9.hdsp.r.comp.single.",st,".csv")
+)
+
+# With Children
+tbl.3 <- hdsp.r |> 
+  select(-contains("pop")) |> 
+  select(Age, head_child2000, head_child1519, rate1721_hhderchild) |> 
+  mutate(
+    diff_2000.2019 = head_child1519 - head_child2000,
+    diff_2000.2021 = rate1721_hhderchild - head_child2000
+  )
+
+# Write tables to .csv
+write.csv(
+  tbl.3,
+  paste0(output_path, "q9.hdsp.r.comp.child.",st,".csv")
+)
+
+# Without Children
+tbl.4 <- hdsp.r |> 
+  select(-contains("pop")) |> 
+  select(Age, head_nochild2000, head_nochild1519, rate1721_hhdernochild) |> 
+  mutate(
+    diff_2000.2019 = head_nochild1519 - head_nochild2000,
+    diff_2000.2021 = rate1721_hhdernochild - head_nochild2000
+  )
+
+# Write tables to .csv
+write.csv(
+  tbl.4,
+  paste0(output_path, "q9.hdsp.r.comp.nochild.",st,".csv")
+)
+
+# Clean up
+rm(tbl.1, tbl.2, tbl.3, tbl.4)
+gc()
 
 #===============================================================================
 # Long Tables
@@ -793,8 +872,8 @@ tbl.2 <- hdsp.r |>
   select(-c(pop1721_single)) |> 
   pivot_longer(
     !Age,
-    names_to = "hdsp.r_type",
-    values_to = "rates"
+    names_to = "hdsp.r_type.single",
+    values_to = "rates.single"
   )
 
 # Households with Childen
@@ -802,8 +881,8 @@ tbl.3 <- hdsp.r |>
   select(Age, head_child2000, head_child1519, rate1721_hhderchild) |> 
   pivot_longer(
     !Age,
-    names_to = "hdsp.r_type",
-    values_to = "rates"
+    names_to = "hdsp.r_type.child",
+    values_to = "rates.child"
   )
 
 # Multiple Adult No Children Households
@@ -811,9 +890,13 @@ tbl.4 <- hdsp.r |>
   select(Age, head_nochild2000, head_nochild1519, rate1721_hhdernochild) |> 
   pivot_longer(
     !Age,
-    names_to = "hdsp.r_type",
-    values_to = "rates"
+    names_to = "hdsp.r_type.nochild",
+    values_to = "rates.nochild"
   )
+
+# Clean up
+rm(tbl.1, tbl.2, tbl.3, tbl.4)
+gc()
 
 #===============================================================================
 # Visualizations

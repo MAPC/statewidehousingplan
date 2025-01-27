@@ -1233,7 +1233,7 @@ allvars <- pums_variables |>  filter(year==vintage) |>  select(var_code) |>  uni
 
 # List of PUMS variables
 variable_list <- c("PUMA", "TYPEHUGQ", "SEX", "AGEP", "RAC1P", "HISP", "ESR",
-                   "WKHP", "SCHL", "WAGP", "SEMP", "ADJINC", "SPORDER", "HINCP", "TEN")
+                   "WKHP", "SCHL", "WAGP", "SEMP", "ADJINC", "SPORDER", "HINCP", "TEN","BLD")
 # SEMP bottom coding has changed from $1 to $4 like WAGP
 
 # Load CPI time series for deflating income variable

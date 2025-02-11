@@ -288,7 +288,7 @@ pums_data <- pums_query(var.list = variable_list, yr = vintage, srvy = "acs5") |
       .default = 0
     )
   )
-
+  
 ```
 
 # 2.0 Check Size of Subsets Being Used to Create New Households and Generate Estimates of the Number of New Households Created by Splitting Households.
@@ -356,6 +356,7 @@ print(paste0("Splitting multigenerational households with children, with at leas
 
 # Printing the sum of new households slated to be created by splitting up households in subset one and subset two.
 print(paste0("The housheold splitting process will generate ", sum(subset.1$new.hhds) + sum(subset.2$new.hhds), " new households overall."))
+
 ```
 
 # 3.0 Seperate Households - Redefine SERIALNO to separate subfamilies into separate households
@@ -471,6 +472,9 @@ full.pums_data.adj <- full.pums_data.adj |>
 # List of assumptions:
 # 1. Cant determine the kind of spouse or child non-reference persons are in the new, split households. Could distinguish same or opposite sex spousal relationship with "SEX" variable added to the PUMS data.
 # 2. Can we use RELSHIPP to help us be more correct? What about for people who are non-relatives?
+
+test <- full.pums_data.adj |> 
+  filter(SERIALNO == "2017000015740")
 
 ```
 
@@ -589,6 +593,15 @@ full.pums_data.adj <- full.pums_data.adj |>
 # 2. Number of rooms in the house remain the same, even if the number of rooms and bedrooms doesn't necessarily make sense for the split subfamily household. Easier to not make assumptions about the types of housing they rent or buy after splitting out.
 # 3. Household income is the sum of incomes of the individuals within the household. Incomes are recalculated for the original household and the new split subfamily household.
 # 4.
+
+test <- full.pums_data.adj |> 
+  filter(adj.flag >= 1 & AGEP %in% c(15, 16, 17, 18, 19) & SPORDER.adj == 1) |> 
+  select(SERIALNO) |> 
+  pull()
+
+test.df <- full.pums_data.adj |> filter(SERIALNO %in% test & SPORDER.adj == 1) |> filter(SERIALNO == "2017000148487")
+
+conor <- full.pums_data.adj |> filter(SERIALNO == "2018HU1181558")
 
 ```
 
@@ -856,7 +869,7 @@ years <- c(2030,2035,2040,2045,2050)
 total_split.hhds <- as.numeric(sum(nrow(partial.pums_data.subset1), nrow(partial.pums_data.subset2)))
 
 # Calculate the sample size of rows we want to pull from the subsets in each year.
-sample.size <- round(total_split.hhds*0.25, 0)
+sample.size <- round(total_split.hhds*0.51, 0)
 
 # Test the 
 sample_sum <- 0
@@ -899,7 +912,7 @@ for (i in years){
     # Remove dataframes that need to be recycled in the next loop.
     rm(tmp)
     
-  } else if (df.row.1 < sample.size & df.row.1 != 0 & df.row.2 >= sample.size) {
+  } else if (df.row.1 < sample.size & df.row.1 != 0 & (df.row.2 >= sample.size | df.row.2 < sample.size)) {
     
     print("Following Condition 2 Logic.")
     # Calculate the sample size for each sample when there are not enough rows to sample without replacement in the first dataframe.
@@ -956,7 +969,7 @@ for (i in years){
     # Remove dataframes that need to be recycled in the next loop.
     rm(tmp)
     
-  } else if (df.row.2 < sample.size){
+  } else if (df.row.1 == 0 & df.row.2 < sample.size){
     
     print("Following Condition 4 Logic.")
     # Set a sample size less than the standard sample size
@@ -1201,7 +1214,7 @@ for (i in years) {
     assign(paste0("ten.r_", i), ten.r)
     
     # save year-specific PUMS dataset for generating baselines.
-    fwrite(done_pums, paste0(rwt_path,'PUMS_data/PUMS2021_Scenario_2_',i,'.csv'))
+    fwrite(done_pums, paste0(rwt_path,'PUMS_data/PUMS2021_Scenario_2_',i,'.fix1.csv'))
     # Remove dataframes that will be recreated in the next loop to avoid accidentally using residual data.
     rm(sn, og, tmp_pums, done_pums, hdsp.r)
     
@@ -1274,7 +1287,7 @@ for (i in years) {
     assign(paste0("ten.r_", i), ten.r)
   
     # save year-specific PUMS dataset for generating baselines.
-    fwrite(done_pums, paste0(rwt_path,'PUMS_data/PUMS2021_Scenario_2_',i,'.csv'))
+    fwrite(done_pums, paste0(rwt_path,'PUMS_data/PUMS2021_Scenario_2_',i,'.fix1.csv'))
     # Remove dataframes that will be recreated in the next loop to avoid accidentally using residual data.
     rm(sn, og, tmp_pums, done_pums, hdsp.r)
     
@@ -1347,7 +1360,7 @@ for (i in years) {
     assign(paste0("ten.r_", i), ten.r)
     
     # save year-specific PUMS dataset for generating baselines.
-    fwrite(done_pums, paste0(rwt_path,'PUMS_data/PUMS2021_Scenario_2_',i,'.csv'))
+    fwrite(done_pums, paste0(rwt_path,'PUMS_data/PUMS2021_Scenario_2_',i,'.fix1.csv'))
     # Remove dataframes that will be recreated in the next loop to avoid accidentally using residual data.
     rm(sn, og, tmp_pums, done_pums, hdsp.r)
     
@@ -1420,7 +1433,7 @@ for (i in years) {
     assign(paste0("ten.r_", i), ten.r)
     
     # save year-specific PUMS dataset for generating baselines.
-    fwrite(done_pums, paste0(rwt_path,'PUMS_data/PUMS2021_Scenario_2_',i,'.csv'))
+    fwrite(done_pums, paste0(rwt_path,'PUMS_data/PUMS2021_Scenario_2_',i,'.fix1.csv'))
     # Remove dataframes that will be recreated in the next loop to avoid accidentally using residual data.
     rm(sn, og, tmp_pums, done_pums, hdsp.r)
     
@@ -1493,7 +1506,7 @@ for (i in years) {
     assign(paste0("ten.r_", i), ten.r)
     
     # save year-specific PUMS dataset for generating baselines.
-    fwrite(done_pums, paste0(rwt_path,'PUMS_data/PUMS2021_Scenario_2_',i,'.csv'))
+    fwrite(done_pums, paste0(rwt_path,'PUMS_data/PUMS2021_Scenario_2_',i,'.fix1.csv'))
     # Remove dataframes that will be recreated in the next loop to avoid accidentally using residual data.
     rm(sn, og, tmp_pums, done_pums, hdsp.r)
     
@@ -1510,7 +1523,7 @@ for (i in years) {
 # Left join all headship rate dataframes to create single file to export.
 hdsp.r_scenario2 <- purrr::reduce(
   list(hdsp.r_2030, hdsp.r_2035, hdsp.r_2040, hdsp.r_2045, hdsp.r_2050),
-  dplyr::left_join,
+  dplyr::full_join,
   by = c('rpa_acr','ageCAT6','var')
 ) |> 
   dplyr::rename(
@@ -1519,19 +1532,23 @@ hdsp.r_scenario2 <- purrr::reduce(
     freq.split.40 = freq.split.x.x,
     freq.split.45 = freq.split.y.y,
     freq.split.50 = freq.split,
+  ) |> 
+  mutate(
+    # Fill in Zeros where NAs exist from new headship rate groups being created in the split household tabulation.
+    across(starts_with("freq"), ~replace_na(.,0))
   )
 
 # Write .csv file
 write.csv(
   hdsp.r_scenario2,
-  paste0(rwt_path,"Headship_rates/hdsp.r.1721_household.split.paced.csv"),
+  paste0(rwt_path,"Headship_rates/hdsp.r.1721_household.split.paced.fix1.csv"),
   row.names = FALSE
 )
 
 # Left join all headship rate dataframes to create single file to export.
 ten.r_scenario2 <- purrr::reduce(
   list(ten.r_2030, ten.r_2035, ten.r_2040, ten.r_2045, ten.r_2050),
-  dplyr::left_join,
+  dplyr::full_join,
   by = c('rpa_acr','ageCAT6','var')
 ) |> 
   dplyr::rename(
@@ -1540,12 +1557,16 @@ ten.r_scenario2 <- purrr::reduce(
     freq.split.40 = freq.x.x,
     freq.split.45 = freq.y.y,
     freq.split.50 = freq,
+  ) |> 
+  mutate(
+    # Fill in Zeros where NAs exist from new headship rate groups being created in the split household tabulation.
+    across(starts_with("freq"), ~replace_na(.,0))
   )
 
 # Write .csv file
 write.csv(
   ten.r_scenario2,
-  paste0(rwt_path,"Headship_rates/ten.r.1721_household.split.paced.csv"),
+  paste0(rwt_path,"Headship_rates/ten.r.1721_household.split.paced.fix1.csv"),
   row.names = FALSE
 )
 ```

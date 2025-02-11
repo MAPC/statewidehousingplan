@@ -12,23 +12,25 @@ editor: visual
 # Set Scenario Names
 
 # Population Scenario
-scen <- 'Scenario_1'
+scen <- 'Scenario_4'
 # Headship rate Scenario
-hdshp <- 'acs1721'
-#hdshp <- 'scen2'
+# hdshp <- 'acs1721'
+hdshp <- 'scen2'
 
 # Use when Rproject is open
 # root <- '../../../../Data/Working/Regional_Control_Totals/'
 
 # Base root. Toggle between S: and K: drive depedning on mapped paths on your computer
-base <- "K:/DataServices/Projects/Current_Projects/"
-#base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
+# base <- "K:/DataServices/Projects/Current_Projects/"
+base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
 
 # General K drive filepath
 root <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/")
 
 # Set output filepath
-output_path <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/", scen, "/")
+output_path <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/", scen, "/UPDATE/")
+
+dir.create(output_path,showWarnings = F)
 
 # Reweighter files path
 rwt_path <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Reweighter/")
@@ -1231,7 +1233,7 @@ allvars <- pums_variables |>  filter(year==vintage) |>  select(var_code) |>  uni
 
 # List of PUMS variables
 variable_list <- c("PUMA", "TYPEHUGQ", "SEX", "AGEP", "RAC1P", "HISP", "ESR",
-                   "WKHP", "SCHL", "WAGP", "SEMP", "ADJINC", "SPORDER", "HINCP", "TEN")
+                   "WKHP", "SCHL", "WAGP", "SEMP", "ADJINC", "SPORDER", "HINCP", "TEN","BLD")
 # SEMP bottom coding has changed from $1 to $4 like WAGP
 
 # Load CPI time series for deflating income variable
@@ -2211,11 +2213,15 @@ if (scen == "Scenario_1"){ # Scenario 1
     mutate(
       year = 2025
     )
-   
-  hdsp.r <- fread(paste0(root,"Scenario_2/headship.rates.comparison_2000.hsr_to_1721.household.split.hsr.csv")) |> 
+  # v1 
+  hdsp.r <- fread(paste0(root,"Scenario_2/headship.rates.comparison_2000.hsr_to_1721.household.split.hsr.UPDATE.csv")) |> 
     filter(var %in% c('single','hhderchild','hhdernochild')) |> 
     dplyr::rename(freq=freq.scenario2)
-  
+  #v2
+   # hdsp.r <- fread(paste0(root,"Scenario_2/headship.rates.comparison_2000.hsr_to_1721.household.split.hsr.UPDATE.fix1.csv")) |> 
+   #  filter(var %in% c('single','hhderchild','hhdernochild')) |> 
+   #  dplyr::rename(freq=freq.scenario2)
+   
   hdsp.r <- bind_rows(headship_rates.20, headship_rates.25, hdsp.r)
   
   # Use tenure rates from Scenario 2

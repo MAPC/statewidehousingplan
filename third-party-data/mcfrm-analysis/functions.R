@@ -78,7 +78,7 @@ get_full_parcel_data<-function (muni_name){
   return(full_parcels)
 }
 
-get_inundated_units<-function(parcels){
+get_inundated_units<-function(parcels, ext_2030, ext_2050, ext_2070){
   spatial_output<-NULL
   
   #make sure all parcels have the right crs  
@@ -86,7 +86,7 @@ get_inundated_units<-function(parcels){
     st_transform(crs = st_crs(ma_munis))
   #filter parcels to the MC-FRM 2030 
   units_in_mcfrm30<- all_parcels_int%>%
-    st_filter(st_make_valid(psep_2030_shp))
+    st_filter(st_make_valid(ext_2030))
   
   #summarize by use code (so later we can make sure only residential units are counted)
   mcfrm30_sum<-units_in_mcfrm30 %>%
@@ -97,7 +97,7 @@ get_inundated_units<-function(parcels){
   
   #Repeat for 2050 scenario
   units_in_mcfrm50<- all_parcels_int%>%
-    st_filter(st_make_valid(psep_2050_shp))
+    st_filter(st_make_valid(ext_2050))
   
   mcfrm50_sum<-units_in_mcfrm50 %>%
     group_by(CITY, USE_CODE_SYMB)%>%
@@ -107,7 +107,7 @@ get_inundated_units<-function(parcels){
   
   #Repeat for 2070 scenario
   units_in_mcfrm70 <-all_parcels_int%>%
-    st_filter(st_make_valid(psep_2070_shp))
+    st_filter(st_make_valid(ext_2070))
   
   mcfrm70_sum<-units_in_mcfrm70 %>%
     group_by(CITY, USE_CODE_SYMB)%>%

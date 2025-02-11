@@ -34,15 +34,15 @@ source("make-data.R")
 
 output_table<-NULL
 
-for (z in 1:length(full_parcels)){
+for (muni_output in names(full_parcels)){
 
 
 #make sure all parcels have the right crs  
-all_parcels_int <-st_make_valid(full_parcels[[z]])%>%
+all_parcels_int <-st_make_valid(full_parcels[[muni_output]])%>%
   st_transform(crs = st_crs(ma_munis))
 #filter parcels to the MC-FRM 2030 
 units_in_mcfrm30<- all_parcels_int%>%
- st_filter(st_make_valid(psep_2030_shp))
+ st_filter(st_make_valid(dep_1_2030))
 
 #summarize by use code (so later we can make sure only residential units are counted)
 mcfrm30_sum<-units_in_mcfrm30 %>%
@@ -53,7 +53,7 @@ mcfrm30_sum<-units_in_mcfrm30 %>%
 
 #Repeat for 2050 scenario
 units_in_mcfrm50<- all_parcels_int%>%
-  st_filter(st_make_valid(psep_2050_shp))
+  st_filter(st_make_valid(dep_1_2050))
 
 mcfrm50_sum<-units_in_mcfrm50 %>%
   group_by(CITY, USE_CODE_SYMB)%>%
@@ -63,7 +63,7 @@ mcfrm50_sum<-units_in_mcfrm50 %>%
 
 #Repeat for 2070 scenario
 units_in_mcfrm70 <-all_parcels_int%>%
-  st_filter(st_make_valid(psep_2070_shp))
+  st_filter(st_make_valid(dep_1_2070))
 
 mcfrm70_sum<-units_in_mcfrm70 %>%
   group_by(CITY, USE_CODE_SYMB)%>%
@@ -72,7 +72,7 @@ mcfrm70_sum<-units_in_mcfrm70 %>%
   st_drop_geometry()
 
 #joins the summarized tables to one table
-output_table[[z]]<- full_join(mcfrm30_sum, mcfrm50_sum, by = c("CITY", "USE_CODE_SYMB"))%>%
+output_table[[muni_output]]<- full_join(mcfrm30_sum, mcfrm50_sum, by = c("CITY", "USE_CODE_SYMB"))%>%
   full_join(., mcfrm70_sum, by = c("CITY", "USE_CODE_SYMB"))
 
 }
@@ -92,7 +92,7 @@ obt<-rbindlist(output_table)%>%
 ```
 
 ```{r}
-#exports to sharepint
+#exports to sharepoint
 write.csv(obt, paste0(output_path, "/town_mcfrm_units_results.csv"))
 
 ```
@@ -101,13 +101,16 @@ write.csv(obt, paste0(output_path, "/town_mcfrm_units_results.csv"))
 
 ```{r}
 
-example_parcels<- get_full_parcel_data(muni_name = "Chelsea")
+example_parcels<- get_full_parcel_data(muni_name = "Cambridge")
 
 
-analysis_sample<-get_inundated_units(example_parcels)
+analysis_sample<-get_inundated_units(example_parcels,
+                                     ext_2030 = dep_1_2030,
+                                     ext_2050 = dep_1_2050,
+                                     ext_2070 = dep_1_2070)
 
 #maps the last city run through the loop
-ggplot(example_parcels)+
+outputmap<-ggplot(example_parcels)+
   geom_sf(data = analysis_sample[[3]],
           fill = "darkblue",
           lwd = 0.1,
@@ -123,6 +126,9 @@ ggplot(example_parcels)+
   geom_sf(alpha = 0.5,
           lwd = 0.1)+
   theme_map()
+
+
+outputmap
 
 
 ```

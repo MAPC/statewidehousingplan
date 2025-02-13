@@ -1,13 +1,30 @@
 
-# Function to estimate monthly homeownership cost
-## the sale price of the home comes from the input dataframe (we use warren group data)
-## the function pulls in average weekly mortgage insurance rates from freddie mac and municipal property tax rates to include in the monthly cost estimate alongside the inputs below
-## inputs: down payment (%), loan term (years), homeowners inusrance ($), condo fee ($)
-## output: a dataframe that appends fields estimated the monthly mortgage principle (mortgage_principle_m), monthly mortgage with interest (mortgage_interest_m), 
-### and the total monthly payment including all variables outlined above
-
-mortgage_calculator <- function(df, down_payment_p, loan_term, ho_insurance, condo_fee){
+mortgage_calculator <- function(df, down_payment_p, loan_term, ho_insurance, pmi){
+  
+  #' Function to estimate monthly home ownership cost
+  #' 
+  #' the sale price of the home comes from the input data frame (we use warren group data)
+  #' the function pulls in average weekly mortgage insurance rates from freddie mac and municipal property tax rates to include in the monthly cost estimate alongside the inputs below
+  #' 
+  #' inputs: 
+  #' down payment: the percentage of the mortgage put down at time of sale, as a decimal, default = .2
+  #' loan term: the number of years over which the mortgage will be paid back, default = 30
+  #' homeowners insurance: annual cost of homeowners insurance, default = $1000
+  #' condo fee: monthly condo fee, default = $300 - REPLACED w/table based on PUMS averages
+  #' pmi: rate of private mortgage insurance rate, default = .075
+  #' 
+  #' output: 
+  #' a dataframe that appends fields estimating the monthly mortgage principle (mortgage_principle_m), 
+  #' monthly mortgage with interest (mortgage_interest_m), 
+  #' and the total monthly payment including all variables outlined above 
+  
   ## MAKE VARIABLES 
+  if(missing(down_payment_p)) {down_payment_p = .2}
+  if(missing(loan_term)) {loan_term = 30}
+  if(missing(ho_insurance)) {ho_insurance = 1000}
+ # if(missing(condo_fee)) {condo_fee = 300}
+  if(missing(pmi)) {pmi = .075}
+  
   # data paths
   calc_data_path <- "K:/DataServices/Datasets/Housing/Warren Group - Home Sales/attainable_housing/calculator_data/"
   
@@ -43,11 +60,35 @@ mortgage_calculator <- function(df, down_payment_p, loan_term, ho_insurance, con
     # applying 2003 tax rates back to 2000 through 2002
     fill(proptaxrate, .direction = "up") 
   
-
+  ## CONDO FEE ESTIMATION
+  ## Estimating condo fee based on weighted averages from 2000, 2010, and 2020 PUMS data
+  #PUMS weighted average condo fee
+  wcf_2000 = 223
+  wcf_2010 = 333
+  wcf_2020 = 417
   
+  #calculate slopes
+  slope1 = (wcf_2010 - wcf_2000)/(2010-2000) #2000 - 2010
+  slope2 = (wcf_2020 - wcf_2010)/(2020-2010) #2010 - 2020
+  slope3 = (wcf_2020 - wcf_2000)/(2020-2000) #2000 - 2020
+  
+  #get table of all years in data
+  condo_fee_df = count(df, year) |> select(year) |> 
+    mutate(
+      #calculate condo fee for each year
+      condo_fee = case_when(
+        year == 2000 ~ wcf_2000,
+        year > 2000 & year < 2010 ~ slope1*(year-2000) + wcf_2000,
+        year == 2010 ~ wcf_2010,
+        year > 2010 & year < 2020 ~ slope2*(year-2010) + wcf_2010,
+        year == 2020 ~ wcf_2020,
+        year > 2020 ~ slope3*(year-2000) + wcf_2000,
+      )
+    )
+  rm(wcf_2000, wcf_2010, wcf_2020, slope1, slope2, slope3)
   ## MORTGAGE CALCULATOR
   mortgage_df <- df |> 
-    # filter to only include sales of sinlge family homes and condos
+    # filter to only include sales of single family homes and condos
     filter(restype %in% c("R1F", "CON")) |> 
     # make clean fiscal year field
     mutate(
@@ -62,21 +103,31 @@ mortgage_calculator <- function(df, down_payment_p, loan_term, ho_insurance, con
     left_join(prop_taxrate, by = c("municipal", "fy_year")) |> 
     # joining mortgage rates
     left_join(fmrate, by = 'year') |> 
+    # joining condo fees
+    left_join(condo_fee_df, by = 'year') |> 
+    rowwise() |> 
     # calculate estimated monthly payment
     mutate(
       # calculate mortgage principle
       mortgage_principle = price - (price*down_payment_p),
       # get loan term in months
       loan_term_m = loan_term*12,
+      # if down payment is less than 20% calculator private mortgage insurance
+      mortgage_insurance_m = ifelse(down_payment_p < .2, 
+                                    # build in pmi if needed
+                                    #(mortgage_principle*pmi)/12,
+                                    pmi*(mortgage_principle/loan_term_m),
+                                    # set to 0 if down payment is at least 20%)
+                                    0),
       # calculating monthly interest rate from average APR
-      monthly_interest = mortgage_rate_30/12, 
+      monthly_interest_rate = mortgage_rate_30/12, 
       # calculating monthly mortgage with interest
       # M= P ((r(1+r)^n)/((1+r)^n-1 
-      mortgage_interest_m = mortgage_principle*((monthly_interest*((1+monthly_interest)^loan_term_m))/(((1+monthly_interest)^loan_term_m)-1)),
+      mortgage_interest_m = mortgage_principle*((monthly_interest_rate*((1+monthly_interest)^loan_term_m))/(((1+monthly_interest_rate)^loan_term_m)-1)),
       # get monthly property tax based on sale price of home
       property_tax_m = (price*proptaxrate)/12,
-      # adding property tax
-      mortgage_interest_tax = mortgage_interest_m + property_tax_m, 
+      # adding property tax and mortgage insurance
+      mortgage_interest_tax = mortgage_interest_m + property_tax_m + mortgage_insurance_m, 
       # monthly homeowners insurance
       ho_insurance_m = ho_insurance/12, 
       # add other potential monthly costs
@@ -89,13 +140,15 @@ mortgage_calculator <- function(df, down_payment_p, loan_term, ho_insurance, con
     
   return(mortgage_df)
 }
-
-# Function to compare monthly homeownership costs to HUD income levels
-## input 1: a table that has gone through the mortgage calculator and includes fields for muni_id, fiscal year, number of bedrooms, and estimated monthly payment 
-## input 2: the output wanted in the summary table - either 'count' or 'percent'
-## output: a summary table with either counts or percents of homes affordable to buyers at different income levels by municipality, fiscal year, and household size
+docstring(mortgage_calculator)
 
 affordable_sales <- function(df, output_type) {
+  #' Function to compare monthly homeownership costs to HUD income levels
+  #' input 1: a table that has gone through the mortgage calculator and includes fields for muni_id, fiscal year, number of bedrooms, and estimated monthly payment 
+  #' input 2: the output wanted in the summary table - either 'count' or 'percent'
+  #' output: a summary table with either counts or percents of homes affordable to buyers at different income levels by municipality, fiscal year, and household size
+  
+  
 
   ### read in table with HUD income limits from database
   # Set the driver
@@ -204,4 +257,4 @@ affordable_sales <- function(df, output_type) {
   output_all <- rbindlist(output)
   return(output_all)
 }
-
+docstring(affordable_sales)

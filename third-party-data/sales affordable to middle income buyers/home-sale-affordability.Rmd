@@ -23,11 +23,14 @@ warren_res <- read_csv("K:/DataServices/Datasets/Housing/Warren Group - Home Sal
 ```{r}
 warren_res_monthly <- mortgage_calculator(
   df = warren_res, # running on warren property sales data
-  down_payment = .2, # 20% down payment
-  loan_term = 30, # 30 year loan term
-  ho_insurance = 1000, # $1,000 a year for homeowners insurance
-  condo_fee = 300 # $300 per month condo fee
+  down_payment = .1, # default 20% down payment
+  # loan_term = 30, # default 30 year loan term
+  # ho_insurance = 1000, # default $1,000 a year for homeowners insurance
+  # condo_fee = now using table calculated based on PUMS averages
+  # pmi = .075 # default 7.5% private mortgage insurance for down payments below 20%
   )
+
+gc()
 ```
 
 # Run the affordability summary function
@@ -36,6 +39,8 @@ warren_res_monthly <- mortgage_calculator(
 affordable_counts <- affordable_sales(warren_res_monthly, 'count')
   
 affordable_percents <- affordable_sales(warren_res_monthly, 'percent')
+
+gc()
 ```
 
 # Get RPA aggregations

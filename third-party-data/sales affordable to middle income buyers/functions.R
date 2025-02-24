@@ -23,7 +23,7 @@ mortgage_calculator <- function(df, down_payment_p, loan_term, ho_insurance, pmi
   if(missing(loan_term)) {loan_term = 30}
   if(missing(ho_insurance)) {ho_insurance = 1000}
  # if(missing(condo_fee)) {condo_fee = 300}
-  if(missing(pmi)) {pmi = .015}
+  if(missing(pmi)) {pmi = .0075}
   
   # data paths
   calc_data_path <- "K:/DataServices/Datasets/Housing/Warren Group - Home Sales/attainable_housing/calculator_data/"

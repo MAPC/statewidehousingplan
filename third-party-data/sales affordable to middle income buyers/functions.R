@@ -23,7 +23,7 @@ mortgage_calculator <- function(df, down_payment_p, loan_term, ho_insurance, pmi
   if(missing(loan_term)) {loan_term = 30}
   if(missing(ho_insurance)) {ho_insurance = 1000}
  # if(missing(condo_fee)) {condo_fee = 300}
-  if(missing(pmi)) {pmi = .075}
+  if(missing(pmi)) {pmi = .015}
   
   # data paths
   calc_data_path <- "K:/DataServices/Datasets/Housing/Warren Group - Home Sales/attainable_housing/calculator_data/"
@@ -116,14 +116,18 @@ mortgage_calculator <- function(df, down_payment_p, loan_term, ho_insurance, pmi
       mortgage_insurance_m = ifelse(down_payment_p < .2, 
                                     # build in pmi if needed
                                     #(mortgage_principle*pmi)/12,
-                                    pmi*(mortgage_principle/loan_term_m),
+                                    (pmi*mortgage_principle)/12,
                                     # set to 0 if down payment is at least 20%)
                                     0),
       # calculating monthly interest rate from average APR
       monthly_interest_rate = mortgage_rate_30/12, 
       # calculating monthly mortgage with interest
       # M= P ((r(1+r)^n)/((1+r)^n-1 
-      mortgage_interest_m = mortgage_principle*((monthly_interest_rate*((1+monthly_interest)^loan_term_m))/(((1+monthly_interest_rate)^loan_term_m)-1)),
+      mortgage_interest_m = mortgage_principle*((monthly_interest_rate*((1+monthly_interest_rate)^loan_term_m))/(((1+monthly_interest_rate)^loan_term_m)-1)),
+      # mortgage principle + interest + pmi
+      mortgage_check = mortgage_interest_m + mortgage_insurance_m,
+      # pmi percent
+      pmi_p = mortgage_insurance_m/mortgage_check,
       # get monthly property tax based on sale price of home
       property_tax_m = (price*proptaxrate)/12,
       # adding property tax and mortgage insurance
@@ -134,10 +138,9 @@ mortgage_calculator <- function(df, down_payment_p, loan_term, ho_insurance, pmi
       monthly_payment = ifelse(proptype == 'RCD', 
                                mortgage_interest_tax + ho_insurance_m + condo_fee,
                                mortgage_interest_tax + ho_insurance_m)
-    ) |> 
+    ) #|> 
     # remove interim fields
-    select(-c(proptaxrate, mortgage_rate_30, property_tax_m, mortgage_interest_tax))
-    
+    #select(-c(proptaxrate, mortgage_rate_30, property_tax_m, mortgage_interest_tax))
   return(mortgage_df)
 }
 docstring(mortgage_calculator)

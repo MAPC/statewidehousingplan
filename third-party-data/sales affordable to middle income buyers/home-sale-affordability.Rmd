@@ -27,7 +27,7 @@ warren_res_monthly <- mortgage_calculator(
   # loan_term = 30, # default 30 year loan term
   # ho_insurance = 1000, # default $1,000 a year for homeowners insurance
   # condo_fee = now using table calculated based on PUMS averages
-  # pmi = .075 # default 7.5% private mortgage insurance for down payments below 20%
+  pmi = .0075 # default 0.75% private mortgage insurance for down payments below 20%
   )
 
 gc()

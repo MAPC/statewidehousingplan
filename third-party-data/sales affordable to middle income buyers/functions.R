@@ -115,7 +115,6 @@ mortgage_calculator <- function(df, down_payment_p, loan_term, ho_insurance, pmi
       # if down payment is less than 20% calculator private mortgage insurance
       mortgage_insurance_m = ifelse(down_payment_p < .2, 
                                     # build in pmi if needed
-                                    #(mortgage_principle*pmi)/12,
                                     (pmi*mortgage_principle)/12,
                                     # set to 0 if down payment is at least 20%)
                                     0),
@@ -210,8 +209,10 @@ affordable_sales <- function(df, output_type) {
       hh_size > 6 ~ 4 
     )  
     
+    
     # build output table for current hh size
     output[[hh_size]] <- df |> 
+      ungroup() |> 
       # select only needed columns
       select(muni_id, bedrooms, month, year, fy_year, monthly_payment) |> 
       # filter to minimum number of bedrooms for household size

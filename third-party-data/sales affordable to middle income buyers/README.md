@@ -10,17 +10,17 @@ inputs:
 - down payment percentage entered as a decimal
 - loan term in years
 - cost of annual homeowners insurance
-- monthly condo fee
+- annual private mortgage insurance rate
 
 output:
 - the input data frame with additional columns for the estimated monthly mortgage principle, mortgage with insurance, and total monthly payment
 
 assumptions:
 for the statewide housing plan the mortgage calculator was run with the following assumptions
-- a 20% down payment
+- a 10% down payment
 - a 30 year loan term
 - $1,000 a year for homeowners insurance
-- $300 a month for condo fees
+- condo fees were estimated based on weighted averages from PUMS of condo fees in Massachusetts in 2000, 2010, and 2020
 
 methods:
 1. use federal mortgage interest rates from Freddie Mac to calculate an average annual interest rate for each calendar year

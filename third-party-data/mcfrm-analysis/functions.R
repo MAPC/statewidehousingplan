@@ -16,10 +16,10 @@ get_full_parcel_data<-function (muni_name){
 
   # muni_load is the look up for the massGIS table of gdbs (UPPER)
   # pdb_lookup is the look up variable for the MAPC parcel database in the K drive. (Title Case)
-  print(paste(muni_load, pdb_lookup))
+  #print(paste(muni_load, pdb_lookup))
   
   if (muni_load == "BOSTON"){
-    par_geom<- arc_read("https://gisportal.boston.gov/arcgis/rest/services/Assessing/ASG_PROPERTY_ASSESSMENT_PARCEL_JOIN_FY24/FeatureServer/0", 
+    par_geom<- arcgislayers::arc_read("https://gisportal.boston.gov/arcgis/rest/services/Assessing/ASG_PROPERTY_ASSESSMENT_PARCEL_JOIN_FY24/FeatureServer/0", 
                         n_max = getOption("arcgislayers.n_max", 200000))%>%
       rename(geom = geometry)%>%
       select(LOC_ID, geom)
@@ -69,56 +69,92 @@ get_full_parcel_data<-function (muni_name){
       select(LOC_ID, geom)
   }
   
+  loc_count<-length(unique(par_geom$LOC_ID))
+  
+  #print("Parcels:", par_geom$LOC_ID, "Rows:", nrow(par_geom))
+  
   #read in the parcel database
   pdb<- read_csv(paste0("K:/DataServices/Datasets/Parcel_DB/Data/LPDB_Municipal_Data/current/LPDB_DRAFT_", pdb_lookup,
                         "_12.18.23.csv"))
   
+  #print("Parcels:",as.numeric(length(unique(pdb$LOC_ID))), "Rows:", nrow(pdb))
+  
   full_parcels<- full_join(par_geom, pdb, by = "LOC_ID")
+  
+  #print("Parcels:",as.numeric(length(unique(full_parcels$LOC_ID))), "Rows:", nrow(pdb))
   
   return(full_parcels)
 }
 
-get_inundated_units<-function(parcels, ext_2030, ext_2050, ext_2070){
+get_inundated_units<-function(parcels, ext_2030, ext_2050, ext_2070, sp_out = FALSE){
+  
+  #create final output object
   spatial_output<-NULL
+  #prepare to count residential parcels
+  res_parcels<- parcels%>%filter(str_starts(Max_LUC_Assign, "1") | USE_CODE_SYMB == "Condominium")
+  
+  
+  tot_res_units<-sum(res_parcels$imputed_units)
+  total_res_parcels<-length(unique(res_parcels$LOC_ID))
+  tot_res_value<- sum(res_parcels$TOTAL_VAL)
+  
+  print(paste("Units", tot_res_units, "Value", tot_res_value))
   
   #make sure all parcels have the right crs  
-  all_parcels_int <-st_make_valid(parcels)%>%
+  res_parcels_int <-st_make_valid(res_parcels)%>%
     st_transform(crs = st_crs(ma_munis))
-  #filter parcels to the MC-FRM 2030 
-  units_in_mcfrm30<- all_parcels_int%>%
+  
+  
+  ##filter parcels to the MC-FRM 2030 
+  units_in_mcfrm30<- res_parcels_int%>%
     st_filter(st_make_valid(ext_2030))
   
   #summarize by use code (so later we can make sure only residential units are counted)
   mcfrm30_sum<-units_in_mcfrm30 %>%
+    st_drop_geometry()%>%
     group_by(CITY, USE_CODE_SYMB)%>%
     summarize(units_2030 = sum(imputed_units),
-              value_2030 = sum(TOTAL_VAL))%>%
-    st_drop_geometry()
+              value_2030 = sum(TOTAL_VAL),
+              parcels_2030 = length(unique(LOC_ID)))%>%
+    mutate(pct_units_2030 = units_2030/tot_res_units,
+           pct_value_2030 = value_2030/tot_res_value,
+           pct_parcels_2030 = parcels_2030/total_res_parcels)
+  
+  
   
   #Repeat for 2050 scenario
-  units_in_mcfrm50<- all_parcels_int%>%
+  units_in_mcfrm50<- res_parcels_int%>%
     st_filter(st_make_valid(ext_2050))
   
   mcfrm50_sum<-units_in_mcfrm50 %>%
+    st_drop_geometry()%>%
     group_by(CITY, USE_CODE_SYMB)%>%
     summarize(units_2050 = sum(imputed_units),
-              value_2050 = sum(TOTAL_VAL))%>%
-    st_drop_geometry()
+              value_2050 = sum(TOTAL_VAL),
+              parcels_2050 = length(unique(LOC_ID)))%>%
+    mutate(pct_units_2050 = units_2050/tot_res_units,
+           pct_value_2050 = value_2050/tot_res_value,
+           pct_parcels_2050 = parcels_2050/total_res_parcels)
   
   #Repeat for 2070 scenario
-  units_in_mcfrm70 <-all_parcels_int%>%
+  units_in_mcfrm70 <-res_parcels_int%>%
     st_filter(st_make_valid(ext_2070))
   
   mcfrm70_sum<-units_in_mcfrm70 %>%
+    st_drop_geometry()%>%
     group_by(CITY, USE_CODE_SYMB)%>%
     summarize(units_2070 = sum(imputed_units),
-              value_2070 = sum(TOTAL_VAL))%>%
-    st_drop_geometry()
+              value_2070 = sum(TOTAL_VAL),
+              parcels_2070 = length(unique(LOC_ID)))%>%
+    mutate(pct_units_2070 = units_2070/tot_res_units,
+           pct_value_2070 = value_2070/tot_res_value,
+           pct_parcels_2070 = parcels_2070/total_res_parcels)
   
   #joins the summarized tables to one table
   output<- full_join(mcfrm30_sum, mcfrm50_sum, by = c("CITY", "USE_CODE_SYMB"))%>%
     full_join(., mcfrm70_sum, by = c("CITY", "USE_CODE_SYMB"))
   
+  if (sp_out == TRUE){
   spatial_output[[1]] <-units_in_mcfrm30
   spatial_output[[2]] <-units_in_mcfrm50
   spatial_output[[3]] <-units_in_mcfrm70
@@ -128,4 +164,10 @@ get_inundated_units<-function(parcels, ext_2030, ext_2050, ext_2070){
   return(spatial_output)
   
   }
+  else {
+    return (output)
+  }
+  }
+  
+  
 

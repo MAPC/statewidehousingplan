@@ -9,8 +9,8 @@ library(R.utils)
 D2020h <- read.csv ("C:\\Users\\sphilbrick\\Downloads\\csv_hma\\psam_h25.csv")
 D2010h <- read.csv ("K:\\DataServices\\Datasets\\U.S. Census and Demographics\\PUMS\\Raw\\pums_2008_12\\csv_hma\\ss12hma.csv")
 D2010p <- read.csv ("K:\\DataServices\\Datasets\\U.S. Census and Demographics\\PUMS\\Raw\\pums_2008_12\\ss12pma.csv")
-D2000 <- gunzip("C:\\Users\\sphilbrick\\Downloads\\usa_00001.csv.gz")
-D2000hp <- read.csv(D2000h)
+#D2000 <- gunzip("C:\\Users\\sphilbrick\\Downloads\\usa_00001.csv.gz")
+D2000hp <- read.csv("C:\\Users\\sphilbrick\\Downloads\\usa_00001.csv")
 
 #Remove scientific notation
 options(scipen = 999)
@@ -27,16 +27,32 @@ D2000h <- D2000hp[D2000hp$RELATE==1,]
 #Find average condo fee
 D2020h$adj <- (D2020h$ADJINC/1000000)
 D2020h$adjcondo = D2020h$CONP*D2020h$adj
-mean(D2020h$adjcondo[D2020h$adjcondo != 0], na.rm = TRUE)
-median(D2020h$adjcondo[D2020h$adjcondo != 0], na.rm = TRUE)
+D2020h$adjcondowgt = D2020h$adjcondo * D2020h$WGTP
+D2020condo <- D2020h[D2020h$adjcondo!=0,]
+D2020condo <- D2020condo %>% 
+  filter(if_any(adjcondo, ~ !is.na(.)))
+mean_2020 <- sum(D2020condo$adjcondowgt)/ sum(D2020condo$WGTP)
+#mean(D2020h$adjcondo[D2020h$adjcondo != 0], na.rm = TRUE)
+#median(D2020h$adjcondo[D2020h$adjcondo != 0], na.rm = TRUE)
 
 D2010h$adj <- (D2010h$ADJINC/1000000)
 D2010h$adjcondo = D2010h$CONP*D2010h$adj
-mean(D2010h$adjcondo[D2010h$adjcondo != 0], na.rm = TRUE)
-median(D2010h$adjcondo[D2010h$adjcondo != 0], na.rm = TRUE)
+D2010h$adjcondowgt = D2010h$adjcondo * D2010h$WGTP
+D2010h$adjcondowgt = D2010h$adjcondo * D2010h$WGTP
+D2010condo <- D2010h[D2010h$adjcondo!=0,]
+D2010condo <- D2010condo %>% 
+  filter(if_any(adjcondo, ~ !is.na(.)))
+mean_2010 <- sum(D2010condo$adjcondowgt)/ sum(D2010condo$WGTP)
+#mean(D2010h$adjcondo[D2010h$adjcondo != 0], na.rm = TRUE)
+#median(D2010h$adjcondo[D2010h$adjcondo != 0], na.rm = TRUE)
 
-mean(D2000h$CONDOFEE[D2000h$CONDOFEE != 0], na.rm = TRUE)
-median(D2000h$CONDOFEE[D2000h$CONDOFEE != 0], na.rm = TRUE)
+D2000h$adjcondowgt = D2000h$CONDOFEE * D2000h$HHWT
+D2000condo <- D2000h[D2000h$CONDOFEE!=0,]
+D2000condo <- D2000condo %>%
+  filter(if_any(adjcondowgt, ~!is.na(.)))
+mean_2000 <- sum(D2000condo$adjcondowgt)/ sum(D2000condo$HHWT)
+#mean(D2000h$CONDOFEE[D2000h$CONDOFEE != 0], na.rm = TRUE)
+#median(D2000h$CONDOFEE[D2000h$CONDOFEE != 0], na.rm = TRUE)
 
 
 #add in record year 

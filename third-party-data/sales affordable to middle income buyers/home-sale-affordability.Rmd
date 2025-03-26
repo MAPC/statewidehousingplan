@@ -15,27 +15,62 @@ options(scipen = 999)
 # Load home sale data
 
 ```{r, include = FALSE}
-warren_res <- read_csv("K:/DataServices/Datasets/Housing/Warren Group - Home Sales/Data/Tabular/Modified/20241220_warren_group_2000_2023_residential_final.csv")
+warren_res <- read_csv("K:/DataServices/Datasets/Housing/Warren Group - Home Sales/Data/Tabular/Modified/20241220_warren_group_2000_2023_residential_final.csv") 
+
+# warren_res_1019 <- read_csv("K:/DataServices/Datasets/Housing/Warren Group - Home Sales/Data/Tabular/Modified/20241220_warren_group_2000_2023_residential_final.csv") |> 
+#   filter(year >= 2010 & year <= 2019)
 ```
 
 # Run the mortgage calculator
 
 ```{r}
 warren_res_monthly <- mortgage_calculator(
-  df = warren_res, # running on warren property sales data
-  down_payment = .2, # 20% down payment
-  loan_term = 30, # 30 year loan term
-  ho_insurance = 1000, # $1,000 a year for homeowners insurance
-  condo_fee = 300 # $300 per month condo fee
+  df = warren_res_1019, # running on warren property sales data
+  down_payment = .1, # default 20% down payment
+  # loan_term = 30, # default 30 year loan term
+  # ho_insurance = 1000, # default $1,000 a year for homeowners insurance
+  # condo_fee = now using table calculated based on PUMS averages
+  pmi = .0075 # default 0.75% annual private mortgage insurance for down payments below 20%
   )
+
+gc()
 ```
 
 # Run the affordability summary function
 
 ```{r, include = FALSE}
+gc()
+
 affordable_counts <- affordable_sales(warren_res_monthly, 'count')
   
 affordable_percents <- affordable_sales(warren_res_monthly, 'percent')
+
+gc()
+
+affordable_counts_ma <- affordable_counts |> 
+  ungroup() |> 
+  select(-c(municipal)) |> 
+  group_by(fy_year, hh_size) |> 
+  mutate(
+    total_transactions = sum(total_transactions),
+    # get count of affordable transactions at different income levels
+    across(starts_with('affordable_'), sum)
+         ) |> 
+  distinct() |> 
+  mutate(municipal = "Massachusetts") |> 
+  select(municipal, everything()) |> 
+  rbind(affordable_counts) |> 
+  distinct()
+
+affordable_percents_ma <- affordable_counts_ma |> 
+  filter(municipal == "Massachusetts") |> 
+  mutate(
+        total_transactions = sum(total_transactions),
+        # get percent of affordable transactions at different income levels
+        across(starts_with('affordable_'), function(x){round(sum(x)/total_transactions,
+                                                             digits = 3)})
+        ) |> 
+  rbind(affordable_percents)
 ```
 
 # Get RPA aggregations
@@ -43,6 +78,11 @@ affordable_percents <- affordable_sales(warren_res_monthly, 'percent')
 ```{r}
 affordable_rpa <- affordable_counts |> 
   ungroup() |> 
+  mutate(municipal = case_when(
+    municipal == "Manchester" ~ "Manchester-by-the-Sea",
+    municipal == "Devens" ~ "Ayer",
+    TRUE ~ municipal
+  )) |> 
   left_join(mapcdatakeys::rpa_data_keys, by = c("municipal" = "muni_name")) |> 
   select(-c(mpo, mpo_id, mpo_name))
 
@@ -77,26 +117,26 @@ rpa_percents <- affordable_rpa |>
 output_path <- "K:/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/sales affordable to middle income buyers/"
 
 write.csv(
-  affordable_counts,
-  paste0(output_path, "affordable_counts.csv"),
+  affordable_counts_ma,
+  paste0(output_path, "affordable_counts_10p.csv"),
   row.names = FALSE
 )
 
 write.csv(
-  affordable_percents,
-  paste0(output_path, "affordable_percents.csv"),
+  affordable_percents_ma,
+  paste0(output_path, "affordable_percents_10p.csv"),
   row.names = FALSE
 )
 
 write.csv(
   rpa_counts,
-  paste0(output_path, "rpa_counts.csv"),
+  paste0(output_path, "rpa_counts_10p.csv"),
   row.names = FALSE
 )
 
 write.csv(
   rpa_percents,
-  paste0(output_path, "rpa_percents.csv"),
+  paste0(output_path, "rpa_percents_10p.csv"),
   row.names = FALSE
 )
 ```

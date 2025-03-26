@@ -10,6 +10,9 @@ library(dbplyr)
 library(tidycensus)
 options(tigris_use_cache = TRUE)
 
+#Function documentation
+library(docstring)
+
 #Spatial
 library(arcgis)
 library(tidygeocoder)

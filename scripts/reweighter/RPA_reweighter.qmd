@@ -26,9 +26,9 @@ pacman::p_load(
 )
 # Set Scenario name
 
-# scen <- 'Scenario_1'
+scen <- 'Scenario_1'
 # scen <- 'Scenario_2'
-scen <- 'Scenario_3'
+# scen <- 'Scenario_3'
 # scen <- 'Scenario_4'
 
 # Set ACS / PUMS vintage
@@ -440,9 +440,10 @@ if (scen == 'Scenario_1') {
 source('algo_hh.R')
 
 if (scen %in% c('Scenario_2', 'Scenario_3', 'Scenario_4')) {
-  #for (yr in c(2025, 2030, 2035, 2040, 2045, 2050)) {
-  for (yr in c(2025)) {
+  for (yr in c(2030)) {
+  # for (yr in c(2025)) {
   # for (yr in c(2035)) {
+  # for (yr in c(2050)) {
     for (mid in mpos) {
       infile1 <- paste0(workpath, 'Templates/reweighting_config_2021.json')
       outfile1 <- paste0(
@@ -668,8 +669,8 @@ for (yr in c(2025)){
     file.copy(paste0(workpath, scen, '/Output_Files/', mid, '/reweighted_PUMS_',scen,'_', reb, '_', mid, '_scen2_', yr, '.csv'),paste0(outpath, '/reweighted_PUMS_', scen, '_', reb, '_', mid, '_', hdshp, '_', yr, '.csv'), overwrite = T)
   }
 }
-# for (yr in c(2025,2030,2035,2040,2045,2050)){
-for (yr in c(2035)){
+for (yr in c(2030,2035,2040,2045,2050)){
+#for (yr in c(2035)){
   for (mid in mpos) {
     inpath <- paste0(input_path, mid, '/')
     outpath <- paste0(output_path, mid, '/')
@@ -728,8 +729,9 @@ c0[diff!=0]
 
 ```{r}
 
-#for (yr in c(2020,2025,2030,2035,2040,2045,2050)){
-for (yr in c(2020,2025,2035)){
+for (yr in c(2020,2025,2030,2035,2040,2045,2050)){
+# for (yr in c(2040,2030)){
+# for (yr in c(2040,2045,2050)){
   sw <- data.table()
   for (mid in mpos){
     inp <- paste0(output_path, mid, '/')
@@ -1847,8 +1849,8 @@ fwrite(of, paste0(deliv_path,'output.tbl_',scen,'_unit_demand_estimates.csv'))
 # Set Year
 
 # yr = 2025
-
-for (yr in c(2025,2035)){
+# for (yr in c(2030,2040,2045,2050)){
+for (yr in c(2020)){
 # Load UMDI HHpop comparison data
 
 umdi <- fread(paste0(ctrltotal.path,'pop.in.hhds.MAPC101_by.RPA.ageCAT6.csv'))
@@ -1867,7 +1869,7 @@ setnames(
 umdi <-
   umdi[, lapply(.SD, sum, na.rm = T), .(year, mpo, ageCAT6), .SDcols = c('umdi_hh_pop')]
 umdi[, umdi_hh_pop := round(umdi_hh_pop)]
-umdi <- umdi[year > 2020]
+umdi <- umdi[year >= 2020]
 setkey(umdi, mpo, year, ageCAT6)
 
 ##  CALCULATE differences in HHpop by age between UMDI/Control Totals and reweighter Outputs
@@ -1897,8 +1899,10 @@ setkey(umdi, mpo, year, ageCAT6)
     dt[,pop:=new_WGTP]
     dt[,pid:=paste0(hid,'_',SPORDER)]
     dt[,person_num:=SPORDER][,age:=AGEP]
+    dt[,HINCP:=sum(PINCP),hid]
     saveRDS(dt,paste0(output_path,'expanded_reweighted_PUMS_',yr,'.rds'))
     uspop <- dt[,lapply(.SD,sum),.(mpo,year,ageCAT6),.SDcols='pop']
+    uspop[,pop:=round(pop)]
     setkey(uspop, mpo, year, ageCAT6)
     adiff <- umdi[uspop]
     adiff[, diff := pop - umdi_hh_pop]
@@ -1913,7 +1917,218 @@ message(paste(yr,'Complete'))
 
 ```
 
-# 8.2 - Person duplication function
+# 8.2a - Person duplication function (Most recent)
+
+```{r}
+#| eval: false
+
+# Function that creates subsets of households to sample from for replicate/delete adjustments
+cx <- function(x) {
+  sub1 <- x[ageCAT6 == 1  & children > 1 & ageHHder>17]
+  add1 <- x[ageCAT6 == 1  & children < 4 &
+              adults > 1 & ageHHder %in% 20:60]
+  sub2 <- x[ageCAT6 == 2  & children > 1 & ageHHder>17]
+  add2 <- x[ageCAT6 == 2  & children < 4 &
+              adults > 1 & ageHHder %in% 20:60]
+  sub3 <- x[ageCAT6 == 3  & children > 1 & ageHHder>17]
+  add3 <- x[ageCAT6 == 3  & children < 4 &
+              adults > 1 & ageHHder %in% 20:60]
+  sub4 <-
+    x[(ageCAT6 == 4  &
+         HHT == 3 &
+         persons > 2 & person_num > 1) | (ageCAT6 == 4 &
+                            HHT == 1 & children > 1 & person_num > 1 & ageHHder>17)]
+  add4 <-
+    x[(ageCAT6 == 4  &
+         HHT == 1 &
+         children < 4 &
+         adults > 1 &
+         ageHHder %in% 25:50 &
+         person_num > 1) |
+        (ageCAT6 == 4  & ageHHder < 44 & HHT == 3 & persons < 6 &
+           person_num > 1)]
+  
+  sub5 <-
+    x[(ageCAT6 == 5  &
+         HHT == 3 &
+         persons > 2 &
+         person_num > 1) | (ageCAT6 == 5 &
+                              HHT == 1 & adults >= 2 &
+                              person_num > 1)]
+  add5 <- x[ageCAT6 == 5  & HHT == 3 &
+              persons >= 2  & persons<8 & ageHHder %in% 20:44]
+  
+  sub6 <-
+    x[(ageCAT6 == 6  &
+         HHT == 3 &
+         persons > 2 &
+         person_num > 1) |
+        (ageCAT6 == 6  & HHT == 1 & adults >= 2 &
+           person_num > 1)]
+  add6 <- x[ageCAT6 == 6  & HHT == 3 &
+              persons >= 2  & persons<8 & ageHHder %in% 20:44]
+  
+  sub7 <-
+    x[(ageCAT6 == 7  &
+         HHT == 3 &
+         persons > 2 &
+         person_num > 1) |
+        (ageCAT6 == 7  & HHT == 1 & adults >= 2 &
+           person_num > 1)]
+  add7 <- x[ageCAT6 == 7  & HHT == 3 &
+              persons >= 2  & persons<8 & ageHHder %in% 20:44]
+  
+  sub8 <-
+    x[(ageCAT6 == 8  &
+         HHT == 3 &
+         persons > 2 &
+         person_num > 1) |
+        (ageCAT6 == 8  & HHT == 1 & adults >= 2 &
+           person_num > 1)]
+  add8 <- x[ageCAT6 == 8  & HHT == 3 &
+              persons >= 2  & persons<8 & ageHHder %in% 24:49]
+  
+  sub9 <-
+    x[(ageCAT6 == 9  &
+         HHT == 3 &
+         persons > 2 &
+         person_num > 1) | (ageCAT6 == 9 &
+                              HHT == 1 & adults >= 2 &
+                              person_num > 1)]
+  add9 <- x[ageCAT6 == 9  & HHT == 3 &
+              persons >= 2  & persons<8 & ageHHder %in% 30:54]
+  
+  sub10 <-
+    x[(ageCAT6 == 10 &
+         HHT == 3 &
+         persons > 2 &
+         person_num > 1) |
+        (ageCAT6 == 10 & HHT == 1 & adults >= 2 &
+           person_num > 1)]
+  add10 <- x[ageCAT6 == 10 &
+               HHT == 3 & persons >= 2  & persons<8 & ageHHder %in% 40:59]
+  
+  sub11 <-
+    x[(ageCAT6 == 11 &
+         HHT == 3 &
+         persons > 2 &
+         person_num > 1) |
+        (ageCAT6 == 11 &
+           HHT == 1 & adults >= 2 & person_num > 1)]
+  add11 <- x[ageCAT6 == 11 &
+               HHT == 3 & persons >= 2  & persons<8 & ageHHder %in% 40:64]
+  sub12 <-
+    x[(ageCAT6 == 12 &
+         HHT == 3 &
+         persons > 2 &
+         person_num > 1) |
+        (ageCAT6 == 12 &
+           HHT == 1 & adults >= 2 & person_num > 1)]
+  add12 <- x[ageCAT6 == 12  &
+               HHT == 3 & persons >= 2  & persons<8 & ageHHder %in% 45:69]
+  sub13 <-
+    x[(ageCAT6 == 13 &
+         HHT == 3 &
+         persons > 2 &
+         person_num > 1) |
+        (ageCAT6 == 13  &
+           HHT == 1 & adults >= 2 & person_num > 1)]
+  add13 <- x[ageCAT6 == 13  &
+               HHT == 3 & persons >= 2 & ageHHder %in% 50:74]
+  
+  sub14 <-
+    x[(ageCAT6 == 14  &
+         HHT == 3 &
+         persons > 2 &
+         person_num > 1) |
+        (ageCAT6 == 14  &
+           HHT == 1 & adults >= 2 & person_num > 1)]
+  add14 <- x[ageCAT6 == 14 &
+               HHT > 1 & persons >= 2 & persons<8 ]
+  sub15 <-
+    x[(ageCAT6 == 15 &
+         HHT == 3 &
+         persons > 2 &
+         person_num > 1) |
+        (ageCAT6 == 15  &
+           HHT == 1 & adults >= 2 & person_num > 1)]
+  add15 <- x[ageCAT6 == 15 &
+               HHT > 1 & persons >= 2 & persons<8 ]
+  sub16 <-
+    x[(ageCAT6 == 16 &
+         HHT == 3 &
+         persons > 2 &
+         person_num > 1) |
+        (ageCAT6 == 16 &
+           HHT == 1 & adults >= 2 & person_num > 1)]
+  add16 <- x[ageCAT6 == 16 &
+               HHT > 1 & persons >= 2 & persons<8 ]
+  sub17 <-
+    x[(ageCAT6 == 17 &
+         HHT == 3 &
+         persons > 2 &
+         person_num > 1) |
+        (ageCAT6 == 17 &
+           HHT == 1 & adults >= 2 & person_num > 1)]
+  add17 <- x[ageCAT6 == 17 &
+               HHT > 1 & persons >= 2 & persons<8 ]
+  sub18 <-
+    x[(ageCAT6 == 18 &
+         HHT == 3 &
+         persons > 2 &
+         person_num > 1) |
+        (ageCAT6 == 18 &
+           HHT == 1 & adults >= 2 & person_num > 1)]
+  add18 <- x[ageCAT6 == 18 &
+               HHT > 1 & persons >= 2 & persons<8 ]
+  
+  add.sample <<-
+    list(
+      add1,
+      add2,
+      add3,
+      add4,
+      add5,
+      add6,
+      add7,
+      add8,
+      add9,
+      add10,
+      add11,
+      add12,
+      add13,
+      add14,
+      add15,
+      add16,
+      add17,
+      add18
+    )
+  sub.sample <<-
+    list(
+      sub1,
+      sub2,
+      sub3,
+      sub4,
+      sub5,
+      sub6,
+      sub7,
+      sub8,
+      sub9,
+      sub10,
+      sub11,
+      sub12,
+      sub13,
+      sub14,
+      sub15,
+      sub16,
+      sub17,
+      sub18
+    )
+  
+}
+```
+
+# 8.2 - Person duplication function (SHoP)
 
 ```{r}
 #| eval: false
@@ -2128,7 +2343,8 @@ cx <- function(x) {
 
 ```{r}
 
-for (yr in c(2025,2035)){
+# for (yr in c(2030,2040,2045,2050)){
+for (yr in c(2020)){
   
 flaglist <- data.table()
 

@@ -26,8 +26,8 @@ editor: visual
 
 # scen <- 'Scenario_1'
 # scen <- 'Scenario_2'
-# scen <- 'Scenario_3'
-scen <- 'Scenario_4'
+scen <- 'Scenario_3'
+# scen <- 'Scenario_4'
 
 #Headship rate Scenario
 if (scen == 'Scenario_1'){
@@ -36,6 +36,10 @@ if (scen == 'Scenario_1'){
 if (scen != 'Scenario_1'){
   hdshp <- 'scen2'
 }
+
+reb <- 'MAPC101'
+# reb <- 'MAPC97'
+
 
 #Use when Rproject is open
 #root <- '../../../../Data/Working/Regional_Control_Totals/'
@@ -48,7 +52,10 @@ base <- "S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/"
 root <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/")
 
 # Set output filepath
-output_path <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Final_Outputs/", scen, "/UPDATE_w_shelter2/")
+# output_path <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Final_Outputs/", scen, "/UPDATE_w_shelter2/")
+
+output_path <- paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Final_Outputs/", scen, "/For_Bob_20260420/")
+dir.create(output_path, showWarnings = F)
 
 # Set Shelter Households path
 shelter_path <- paste0(
@@ -89,27 +96,29 @@ rpa.list <- mapcdatakeys::all_muni_data_keys |> select(rpa_acr) |> distinct(rpa_
 
 ```
 
-# 1.0 Load Output Data
+# Load Output Data
 
 # 1.1 Load Outputs from the Reweighter
 
 ```{r results = 'hide'}
 # Set a list of years corresponding to the projection years considered
 
-# years <- c(2020,2025,2030,2035,2040,2045,2050)
-years <- c(2025, 2035)
+years <- c(2030,2035,2040,2045,2050)
+# years <- c(2025, 2035)
 
 read_rwt.files <- function(scenario, year) {
   readRDS(
     paste0(
       rwt_path,
       "processor_corrected_PUMS_",
+      reb,
+      "_",
       scenario,
       "_",
       year,
       ".rds"
     )
-  )
+  ) 
 }
 
 rwt.pums.df <- data.table()
@@ -246,6 +255,11 @@ rwt.pums.df.join <- rwt.pums.df |>
     ),
     SHELT = 0
   )
+
+
+if (reb=='MAPC101'){
+      setnames(rwt.pums.df.join,'mpo','rpa_acr')
+}
 
 rm(rwt.pums.df);gc()
 
@@ -439,32 +453,39 @@ tbl.4 <- shelter.pums_cleaned  |>
 
 if (scen %in% c('Scenario_2','Scenario_3')){
 
-#shelter.pums_cleaned.2030 <- shelter.pums_cleaned |> mutate(year = 2030)
+shelter.pums_cleaned.2030 <- shelter.pums_cleaned |> mutate(year = 2030)
 shelter.pums_cleaned.2035 <- shelter.pums_cleaned |> mutate(year = 2035)
-#shelter.pums_cleaned.2040 <- shelter.pums_cleaned |> mutate(year = 2040)
-#shelter.pums_cleaned.2045 <- shelter.pums_cleaned |> mutate(year = 2045)
-#shelter.pums_cleaned.2050 <- shelter.pums_cleaned |> mutate(year = 2050)
+shelter.pums_cleaned.2040 <- shelter.pums_cleaned |> mutate(year = 2040)
+shelter.pums_cleaned.2045 <- shelter.pums_cleaned |> mutate(year = 2045)
+shelter.pums_cleaned.2050 <- shelter.pums_cleaned |> mutate(year = 2050)
 
 shelter.pums_cleaned.year <- bind_rows(
-  #shelter.pums_cleaned.2030,
-  shelter.pums_cleaned.2035#,
-  # shelter.pums_cleaned.2040,
-  # shelter.pums_cleaned.2045,
-  # shelter.pums_cleaned.2050
+  shelter.pums_cleaned.2030,
+  shelter.pums_cleaned.2035,
+  shelter.pums_cleaned.2040,
+  shelter.pums_cleaned.2045,
+  shelter.pums_cleaned.2050
 )
 
-rm(shelter.pums_cleaned.2035)
-rm(shelter.pums_cleaned)
+rm(
+  shelter.pums_cleaned.2030,
+  shelter.pums_cleaned.2035,
+  shelter.pums_cleaned.2040,
+  shelter.pums_cleaned.2045,
+  shelter.pums_cleaned.2050
+)
 
-# rm(shelter.pums_cleaned.2030, shelter.pums_cleaned.2035, shelter.pums_cleaned.2040,
-#    shelter.pums_cleaned.2045, shelter.pums_cleaned.2050)
-# rm(tmp.rwt_cleaned)
-gc()
+if (reb == 'MAPC97') {
+  setnames(shelter.pums_cleaned.year, 'rpa_acr', 'mpo')
+  rwt.pums.df.join <- bind_rows(rwt.pums.df.join, shelter.pums_cleaned.year) |>
+    setDT()
+}
 
-rwt.pums.df.join <- bind_rows(rwt.pums.df.join, shelter.pums_cleaned.year) |> mutate(
-    mpo = coalesce(mpo, rpa_acr)
-    ) |> 
-  setDT()
+if (reb == 'MAPC101') {
+  rwt.pums.df.join <- bind_rows(rwt.pums.df.join, shelter.pums_cleaned.year) |> 
+    setDT()
+}
+
 rwt.pums.df.join[is.na(children_in_HH),children_in_HH:=Child_Total]
 
 rm(shelter.pums_cleaned.year)
@@ -479,9 +500,9 @@ gc()
 -   .2 5-year Age Groupings (ageCAT6)
 -   .3 Household Type
 -   .4 Laborforce in Households
--   .5 Number of Children in a Household 
--   .6 Size of Household 
--   .7 Tenure 
+-   .5 Number of Children in a Household
+-   .6 Size of Household
+-   .7 Tenure
 -   .8 Number of Workers in a Household
 
 ```{r}
@@ -502,6 +523,7 @@ gc()
 
 #===============================================================================
 # .1 UrbanSim Household Income Groupings
+if (reb == 'MAPC97') {
 tbl.1 <- rwt.pums.df.join |> 
   #filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   filter(SPORDER == 1) |> 
@@ -512,11 +534,21 @@ tbl.1 <- rwt.pums.df.join |>
   ) |> 
   summarise(
     hhds = sum(new_WGTP)
-  ) |> 
-  ungroup() |> 
-  dplyr::rename(
-    rpa = mpo
   )
+} else {
+  tbl.1 <- rwt.pums.df.join |> 
+  filter(SPORDER == 1) |> 
+  group_by(
+    rpa_acr,
+    year,
+    Income_Group
+  ) |> 
+  summarise(
+    hhds = sum(new_WGTP)
+  ) |> 
+  ungroup()
+}
+
 
 tbl.1.test <- tbl.1 |> 
   group_by(
@@ -540,14 +572,14 @@ if (round(sum(tbl.1$hhds)) != round(sum(tbl.1.test$hhds))){
 #Write Output tables to K Drive
 write.csv(
   tbl.1,
-  paste0(output_path,"/output.tbl_",scen,"_Households.by.IncomeGroups.fix.csv"),
+  paste0(output_path,"/output.tbl_",scen,"_",reb,"_Households.by.IncomeGroups.fix.csv"),
   row.names = FALSE
 )
 gc()
 #===============================================================================
 # .2 5-year Age Groupings (ageCAT6)
+if (reb == 'MAPC97') {
 tbl.2 <- rwt.pums.df.join |> 
-  # filter(TYPEHUGQ == 1 & SPORDER == 1) |>
   filter(SPORDER == 1) |>
   group_by(
     mpo,
@@ -557,10 +589,20 @@ tbl.2 <- rwt.pums.df.join |>
   summarise(
     hhds = sum(new_WGTP)
   ) |> 
-  ungroup() |> 
-  dplyr::rename(
-    rpa = mpo
-  )
+  ungroup()
+} else {
+  tbl.2 <- rwt.pums.df.join |> 
+  filter(SPORDER == 1) |>
+  group_by(
+    rpa_acr,
+    year,
+    Age_Group
+  ) |> 
+  summarise(
+    hhds = sum(new_WGTP)
+  ) |> 
+  ungroup()
+}
 
 tbl.2.test <- tbl.2 |> 
   group_by(
@@ -584,7 +626,7 @@ if (round(sum(tbl.2$hhds)) != round(sum(tbl.2.test$hhds))){
 #Write Output Tables to K Drive
 write.csv(
   tbl.2,
-  paste0(output_path,"/output.tbl_",scen,"_Households.by.AgeGroups.csv"),
+  paste0(output_path,"/output.tbl_",scen,"_",reb,"_Households.by.AgeGroups.csv"),
   row.names = FALSE
 )
 
@@ -592,8 +634,8 @@ gc()
 
 #===============================================================================
 # .3 Household Type
+if (reb == 'MAPC97') {
 tbl.3 <- rwt.pums.df.join  |>
-  # filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   filter(SPORDER == 1) |> 
   group_by(
     mpo,
@@ -603,10 +645,20 @@ tbl.3 <- rwt.pums.df.join  |>
   summarise(
     hhds = sum(new_WGTP)
   ) |> 
-  ungroup() |> 
-  dplyr::rename(
-    rpa = mpo
-  )
+  ungroup()
+} else {
+  tbl.3 <- rwt.pums.df.join  |>
+  filter(SPORDER == 1) |> 
+  group_by(
+    rpa_acr,
+    year,
+    HHtype_Group
+  ) |> 
+  summarise(
+    hhds = sum(new_WGTP)
+  ) |> 
+  ungroup()
+}
 
 tbl.3.test <- tbl.3 |> 
   group_by(
@@ -630,15 +682,15 @@ if (round(sum(tbl.3$hhds)) != round(sum(tbl.3.test$hhds))){
 # Write output tables to K drive
 write.csv(
   tbl.3,
-  paste0(output_path,"output.tbl_",scen,"_Households.by.HHtypeGroups1.csv"),
+  paste0(output_path,"output.tbl_",scen,"_",reb,"_Households.by.HHtypeGroups1.csv"),
   row.names = FALSE
 )
 gc()
 #===============================================================================
 # .4 Laborforce
 # Note: A bit of a roundabout way of calculating labor force. Its based on the number households with a specific number of workers in them. Households with two workers are multiplied by 2 to get the total number of people in that household in the labor force. "Workers" are people in the LF + military service members (a negligible amount of people in MA).
+if (reb=='MAPC97'){
 tbl.4 <- rwt.pums.df.join  |> 
-  # filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   filter(SPORDER == 1) |> 
   group_by(
     mpo,
@@ -656,23 +708,40 @@ tbl.4 <- rwt.pums.df.join  |>
   summarise(
     lf = sum(lf)
   ) |> 
+  ungroup()
+
+} else {
+  filter(SPORDER == 1) |> 
+  group_by(
+    rpa_acr,
+    year,
+    WRKHH
+  ) |> 
+  summarise(
+    hhds = sum(new_WGTP)
+  ) |> 
   ungroup() |> 
-  dplyr::rename(
-    rpa = mpo
-  )
-
-
+  mutate(
+    lf = WRKHH*hhds
+  ) |> 
+  group_by(year, rpa_acr) |> 
+  summarise(
+    lf = sum(lf)
+  ) |> 
+  ungroup()
+}
 # Write output tables to K drive
 write.csv(
   tbl.4,
-  paste0(output_path,"/output.tbl_",scen,"_Laborforce.in.Households.csv"),
+  paste0(output_path,"/output.tbl_",scen,"_",reb,"_Laborforce.in.Households.csv"),
   row.names = FALSE
 )
 
 #===============================================================================
 # .5 Number of Children in a Household
+
+if (reb=='MAPC97'){
 tbl.5 <- rwt.pums.df.join |>
-  # filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   filter(SPORDER == 1) |>  
   group_by(
     mpo,
@@ -682,10 +751,20 @@ tbl.5 <- rwt.pums.df.join |>
   summarise(
     hhds = sum(new_WGTP)
   ) |> 
-  ungroup() |> 
-  dplyr::rename(
-    rpa = mpo
-  )
+  ungroup()
+} else {
+  tbl.5 <- rwt.pums.df.join |>
+  filter(SPORDER == 1) |>  
+  group_by(
+    mrpa_acr,
+    year,
+    CHILDHH_Group
+  ) |> 
+  summarise(
+    hhds = sum(new_WGTP)
+  ) |> 
+  ungroup()
+}
 
 tbl.5.test <- tbl.5 |> 
   group_by(
@@ -709,8 +788,8 @@ if (round(sum(tbl.5$hhds)) != round(sum(tbl.5.test$hhds))){
 # Alternate version no grouping
 setDT(tbl.5)
 
+if (reb=='MAPC97'){
 tbl.5b <- rwt.pums.df.join |>
-  # filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   filter(SPORDER == 1) |>  
   group_by(
     mpo,
@@ -722,38 +801,52 @@ tbl.5b <- rwt.pums.df.join |>
     hhds = sum(new_WGTP)
   ) |> 
   ungroup() |> 
-  dplyr::rename(
-    rpa = mpo
-  ) |> 
-  left_join(tbl.5,by=c('rpa','year','CHILDHH_Group')) |> 
+  left_join(tbl.5,by=c('mpo','year','CHILDHH_Group')) |> 
   mutate(diff = hhds.x-hhds.y) |> 
   setDT()
 
 tbl.5b[diff!=0,unique(CHILDHH_Group)]
-tbl.5b[CHILDHH_Group=='Four or More Children',c4:=sum(hhds.x),.(rpa,year)]
+tbl.5b[CHILDHH_Group=='Four or More Children',c4:=sum(hhds.x),.(mpo,year)]
 tbl.5b[,diff2:=c4-hhds.y]
 tbl.5b[!is.na(diff2),range(diff2)]
+setnames(tbl.5b,c('mpo','year','children_in_HH','CHILDHH_Group','HH_ungrouped','HH_grouped','raw_diff','sum_4+','diff_2'))
 
-setnames(tbl.5b,c('rpa','year','children_in_HH','CHILDHH_Group','HH_ungrouped','HH_grouped','raw_diff','sum_4+','diff_2'))
+} else {
+  tbl.5b <- rwt.pums.df.join |>
+  filter(SPORDER == 1) |>  
+  group_by(
+    rpa_acr,
+    year,
+    children_in_HH,
+    CHILDHH_Group
+  ) |> 
+  summarise(
+    hhds = sum(new_WGTP)
+  ) |> 
+  ungroup() |> 
+  left_join(tbl.5,by=c('rpa_acr','year','CHILDHH_Group')) |> 
+  mutate(diff = hhds.x-hhds.y) |> 
+  setDT()
 
-# raw <- copy( rwt.pums.df.join)
-# dt <- copy( rwt.pums.df.join)
-# 
-# raw[year==2035 & SPORDER==1 & children_in_HH>0,sum(new_WGTP)]
-# dt[year==2035 & SPORDER==1 & children_in_HH>0,sum(new_WGTP)]
+tbl.5b[diff!=0,unique(CHILDHH_Group)]
+tbl.5b[CHILDHH_Group=='Four or More Children',c4:=sum(hhds.x),.(rpa_acr,year)]
+tbl.5b[,diff2:=c4-hhds.y]
+tbl.5b[!is.na(diff2),range(diff2)]
+setnames(tbl.5b,c('rpa_acr','year','children_in_HH','CHILDHH_Group','HH_ungrouped','HH_grouped','raw_diff','sum_4+','diff_2'))
+}
 
 # Write output tables to K drive
 write.csv(
   tbl.5,
-  paste0(output_path,"/output.tbl_",scen,"_Households.by.NumberOfChildren.csv"),
+  paste0(output_path,"/output.tbl_",scen,"_",reb,"_Households.by.NumberOfChildren.csv"),
   row.names = FALSE
 )
 
 gc()
 #===============================================================================
 # .6 Size of Household
+if(reb=='MAPC97'){
 tbl.6 <- rwt.pums.df.join  |> 
-  # filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   filter(SPORDER == 1) |> 
   group_by(
     mpo,
@@ -763,11 +856,20 @@ tbl.6 <- rwt.pums.df.join  |>
   summarise(
     hhds = sum(new_WGTP)
   ) |> 
-  ungroup() |> 
-  dplyr::rename(
-    rpa = mpo
-  )
-
+  ungroup()
+} else {
+  tbl.6 <- rwt.pums.df.join  |> 
+  filter(SPORDER == 1) |> 
+  group_by(
+    mrpa_acr,
+    year,
+    Size_Group
+  ) |> 
+  summarise(
+    hhds = sum(new_WGTP)
+  ) |> 
+  ungroup()
+}
 tbl.6.test <- tbl.6 |> 
   group_by(
     year
@@ -790,15 +892,16 @@ if (round(sum(tbl.6$hhds)) != round(sum(tbl.6.test$hhds))){
 # Write output tables to K drive
 write.csv(
   tbl.6,
-  paste0(output_path,"/output.tbl_",scen,"_Households.by.HHsize.csv"),
+  paste0(output_path,"/output.tbl_",scen,"_",reb,"_Households.by.HHsize.csv"),
   row.names = FALSE
 )
 
 gc()
 #===============================================================================
 # .7 Tenure
+
+if (reb=='MAPC97'){
 tbl.7 <- rwt.pums.df.join  |>
-  # filter(TYPEHUGQ == 1 & SPORDER == 1) |>
   filter(SPORDER == 1) |> 
   group_by(
     mpo,
@@ -808,10 +911,20 @@ tbl.7 <- rwt.pums.df.join  |>
   summarise(
     hhds = sum(new_WGTP)
   ) |> 
-  ungroup() |> 
-  dplyr::rename(
-    rpa = mpo
-  )
+  ungroup()
+} else {
+  tbl.7 <- rwt.pums.df.join  |>
+  filter(SPORDER == 1) |> 
+  group_by(
+    rpa_acr,
+    year,
+    TEN_Group
+  ) |> 
+  summarise(
+    hhds = sum(new_WGTP)
+  ) |> 
+  ungroup()
+}
 
 tbl.7.test <- tbl.7 |> 
   group_by(
@@ -835,15 +948,15 @@ if (round(sum(tbl.7$hhds)) != round(sum(tbl.7.test$hhds))){
 # Write output tables to K drive
 write.csv(
   tbl.7,
-  paste0(output_path,"/output.tbl_",scen,"_Households.by.Tenure.csv"),
+  paste0(output_path,"/output.tbl_",scen,"_",reb,"_Households.by.Tenure.csv"),
   row.names = FALSE
 )
 
 gc()
 #===============================================================================
 # .8 Number of Workers in a Household
+if (reb=='MAPC97'){
 tbl.8 <- rwt.pums.df.join  |>
-  # filter(TYPEHUGQ == 1 & SPORDER == 1) |> 
   filter(SPORDER == 1) |> 
   group_by(
     mpo,
@@ -853,11 +966,20 @@ tbl.8 <- rwt.pums.df.join  |>
   summarise(
     hhds = sum(new_WGTP)
   ) |> 
-  ungroup() |> 
-  dplyr::rename(
-    rpa = mpo
-  )
-
+  ungroup()
+}else{
+  tbl.8 <- rwt.pums.df.join  |>
+  filter(SPORDER == 1) |> 
+  group_by(
+    rpa_acr,
+    year,
+    WRKHH_Group
+  ) |> 
+  summarise(
+    hhds = sum(new_WGTP)
+  ) |> 
+  ungroup()
+}
 tbl.8.test <- tbl.8 |> 
   group_by(
     year
@@ -880,15 +1002,16 @@ if (round(sum(tbl.8$hhds)) != round(sum(tbl.8.test$hhds))){
 # Write output tables to K drive
 write.csv(
   tbl.8,
-  paste0(output_path,"/output.tbl_",scen,"_Households.by.NumberOfWorkers.csv"),
+  paste0(output_path,"/output.tbl_",scen,"_",reb,"_Households.by.NumberOfWorkers.csv"),
   row.names = FALSE
 )
 
 gc()
 #==============================================================================
 # .9 Average Workers in Households with Three or More Workers
+
+if(reb=='MAPC97'){
 tbl.9 <- rwt.pums.df.join  |> 
-  # filter(TYPEHUGQ == 1 & SPORDER == 1 & WRKHH_Group == "Three or More Workers") |> 
   filter(SPORDER == 1 & WRKHH_Group == "Three or More Workers") |> 
   group_by(
     mpo,
@@ -897,18 +1020,71 @@ tbl.9 <- rwt.pums.df.join  |>
   summarise(
     avg_workers = round(mean(WRKHH), 2)
   ) |> 
-  ungroup() |> 
-  dplyr::rename(
-    rpa = mpo
-  )
+  ungroup()
+} else {
+  tbl.9 <- rwt.pums.df.join  |> 
+  filter(SPORDER == 1 & WRKHH_Group == "Three or More Workers") |> 
+  group_by(
+    rpa_acr,
+    year
+  ) |> 
+  summarise(
+    avg_workers = round(mean(WRKHH), 2)
+  ) |> 
+  ungroup()
+}
 
 # Write output tables to K drive
 write.csv(
   tbl.9,
-  paste0(output_path,"/output.tbl_",scen,"_Avg.Workers.in.Households.w.ThreeOrMoreWorkers.csv"),
+  paste0(output_path,"/output.tbl_",scen,"_",reb,"_Avg.Workers.in.Households.w.ThreeOrMoreWorkers.csv"),
   row.names = FALSE
 )
 gc()
+
+# Households by RPA/MPO
+
+if(reb=='MAPC97'){
+  tbl.10 <- tbl.2 |> 
+    group_by(mpo,year) |> 
+    summarize(total_households=round(sum(hhds))) |> 
+    pivot_wider(id_cols='mpo', names_from = year, names_prefix = 'total_households_', values_from = total_households) |> 
+    setDT()
+}
+
+if(reb=='MAPC101'){
+  tbl.10 <- tbl.2 |> 
+    group_by(rpa_acr,year) |> 
+    summarize(total_households=round(sum(hhds))) |> 
+    pivot_wider(id_cols='rpa_acr', names_from = year, names_prefix = 'total_households_', values_from = total_households) |> 
+    setDT()
+}
+
+# Write output tables to K drive
+write.csv(
+  tbl.10,
+  paste0(output_path,"/output.tbl_",scen,"_",reb,"_Total.Households.by.",reb,".csv"),
+  row.names = FALSE
+)
+
+
+hhpop97 <- fread(paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/", scen, "/UPDATE/pop.in.hhds.MAPC97_by.RPA.ageCAT6.csv"))
+
+hhpop101 <- fread(paste0(base, "Housing/StatewideHousingPlan/04_Analysis/Data/Working/Regional_Control_Totals/", scen, "/UPDATE/pop.in.hhds.MAPC101_by.RPA.ageCAT6.csv"))
+
+
+h97 <- hhpop97[,sum(hhpop),.(year,mpo)]
+h101 <- hhpop101[,sum(hhpop),.(year,rpa_acr)]
+setnames(h97,c('year','mpo','hhpop97'))
+setnames(h101,c('year','mpo','hhpop101'))
+
+w97 <- pivot_wider(h97, id_cols = 'mpo', values_from = c('hhpop97'),names_from = 'year', names_prefix = 'hhpop97_')
+w101 <- pivot_wider(h101, id_cols = 'mpo', values_from = c('hhpop101'),names_from = 'year', names_prefix = 'hhpop101_')
+
+hhpop <- left_join(w97,w101,by=c('mpo'))
+
+
+
 
 ```
 
@@ -917,8 +1093,8 @@ gc()
 ```{r}
 # Creates a table which is a full crosstab of variables from previously generated tables.
 # Households is unrounded to avoid rounding error.
+if(reb=='MAPC97'){
 full.crosstab <- rwt.pums.df.join  |> 
-  # filter(TYPEHUGQ == 1 & SPORDER == 1) |>
   filter(SPORDER == 1) |>
   group_by(
     mpo,
@@ -934,15 +1110,30 @@ full.crosstab <- rwt.pums.df.join  |>
   summarise(
     hhds = sum(new_WGTP)
   ) |> 
-  ungroup() |> 
-  dplyr::rename(
-    rpa = mpo
-  )
-
+  ungroup()
+} else {
+  full.crosstab <- rwt.pums.df.join  |> 
+  filter(SPORDER == 1) |>
+  group_by(
+    rpa_acr,
+    year,
+    Income_Group,
+    Age_Group,
+    HHtype_Group,
+    CHILDHH_Group,
+    Size_Group,
+    TEN_Group,
+    WRKHH_Group
+  ) |> 
+  summarise(
+    hhds = sum(new_WGTP)
+  ) |> 
+  ungroup()
+}
 #Write Output tables to K Drive
 write.csv(
   full.crosstab,
-  paste0(output_path,"/output.tbl_",scen,"_full.crosstab.fix.csv"),
+  paste0(output_path,"/output.tbl_",scen,"_",reb,"_full.crosstab.fix.csv"),
   row.names = FALSE
 )
 
@@ -954,7 +1145,6 @@ children_inhhd <- rwt.pums.df.join |>
   filter(children_in_HH >= 1 & SPORDER == 1)
 print(round(sum(children_inhhd$new_WGTP)))
 ```
-
 
 # 4.0 QA/QC For Total Households and Reweighter Parameters
 
@@ -996,7 +1186,6 @@ print(round(sum(children_inhhd$new_WGTP)))
 # -.5 Households by Age of Householder
 ```
 
-
 # 5.0 Mutlivariate Output Tables for UrbanSim
 
 -   .8 Household Type by Household Income Groups
@@ -1010,5 +1199,7 @@ print(round(sum(children_inhhd$new_WGTP)))
 # 6.0 Multivariate Output Tables for Statewide Housing Plan
 
 ```{r}
+
+p101 <- readRDS("S:/Network Shares/K Drive/DataServices/Projects/Current_Projects/Housing/StatewideHousingPlan/04_Analysis/Data/Working/Reweighter/Scenario_3/Output_Files_UPDATE/processor_corrected_PUMS_MAPC101_Scenario_3_2030.rds")
 
 ```

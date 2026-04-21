@@ -22,7 +22,7 @@ iter_file <- paste0(outpath,"iter_stats.csv")
 num_iters <- 1000
 
 # Update factor for weights (Suggested default=.01)
-update_factor <- .01
+update_factor <- .1
 
 # Maximum deviation from targets (Suggested default=.5)
 max_norm <- .5

@@ -12,7 +12,7 @@ editor: visual
 # Set Scenario Names
 
 # Population Scenario
-scen <- 'Scenario_4'
+scen <- 'Scenario_3'
 # Headship rate Scenario
 # hdshp <- 'acs1721'
 hdshp <- 'scen2'
@@ -2708,11 +2708,15 @@ if (scen == 'Scenario_1') {
 
 ```{r}
 if (scen %in% c('Scenario_2', 'Scenario_3', 'Scenario_4')) {
-  for (i in seq(2030, 2050, 5)) {
+  for (i in seq(2025, 2050, 5)) {
     print(paste0("Generating MAPC101 Reweighter Target Files for ", i, "."))
-    
+  if(i==2025){
+    hhtype.base <- hhtype_baseline
+    ten.base <- tenure_baseline
+  } else { 
     hhtype.base <- fread(paste0(output_path, "hhtype_baseline.", hdshp, ".", i, ".csv"))
     ten.base <- fread(paste0(output_path, "tenure_baseline.", hdshp, ".", i, ".csv"))
+  }
     
     # Filter the projected households dataframe by year i
     tmp1 <- proj.hh.MAPC101_by.rpa.hhtype |>
@@ -2783,14 +2787,17 @@ if (scen %in% c('Scenario_2', 'Scenario_3', 'Scenario_4')) {
   }
   #===============================================================================
   # MAPC97/MPO Versions
-  for (i in seq(2030, 2050, 5)){
+  for (i in seq(2025, 2050, 5)){
       
       # Record when the process has finished for each year in the year list.
       print(paste0("Generating MAPC97 Reweighter Target Files for ", i, "."))
-      
-      hhtype.base <- fread(paste0(output_path, "hhtype_baseline.", hdshp, ".", i, ".csv"))
-      ten.base <- fread(paste0(output_path, "tenure_baseline.", hdshp, ".", i, ".csv"))
-      
+   if(i==2025){
+    hhtype.base <- hhtype_baseline
+    ten.base <- tenure_baseline
+  } else { 
+    hhtype.base <- fread(paste0(output_path, "hhtype_baseline.", hdshp, ".", i, ".csv"))
+    ten.base <- fread(paste0(output_path, "tenure_baseline.", hdshp, ".", i, ".csv"))
+  }
       #Filter the projected households dataframe by year i
       tmp1 <- proj.hh.MAPC97_by.mpo.hhtype |>
         filter(year == i) |>
@@ -2808,7 +2815,7 @@ if (scen %in% c('Scenario_2', 'Scenario_3', 'Scenario_4')) {
         filter(year == i) |>
         select(-c(year))
       
-      target.file2 <- left_join(ten.base, tmp2, by = c("RPA" = "mpo", "AgeCat", "tenure")) |>
+      target.file2 <- full_join(ten.base, tmp2, by = c("RPA" = "mpo", "AgeCat", "tenure")) |>
         # Baseline files may not have every age group, household type segment that the projections have.
         # Need to fill in places in the baseline where there are zeros for those segments.
         mutate(across(everything(), ~ replace_na(., 0))) |>

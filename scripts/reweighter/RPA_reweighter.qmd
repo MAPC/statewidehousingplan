@@ -26,9 +26,9 @@ pacman::p_load(
 )
 # Set Scenario name
 
-scen <- 'Scenario_1'
+# scen <- 'Scenario_1'
 # scen <- 'Scenario_2'
-# scen <- 'Scenario_3'
+scen <- 'Scenario_3'
 # scen <- 'Scenario_4'
 
 # Set ACS / PUMS vintage
@@ -42,8 +42,8 @@ if (scen != 'Scenario_1'){
   hdshp <- 'scen2'
 }
 # Set MAPC at 101 or 97 towns
-reb <- 'MAPC101'
-# reb <- 'MAPC97'
+# reb <- 'MAPC101'
+reb <- 'MAPC97'
 
 # List of RPA names
 mpos <- unlist(c(mapcdatakeys::all_muni_data_keys |> select(mpo) |> unique()))
@@ -440,10 +440,9 @@ if (scen == 'Scenario_1') {
 source('algo_hh.R')
 
 if (scen %in% c('Scenario_2', 'Scenario_3', 'Scenario_4')) {
-  for (yr in c(2030)) {
-  # for (yr in c(2025)) {
-  # for (yr in c(2035)) {
-  # for (yr in c(2050)) {
+  # for (yr in c(2025,2030,2035,2040,2045,2050)) {
+  # for (yr in c(2030,2035,2045,2050)) {
+  for (yr in c(2025)) {
     for (mid in mpos) {
       infile1 <- paste0(workpath, 'Templates/reweighting_config_2021.json')
       outfile1 <- paste0(
@@ -660,17 +659,17 @@ for (yr in c(2020)){
   }
 }
 # 
-for (yr in c(2025)){
-  for (mid in mpos) {
-    inpath <- paste0(input_path, mid, '/')
-    outpath <- paste0(output_path, mid, '/')
-
-    # Use unaffected outputs for 2025
-    file.copy(paste0(workpath, scen, '/Output_Files/', mid, '/reweighted_PUMS_',scen,'_', reb, '_', mid, '_scen2_', yr, '.csv'),paste0(outpath, '/reweighted_PUMS_', scen, '_', reb, '_', mid, '_', hdshp, '_', yr, '.csv'), overwrite = T)
-  }
-}
-for (yr in c(2030,2035,2040,2045,2050)){
-#for (yr in c(2035)){
+# for (yr in c(2025)){
+#   for (mid in mpos) {
+#     inpath <- paste0(input_path, mid, '/')
+#     outpath <- paste0(output_path, mid, '/')
+# 
+#     # Use unaffected outputs for 2025
+#     file.copy(paste0(workpath, scen, '/Output_Files/', mid, '/reweighted_PUMS_',scen,'_', reb, '_', mid, '_scen2_', yr, '.csv'),paste0(outpath, '/reweighted_PUMS_', scen, '_', reb, '_', mid, '_', hdshp, '_', yr, '.csv'), overwrite = T)
+#   }
+# }
+for (yr in c(2025,2030,2035,2040,2045,2050)){
+# for (yr in c(2025)){
   for (mid in mpos) {
     inpath <- paste0(input_path, mid, '/')
     outpath <- paste0(output_path, mid, '/')
@@ -717,8 +716,8 @@ for (yr in c(2030,2035,2040,2045,2050)){
   }
 }
 
-fwrite(comp.dt,paste0(output_path,'reweighter_QC_all_RPAs_all_years_', scen, '_', hdshp,'.csv'))
-fwrite(c0,paste0(output_path,'reweighter_QC_all_RPAs_by_AgeCat_HHtype_all_years_', scen, '_', hdshp,'.csv'))
+fwrite(comp.dt,paste0(output_path,'reweighter_QC_all_RPAs_all_years_',reb,'_', scen, '_', hdshp,'.csv'))
+fwrite(c0,paste0(output_path,'reweighter_QC_all_RPAs_by_AgeCat_HHtype_all_years_',reb,'_', scen, '_', hdshp,'.csv'))
 
 comp.dt[abs(diff)>1]
 c0[diff!=0]
@@ -729,17 +728,16 @@ c0[diff!=0]
 
 ```{r}
 
-for (yr in c(2020,2025,2030,2035,2040,2045,2050)){
-# for (yr in c(2040,2030)){
-# for (yr in c(2040,2045,2050)){
+# for (yr in c(2025,2030,2035,2040,2045,2050)){
+for (yr in c(2025)){
   sw <- data.table()
-  for (mid in mpos){
+  for (mid in mpos[-5]){
     inp <- paste0(output_path, mid, '/')
     dt <- fread(paste0(inp, 'reweighted_PUMS_', scen, '_', reb, '_', mid, '_', hdshp, '_', yr, '.csv'))
     dt[, year:=yr][,reb:=reb][,hdshp:=hdshp][,scen:=scen]
     sw <- rbind(sw,dt)
   }
- fwrite(sw,paste0(output_path,'/reweighted_PUMS_', scen, '_', reb, '_', hdshp, '_', yr, '.csv'))
+ fwrite(sw,paste0(output_path,'reweighted_PUMS_', scen, '_', reb, '_', hdshp, '_', yr, '.csv'))
  }
 ```
 
@@ -2348,11 +2346,11 @@ for (yr in c(2020)){
   
 flaglist <- data.table()
 
-adiff <- fread(paste0(output_path,'umdi_pop_age_difference_',yr,'.csv'))
+adiff <- fread(paste0(output_path,'umdi_pop_age_difference_',reb,'_',yr,'.csv'))
 adiff[,diff:=round(diff)]
 
 
-dt <- readRDS(paste0(output_path,'expanded_reweighted_PUMS_',yr,'.rds')) |> 
+dt <- readRDS(paste0(output_path,'expanded_reweighted_PUMS_',reb,'_',yr,'.rds')) |> 
                 mutate(
       child = case_when(AGEP < 18 ~ 1,
                         AGEP >= 18 ~ 0)) |>  
@@ -2918,7 +2916,7 @@ dt <- readRDS(paste0(output_path,'expanded_reweighted_PUMS_',yr,'.rds')) |>
     mc <- md[mf]
     mc[,diff:=pop_in_HH-umdi_hh_pop]
     setnames(mc,c('mpo','ageCAT6','umdi_pop_in_HH','uncorrected_pop_in_HH','corrected_pop_in_HH','year','corrected_minus_umdi'))
-    fwrite(mc,paste0(output_path,'corrected_pop_vs_UMDI_by_ageCAT6_HHtype_',scen,'_',yr,'.csv'))
+    fwrite(mc,paste0(output_path,'corrected_pop_vs_UMDI_by_ageCAT6_HHtype_',reb,'_',scen,'_',yr,'.csv'))
     
     saveRDS(
       dt3,

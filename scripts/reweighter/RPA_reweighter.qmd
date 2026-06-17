@@ -26,9 +26,9 @@ pacman::p_load(
 )
 # Set Scenario name
 
-# scen <- 'Scenario_1'
+scen <- 'Scenario_1'
 # scen <- 'Scenario_2'
-scen <- 'Scenario_3'
+# scen <- 'Scenario_3'
 # scen <- 'Scenario_4'
 
 # Set ACS / PUMS vintage
@@ -97,7 +97,8 @@ Formatted PUMS data is created by the *create_regional_control_totals.qmd* in se
 
 ```{r}
 if(scen=='Scenario_1') {
-  pums_data <- fread(paste0(workpath, 'PUMS_data/PUMS', vintage, '_formatted.csv')) |> filter(TYPEHUGQ == "1") |>
+  pums_data <- fread(paste0(workpath, 'PUMS_data/PUMS', vintage, '_formatted.csv')) |> 
+    filter(TYPEHUGQ == "1") |>
     mutate(AgeCat = ageCAT6)
   
   mapc.pumas <- pums_data[rpa_acr == 'MAPC', unique(PUMA)]
@@ -107,23 +108,20 @@ if(scen=='Scenario_1') {
   fwrite(
     pums_data[PUMA %in% mapc.pumas],
     paste0(
-      workpath,
-      scen,
-      '/Input_Files/MAPC/PUMS2021_',
+      input_path,
+      'MAPC/PUMS2021_',
       scen,
       '_MAPC.csv'
     )
   )
-  message(paste0('MAPC 101 PUMS export complete ', yr))
+  
   # SWM join PUMA and export subsets
   for (m in unique(swm.pumas$rpa_acr)) {
     pums_data |>
       filter(rpa_acr == m) |>
       fwrite(
         paste0(
-          workpath,
-          scen,
-          '/Input_Files/',
+          input_path,
           m,
           '/PUMS2021_',
           scen,
@@ -132,7 +130,6 @@ if(scen=='Scenario_1') {
           '.csv'
         )
       )
-    message(paste0(m, ' PUMS export complete ', yr))
   }
 }
 ```
